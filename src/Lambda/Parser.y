@@ -1,9 +1,10 @@
 {
-module Lambda.Parser (parser) where 
+module Lambda.Parser (parser, parseString) where 
 
 import Data.Char
 import qualified Lambda.Syntax as S
 import qualified Lambda.Token as T
+import Lambda.Lexer (alexScanTokens)
 }
 
 %name parser 
@@ -34,4 +35,7 @@ term :: { S.Exp }
 {
 parseError :: [T.Token] -> a
 parseError tokens = error $ "Parse Error: " ++ show tokens
+
+parseString :: String -> S.Exp
+parseString = parser . alexScanTokens
 }

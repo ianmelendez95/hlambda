@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.2.
+-- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2d51d9fe29d1c31e33cf5312855712b1a52ebf20d79f62519906dd9523a7875f
+-- hash: e9887aa4010fe07163e79690f0868050a1a315d5a920ecba29f80553cecaadf1
 
 name:           hlambda
 version:        0.1.0.0
@@ -41,6 +41,8 @@ library
   build-depends:
       array
     , base >=4.7 && <5
+    , prettyprinter
+    , text
   default-language: Haskell2010
 
 executable hlambda-exe
@@ -56,6 +58,7 @@ executable hlambda-exe
     , hlambda
     , mtl
     , pretty-simple
+    , prettyprinter
     , text
   default-language: Haskell2010
 

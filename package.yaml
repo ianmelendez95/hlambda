@@ -26,6 +26,8 @@ library:
   source-dirs: src
   dependencies:
   - array
+  - prettyprinter
+  - text
 
 executables:
   hlambda-exe:
@@ -41,6 +43,8 @@ executables:
     - haskeline
     - mtl
     - pretty-simple
+    - prettyprinter
+    # - prettyprinter-ansi-terminal
 
 tests:
   hlambda-test:

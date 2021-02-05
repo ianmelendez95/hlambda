@@ -12,12 +12,12 @@ reduceByApply :: String -> Exp -> Exp -> Exp
 reduceByApply var val = mapExpressions (replaceVarShallow var val)
 
 replaceVarShallow :: String -> Exp -> Exp -> Exp
-replaceVarShallow var expr v@(Variable (FreeVar var')) 
+replaceVarShallow var _ v@(Variable (FreeVar var')) 
+  = if var == var' then error $ "Possible name capture: " ++ var else v
+replaceVarShallow var expr v@(Variable (BoundVar var')) 
   = if var == var' then expr else v
-replaceVarShallow var _ v@(Variable (BoundVar var')) 
-  = if var == var' then error $ "Possible name capture" ++ var else v
 replaceVarShallow var _ v@(Variable (RawVar var')) 
-  = if var == var' then error $ "Haven't identified bound/free vars" ++ show v else v
+  = if var == var' then error $ "Haven't identified bound/free vars: " ++ show v else v
 replaceVarShallow _ _ expr = expr
 
 mapExpressions :: (Exp -> Exp) -> Exp -> Exp

@@ -3,6 +3,7 @@ module Lambda.Syntax where
 import qualified Data.Text as T
 import Prettyprinter
 import Prettyprinter.Util
+import Prettyprinter.Render.Terminal
 
 data Exp = Constant String 
          | Variable Variable 
@@ -35,18 +36,30 @@ instance Show Variable where
   show (FreeVar var) = var
   show (BoundVar var) = var
 
-data LambdaAnn =  ABoundVar
+data LambdaAnn = ABoundVar
                | AFreeVar
                | ARawVar
                | ANone
 
-prettyExp :: Exp -> Doc LambdaAnn
-prettyExp (Constant c) = pretty c
-prettyExp (Variable var) = prettyVar var
-prettyExp (Apply e e') 
-  = parens $ prettyExp e <+> prettyExp e'
-prettyExp (Lambda var e) 
-  = parens $ backslash <> ann ABoundVar (annStr ABoundVar var) <> dot <+> prettyExp e
+ansiPrettyExp :: Exp -> SimpleDocStream AnsiStyle
+ansiPrettyExp = reAnnotateS ansiStyle . prettyExp
+  where
+    ansiStyle :: LambdaAnn -> AnsiStyle 
+    ansiStyle ABoundVar = color Blue
+    ansiStyle AFreeVar = color Green
+    ansiStyle ARawVar = color Red
+    ansiStyle ANone = mempty
+
+prettyExp :: Exp -> SimpleDocStream LambdaAnn
+prettyExp = layoutPretty defaultLayoutOptions . prettyExpDoc
+
+prettyExpDoc :: Exp -> Doc LambdaAnn
+prettyExpDoc (Constant c) = pretty c
+prettyExpDoc (Variable var) = prettyVar var
+prettyExpDoc (Apply e e') 
+  = parens $ prettyExpDoc e <+> prettyExpDoc e'
+prettyExpDoc (Lambda var e) 
+  = parens $ backslash <> ann ABoundVar (annStr ABoundVar var) <> dot <+> prettyExpDoc e
 
 prettyVar :: Variable -> Doc LambdaAnn
 prettyVar (FreeVar name) = annStr AFreeVar name

@@ -9,12 +9,14 @@ import Control.Monad.State.Lazy (liftIO)
 
 import Prettyprinter
 import Prettyprinter.Util (putDocW)
+import Prettyprinter.Render.Terminal
 
 import Lambda.FreeBound
 import Lambda.Parser (parser)
 import Lambda.Lexer (alexScanTokens)
 import Lambda.Beta (betaReduce)
-import Lambda.Syntax (prettyExp)
+import Lambda.Syntax (ansiPrettyExp)
+import qualified System.IO
 
 main :: IO ()
 main = do args <- getArgs  
@@ -41,7 +43,7 @@ evalLambda input = do let parsed = parser . alexScanTokens $ input
                       putStr "marked: "        >> print marked
                       putStr "beta reduced: "  >> print reduced
                       putStrLn "pretty: "
-                      putDocW 80 $ prettyExp marked
+                      renderIO System.IO.stdout $ ansiPrettyExp marked
                       putStrLn ""
                     
 testPretty :: IO ()
@@ -49,5 +51,5 @@ testPretty = do let prettyType :: [Doc ()] -> Doc ()
                     prettyType = align . sep . zipWith (<+>) ("::" : repeat "->")
                     prettyDecl n tys = pretty n <+> prettyType tys
                     doc = prettyDecl ("example" :: String) ["Int" :: Doc (), "Bool", "Char", "IO ()"]
-                putDocW 20 doc
+                -- renderIO System.IO.stdout doc
                 putStrLn ""

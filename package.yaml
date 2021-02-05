@@ -28,6 +28,7 @@ library:
   - array
   - prettyprinter
   - text
+  - prettyprinter-ansi-terminal
 
 executables:
   hlambda-exe:
@@ -44,7 +45,7 @@ executables:
     - mtl
     - pretty-simple
     - prettyprinter
-    # - prettyprinter-ansi-terminal
+    - prettyprinter-ansi-terminal
 
 tests:
   hlambda-test:

@@ -28,7 +28,7 @@ exp : '\\' variable '.' exp { S.Lambda $2 $4 }
 
 term :: { S.Exp }    
      : constant              { S.Constant $1 }
-     | variable              { S.Variable $1 }
+     | variable              { S.Variable (S.RawVar $1) }
      | '(' exp ')'           { $2 }
      
 

@@ -39,7 +39,7 @@ evalLambda input = do let parsed = parser . alexScanTokens $ input
                           reduced = betaReduce marked
                       putStr "raw: "           >> print parsed
                       putStr "marked: "        >> print marked
-                      putStr "beta reduced: "  >> print (betaReduce marked)
+                      putStr "beta reduced: "  >> print reduced
                       putStrLn "pretty: "
                       putDocW 80 $ prettyExp marked
                       putStrLn ""

@@ -35,8 +35,26 @@ instance Show Variable where
   show (FreeVar var) = var
   show (BoundVar var) = var
 
-printPrettyExp :: Exp -> IO ()
-printPrettyExp = putDocW 80 . prettyExp
+data LambdaAnn =  ABoundVar
+               | AFreeVar
+               | ARawVar
+               | ANone
 
-prettyExp :: Exp -> Doc ()
-prettyExp = pretty . show 
+prettyExp :: Exp -> Doc LambdaAnn
+prettyExp (Constant c) = pretty c
+prettyExp (Variable var) = prettyVar var
+prettyExp (Apply e e') 
+  = parens (prettyExp e) <+> parens (prettyExp e')
+prettyExp (Lambda var e) 
+  = pretty "\\" <> ann ABoundVar (annStr ABoundVar var) <> pretty "." <+> parens (prettyExp e)
+
+prettyVar :: Variable -> Doc LambdaAnn
+prettyVar (FreeVar name) = annStr AFreeVar name
+prettyVar (BoundVar name) = annStr ABoundVar name
+prettyVar (RawVar name) = annStr ARawVar name
+
+ann :: ann -> Doc ann -> Doc ann
+ann = annotate
+
+annStr :: LambdaAnn -> String -> Doc LambdaAnn
+annStr a = annotate a . pretty

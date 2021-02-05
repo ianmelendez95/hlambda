@@ -3,8 +3,10 @@ module Lambda.Beta (betaReduce) where
 import Lambda.Syntax (Exp (..), Variable (..))
 
 betaReduce :: Exp -> Exp 
-betaReduce (Apply (Lambda var lambdaBody) expr) 
-  = betaReduce $ reduceByApply var expr lambdaBody
+betaReduce (Apply e e') = 
+  case betaReduce e of 
+    (Lambda var lambdaBody) -> betaReduce $ reduceByApply var (betaReduce e') lambdaBody
+    reduced -> Apply reduced (betaReduce e') -- TODO check that we only apply to built in functions otherwise
 betaReduce (Lambda var expr) = Lambda var (betaReduce expr)
 betaReduce expr = expr
 

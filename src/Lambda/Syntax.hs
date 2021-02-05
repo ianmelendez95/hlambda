@@ -44,9 +44,9 @@ prettyExp :: Exp -> Doc LambdaAnn
 prettyExp (Constant c) = pretty c
 prettyExp (Variable var) = prettyVar var
 prettyExp (Apply e e') 
-  = parens (prettyExp e) <+> parens (prettyExp e')
+  = parens $ prettyExp e <+> prettyExp e'
 prettyExp (Lambda var e) 
-  = pretty "\\" <> ann ABoundVar (annStr ABoundVar var) <> pretty "." <+> parens (prettyExp e)
+  = parens $ backslash <> ann ABoundVar (annStr ABoundVar var) <> dot <+> prettyExp e
 
 prettyVar :: Variable -> Doc LambdaAnn
 prettyVar (FreeVar name) = annStr AFreeVar name

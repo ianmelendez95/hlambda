@@ -7,8 +7,6 @@ import System.Console.Haskeline
 -- import Text.Pretty.Simple (pPrint)
 import Control.Monad.State.Lazy (liftIO)
 
-import Prettyprinter
-import Prettyprinter.Util (putDocW)
 import Prettyprinter.Render.Terminal
 
 import Lambda.FreeBound

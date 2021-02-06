@@ -1,8 +1,11 @@
-module Lambda.Syntax where 
+module Lambda.Syntax 
+  ( Exp (..)
+  , Variable (..)
+  , ansiPrettyExp
+  , varName
+  ) where 
 
-import qualified Data.Text as T
 import Prettyprinter
-import Prettyprinter.Util
 import Prettyprinter.Render.Terminal
 import Control.Monad.State.Lazy
 
@@ -52,12 +55,17 @@ data ParenState = ParenState {
     parenPrec :: Int,
     parenStyle :: AParen
   }
-initParenState :: ParenState
-initParenState = ParenState 0 AParenMagenta
 
 type LambdaDoc = Doc LambdaAnn
 type PrettyExp = State ParenState
 type ParenWrapper = (LambdaDoc -> LambdaDoc)
+
+initParenState :: ParenState
+initParenState = ParenState 0 AParenMagenta
+
+------------------
+-- PRETTY PRINT --
+------------------
 
 ansiPrettyExp :: Exp -> SimpleDocStream AnsiStyle
 ansiPrettyExp = reAnnotateS ansiStyle . prettyExp
@@ -67,12 +75,12 @@ ansiPrettyExp = reAnnotateS ansiStyle . prettyExp
     ansiStyle AFreeVar = color Green
     ansiStyle ARawVar = color Red
     ansiStyle AConstant = mempty
-    ansiStyle (AParen p) = parenStyle p
+    ansiStyle (AParen p) = parenStyle' p
 
-    parenStyle :: AParen -> AnsiStyle
-    parenStyle AParenYellow = color Yellow
-    parenStyle AParenMagenta = color Magenta
-    parenStyle AParenCyan = color Cyan
+    parenStyle' :: AParen -> AnsiStyle
+    parenStyle' AParenYellow = color Yellow
+    parenStyle' AParenMagenta = color Magenta
+    parenStyle' AParenCyan = color Cyan
 
 prettyExp :: Exp -> SimpleDocStream LambdaAnn
 prettyExp = layoutPretty defaultLayoutOptions . prettyExpDoc
@@ -86,7 +94,7 @@ sPretty (Variable var) = pure $ prettyVar var
 sPretty (Lambda var e) = do wrapper <- getParenWrapper 5 
                             ePretty <- setPrec 0 >> sPretty e
                             pure $ wrapper $ backslash
-                                           <> ann ABoundVar (annStr ABoundVar var) 
+                                           <> annotate ABoundVar (annStr ABoundVar var) 
                                            <> dot 
                                            <+> ePretty
 sPretty (Apply e e') = do wrapper <- getParenWrapper 10
@@ -108,29 +116,9 @@ getParenWrapper prec = do pPrec <- gets parenPrec
     getWrapper :: PrettyExp ParenWrapper
     getWrapper = annParens . AParen <$> (gets parenStyle <* modify updateParenStyle)
 
--- getParenWrapper' :: PrettyExp ParenWrapper 
--- getParenWrapper' = do pStyle <- gets parenStyle
---                      modify updateParenStyle
---                      pure $ annParens (AParen pStyle)
-
 updateParenStyle :: ParenState -> ParenState
 updateParenStyle pState@ParenState { parenStyle = style } 
   = pState { parenStyle = nextParenAnn style }
-
-prettyExpDocPrec :: AParen -> Int -> Exp -> Doc LambdaAnn
-prettyExpDocPrec _ _ (Constant c) = annStr AConstant c
-prettyExpDocPrec _ _ (Variable var) = prettyVar var
-prettyExpDocPrec p d (Lambda var e) 
-  = let (parens', nextP) = if d > 5 then (annParens (AParen p), nextParenAnn p)
-                                    else (id, p)
-     in parens' $ backslash 
-                <> ann ABoundVar (annStr ABoundVar var) 
-                <> dot 
-                <+> prettyExpDocPrec nextP 0 e
-prettyExpDocPrec p d (Apply e e') 
-  = let (parens', nextP) = if d > 10 then (annParens (AParen p), nextParenAnn p)
-                                     else (id, p)
-     in parens' $ prettyExpDocPrec nextP 6 e <+> prettyExpDocPrec nextP 11 e'
 
 nextParenAnn :: AParen -> AParen
 nextParenAnn AParenYellow = AParenMagenta
@@ -141,12 +129,9 @@ annParens :: LambdaAnn -> (Doc LambdaAnn -> Doc LambdaAnn)
 annParens a = enclose (annotate a $ pretty "(") (annotate a $ pretty ")")
 
 prettyVar :: Variable -> Doc LambdaAnn
-prettyVar (FreeVar name) = annStr AFreeVar name
+prettyVar (FreeVar name)  = annStr AFreeVar name
 prettyVar (BoundVar name) = annStr ABoundVar name
-prettyVar (RawVar name) = annStr ARawVar name
-
-ann :: ann -> Doc ann -> Doc ann
-ann = annotate
+prettyVar (RawVar name)   = annStr ARawVar name
 
 annStr :: LambdaAnn -> String -> Doc LambdaAnn
 annStr a = annotate a . pretty

@@ -39,8 +39,13 @@ instance Show Variable where
 data LambdaAnn = ABoundVar
                | AFreeVar
                | ARawVar
-               | AParen
-               | ANone
+               | AConstant
+               | AParen AParen
+
+data AParen = AParenYellow
+            | AParenMagenta
+            | AParenCyan
+            deriving (Show)
 
 ansiPrettyExp :: Exp -> SimpleDocStream AnsiStyle
 ansiPrettyExp = reAnnotateS ansiStyle . prettyExp
@@ -49,29 +54,39 @@ ansiPrettyExp = reAnnotateS ansiStyle . prettyExp
     ansiStyle ABoundVar = color Blue
     ansiStyle AFreeVar = color Green
     ansiStyle ARawVar = color Red
-    ansiStyle ANone = mempty
-    ansiStyle AParen = color Magenta
+    ansiStyle AConstant = mempty
+    ansiStyle (AParen p) = parenStyle p
+
+    parenStyle :: AParen -> AnsiStyle
+    parenStyle AParenYellow = color Yellow
+    parenStyle AParenMagenta = color Magenta
+    parenStyle AParenCyan = color Cyan
 
 prettyExp :: Exp -> SimpleDocStream LambdaAnn
 prettyExp = layoutPretty defaultLayoutOptions . prettyExpDoc
 
 prettyExpDoc :: Exp -> Doc LambdaAnn
-prettyExpDoc = prettyExpDocPrec 0
+prettyExpDoc = prettyExpDocPrec AParenMagenta 0
 
-prettyExpDocPrec :: Int -> Exp -> Doc LambdaAnn
-prettyExpDocPrec _ (Constant c) = pretty c
-prettyExpDocPrec _ (Variable var) = prettyVar var
-prettyExpDocPrec d (Lambda var e) 
-  = parensIf (d > 5) $ backslash 
-                     <> ann ABoundVar (annStr ABoundVar var) 
-                     <> dot 
-                     <+> prettyExpDocPrec 0 e
-prettyExpDocPrec d (Apply e e') 
-  = parensIf (d > 10) $ prettyExpDocPrec 6 e <+> prettyExpDocPrec 11 e'
+prettyExpDocPrec :: AParen -> Int -> Exp -> Doc LambdaAnn
+prettyExpDocPrec _ _ (Constant c) = annStr AConstant c
+prettyExpDocPrec _ _ (Variable var) = prettyVar var
+prettyExpDocPrec p d (Lambda var e) 
+  = let (parens', nextP) = if d > 5 then (annParens (AParen p), nextParenAnn p)
+                                    else (id, p)
+     in parens' $ backslash 
+                <> ann ABoundVar (annStr ABoundVar var) 
+                <> dot 
+                <+> prettyExpDocPrec nextP 0 e
+prettyExpDocPrec p d (Apply e e') 
+  = let (parens', nextP) = if d > 10 then (annParens (AParen p), nextParenAnn p)
+                                     else (id, p)
+     in parens' $ prettyExpDocPrec nextP 6 e <+> prettyExpDocPrec nextP 11 e'
 
-parensIf :: Bool -> (Doc LambdaAnn -> Doc LambdaAnn)
-parensIf True = annParens AParen
-parensIf False = id
+nextParenAnn :: AParen -> AParen
+nextParenAnn AParenYellow = AParenMagenta
+nextParenAnn AParenMagenta = AParenCyan
+nextParenAnn AParenCyan = AParenYellow
 
 annParens :: LambdaAnn -> (Doc LambdaAnn -> Doc LambdaAnn)
 annParens a = enclose (annotate a $ pretty "(") (annotate a $ pretty ")")

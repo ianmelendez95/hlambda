@@ -46,10 +46,3 @@ evalLambda input = do let parsed = parser . alexScanTokens $ input
                       renderIO System.IO.stdout $ ansiPrettyExp marked
                       putStrLn ""
                     
-testPretty :: IO ()
-testPretty = do let prettyType :: [Doc ()] -> Doc ()
-                    prettyType = align . sep . zipWith (<+>) ("::" : repeat "->")
-                    prettyDecl n tys = pretty n <+> prettyType tys
-                    doc = prettyDecl ("example" :: String) ["Int" :: Doc (), "Bool", "Char", "IO ()"]
-                -- renderIO System.IO.stdout doc
-                putStrLn ""

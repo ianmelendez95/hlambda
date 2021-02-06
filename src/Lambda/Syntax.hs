@@ -39,6 +39,7 @@ instance Show Variable where
 data LambdaAnn = ABoundVar
                | AFreeVar
                | ARawVar
+               | AParen
                | ANone
 
 ansiPrettyExp :: Exp -> SimpleDocStream AnsiStyle
@@ -49,6 +50,7 @@ ansiPrettyExp = reAnnotateS ansiStyle . prettyExp
     ansiStyle AFreeVar = color Green
     ansiStyle ARawVar = color Red
     ansiStyle ANone = mempty
+    ansiStyle AParen = color Magenta
 
 prettyExp :: Exp -> SimpleDocStream LambdaAnn
 prettyExp = layoutPretty defaultLayoutOptions . prettyExpDoc
@@ -67,9 +69,12 @@ prettyExpDocPrec d (Lambda var e)
 prettyExpDocPrec d (Apply e e') 
   = parensIf (d > 10) $ prettyExpDocPrec 6 e <+> prettyExpDocPrec 11 e'
 
-parensIf :: Bool -> (Doc ann -> Doc ann)
-parensIf True = parens
+parensIf :: Bool -> (Doc LambdaAnn -> Doc LambdaAnn)
+parensIf True = annParens AParen
 parensIf False = id
+
+annParens :: LambdaAnn -> (Doc LambdaAnn -> Doc LambdaAnn)
+annParens a = enclose (annotate a $ pretty "(") (annotate a $ pretty ")")
 
 prettyVar :: Variable -> Doc LambdaAnn
 prettyVar (FreeVar name) = annStr AFreeVar name

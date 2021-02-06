@@ -1,4 +1,4 @@
-module Lambda.Token where 
+module Lambda.Token (Token (..)) where 
 
 data Token = Constant String 
            | Variable String 

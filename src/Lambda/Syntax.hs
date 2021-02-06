@@ -92,15 +92,22 @@ sPretty :: Exp -> PrettyExp LambdaDoc
 sPretty (Constant c) = pure $ annStr AConstant c
 sPretty (Variable var) = pure $ prettyVar var
 sPretty (Lambda var e) = do wrapper <- getParenWrapper 5 
-                            ePretty <- setPrec 0 >> sPretty e
+                            ePretty <- tempState (setPrec 0) (sPretty e)
                             pure $ wrapper $ backslash
                                            <> annotate ABoundVar (annStr ABoundVar var) 
                                            <> dot 
                                            <+> ePretty
 sPretty (Apply e e') = do wrapper <- getParenWrapper 10
-                          ePretty <- setPrec 6 >> sPretty e
-                          ePretty' <- setPrec 11 >> sPretty e'
+                          ePretty <- tempState (setPrec 6) (sPretty e)
+                          ePretty' <- tempState (setPrec 11) (sPretty e')
                           pure $ wrapper $ ePretty <+> ePretty'
+
+tempState :: PrettyExp () -> PrettyExp a -> PrettyExp a
+tempState change pe = do s <- get 
+                         change
+                         res <- pe
+                         put s
+                         return res
 
 setPrec :: Int -> PrettyExp ()
 setPrec prec = modify (\ps -> ps { parenPrec = prec })

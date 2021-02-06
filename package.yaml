@@ -29,6 +29,7 @@ library:
   - prettyprinter
   - text
   - prettyprinter-ansi-terminal
+  - mtl
 
 executables:
   hlambda-exe:

@@ -13,7 +13,7 @@ import Lambda.FreeBound
 import Lambda.Parser (parser)
 import Lambda.Lexer (alexScanTokens)
 import Lambda.Beta (betaReduce)
-import Lambda.Syntax (ansiPrettyExp)
+import Lambda.Syntax (Exp, ansiPrettyExp)
 import qualified System.IO
 
 main :: IO ()
@@ -37,10 +37,10 @@ evalLambda :: String -> IO ()
 evalLambda input = do let parsed = parser . alexScanTokens $ input
                           marked = markBoundFree parsed
                           reduced = betaReduce marked
-                      putStr "raw: "           >> print parsed
-                      putStr "marked: "        >> print marked
-                      putStr "beta reduced: "  >> print reduced
-                      putStrLn "pretty: "
-                      renderIO System.IO.stdout $ ansiPrettyExp marked
-                      putStrLn ""
+                      putStr "raw: "           >> pPrint parsed
+                      putStr "marked: "        >> pPrint marked
+                      putStr "beta reduced: "  >> pPrint reduced
+
+pPrint :: Exp -> IO ()
+pPrint expr = renderIO System.IO.stdout (ansiPrettyExp expr) >> putChar '\n'
                     

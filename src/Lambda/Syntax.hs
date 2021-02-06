@@ -54,12 +54,22 @@ prettyExp :: Exp -> SimpleDocStream LambdaAnn
 prettyExp = layoutPretty defaultLayoutOptions . prettyExpDoc
 
 prettyExpDoc :: Exp -> Doc LambdaAnn
-prettyExpDoc (Constant c) = pretty c
-prettyExpDoc (Variable var) = prettyVar var
-prettyExpDoc (Apply e e') 
-  = parens $ prettyExpDoc e <+> prettyExpDoc e'
-prettyExpDoc (Lambda var e) 
-  = parens $ backslash <> ann ABoundVar (annStr ABoundVar var) <> dot <+> prettyExpDoc e
+prettyExpDoc = prettyExpDocPrec 0
+
+prettyExpDocPrec :: Int -> Exp -> Doc LambdaAnn
+prettyExpDocPrec _ (Constant c) = pretty c
+prettyExpDocPrec _ (Variable var) = prettyVar var
+prettyExpDocPrec d (Lambda var e) 
+  = parensIf (d > 5) $ backslash 
+                     <> ann ABoundVar (annStr ABoundVar var) 
+                     <> dot 
+                     <+> prettyExpDocPrec 0 e
+prettyExpDocPrec d (Apply e e') 
+  = parensIf (d > 10) $ prettyExpDocPrec 6 e <+> prettyExpDocPrec 11 e'
+
+parensIf :: Bool -> (Doc ann -> Doc ann)
+parensIf True = parens
+parensIf False = id
 
 prettyVar :: Variable -> Doc LambdaAnn
 prettyVar (FreeVar name) = annStr AFreeVar name

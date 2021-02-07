@@ -1,5 +1,5 @@
 {
-module Lambda.Parser (parser, parseString) where 
+module Lambda.Parser (parseExpression) where 
 
 import Data.Char
 import qualified Lambda.Syntax as S
@@ -23,21 +23,21 @@ import Lambda.Lexer (alexScanTokens)
 %%
 
 exp :: { S.Exp }
-exp : '\\' var '.' exp        { S.Lambda $2 $4 }
-    | apply                   { $1 }
-    | term                    { $1 }
+exp : constant         { $1 }
+    | '(' constant ')' { $2 }
+    | functionExp      { $1 }
 
-term :: { S.Exp }    
-     : constant              { $1 }
-     | functionTerm          { $1 }
+-- | an expression that *may* result in an applicable expression 
+-- | (more accurately, no expression that *cannot* be applied is included, i.e. value constants)
+functionExp :: { S.Exp }     
+functionExp : function                { $1 }
+            | variable                { $1 } -- the only ambiguous one, dependent on binding at runtime
+            | lambda                  { $1 }
+            | '(' functionExp ')'     { $2 } -- parenthesized, as long as it's a function exp
+            | functionExp exp         { S.Apply $1 $2 }
 
-functionTerm :: { S.Exp }     
-functionTerm : function    { $1 }
-             | variable    { $1 }
-             | '(' exp ')' { $2 }
-
-apply :: { S.Exp }     
-apply : functionTerm exp     { S.Apply $1 $2 } 
+lambda :: { S.Exp }
+lambda : '\\' var '.' exp    { S.Lambda $2 $4 }
 
 variable :: { S.Exp }       
 variable : var               { S.Variable (S.RawVar $1) }
@@ -52,6 +52,6 @@ constant : const             { S.fromConstantToken $1 }
 parseError :: [T.Token] -> a
 parseError tokens = error $ "Parse Error: " ++ show tokens
 
-parseString :: String -> S.Exp
-parseString = parser . alexScanTokens
+parseExpression :: String -> S.Exp
+parseExpression = parser . alexScanTokens
 }

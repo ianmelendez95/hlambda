@@ -69,15 +69,7 @@ varName (FreeVar n) = n
 varName (BoundVar n) = n
 
 instance Show Exp where 
-  showsPrec _ (Constant c) = showString $ show c
-  showsPrec _ (Function f) = showString $ show f
-  showsPrec _ (Variable var) = showString $ show var
-  showsPrec d (Lambda name expr) = showParen (d > lambda_prec) $ 
-    showString ("\\" ++ name ++ ". ") . shows expr
-    where lambda_prec = 5
-  showsPrec d (Apply expr expr') = showParen (d > apply_prec) $
-    showsPrec 6 expr . showString " " . showsPrec 11 expr'
-    where apply_prec = 10
+  show = show . prettyExpDoc
 
 instance Show Function where
   show FPlus  = "+"

@@ -59,3 +59,4 @@ tests:
     dependencies:
     - hlambda
     - HUnit
+    - hspec

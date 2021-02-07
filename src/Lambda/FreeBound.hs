@@ -8,6 +8,7 @@ markBoundFree = withBound []
   where 
     withBound :: [String] -> Exp -> Exp
     withBound _ c@(Constant _) = c
+    withBound _ f@(Function _) = f
     withBound bs (Variable var) = let name = varName var
                                      in if name `elem` bs 
                                           then Variable (BoundVar name)

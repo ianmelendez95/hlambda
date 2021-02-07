@@ -3,22 +3,65 @@ module Lambda.Syntax
   , Variable (..)
   , ansiPrettyExp
   , varName
+  , fromConstantToken
+  , fromFunctionToken
   ) where 
 
 import Prettyprinter
-import Prettyprinter.Render.Terminal
 import Control.Monad.State.Lazy
+import Prettyprinter.Render.Terminal
+    ( color,
+      AnsiStyle,
+      Color(Cyan, Blue, Green, Red, Yellow, Magenta) )
+import qualified Lambda.Token as T
 
-data Exp = Constant String 
+data Exp = Constant Constant 
+         | Function Function
          | Variable Variable 
          | Apply Exp Exp 
          | Lambda String Exp
         --  deriving Show
 
+data Function = FPlus
+              | FMinus 
+              | FMult
+              | FDiv
+              | FAnd
+              | FOr 
+              | FNot
+
+data Constant = CNat Int
+              | CChar Char
+              | CTrue 
+              | CFalse
+
 data Variable = RawVar String 
               | FreeVar String 
               | BoundVar String
               -- deriving Show
+
+----------------------
+-- Token Conversion --
+----------------------
+
+fromConstantToken :: T.Constant -> Exp 
+fromConstantToken (T.CNat n)   = Constant (CNat n) 
+fromConstantToken (T.CChar n)  = Constant (CChar n) 
+fromConstantToken T.CTrue  = Constant CTrue 
+fromConstantToken T.CFalse = Constant CFalse 
+
+fromFunctionToken :: T.Function -> Exp
+fromFunctionToken T.FPlus  = Function FPlus
+fromFunctionToken T.FMinus = Function FMinus 
+fromFunctionToken T.FMult  = Function FMult
+fromFunctionToken T.FDiv   = Function FDiv
+fromFunctionToken T.FAnd   = Function FAnd
+fromFunctionToken T.FOr    = Function FOr 
+fromFunctionToken T.FNot   = Function FNot
+
+---------
+-- Ops --
+---------
 
 varName :: Variable -> String 
 varName (RawVar n) = n
@@ -26,7 +69,8 @@ varName (FreeVar n) = n
 varName (BoundVar n) = n
 
 instance Show Exp where 
-  showsPrec _ (Constant str) = showString str
+  showsPrec _ (Constant c) = showString $ show c
+  showsPrec _ (Function f) = showString $ show f
   showsPrec _ (Variable var) = showString $ show var
   showsPrec d (Lambda name expr) = showParen (d > lambda_prec) $ 
     showString ("\\" ++ name ++ ". ") . shows expr
@@ -34,6 +78,21 @@ instance Show Exp where
   showsPrec d (Apply expr expr') = showParen (d > apply_prec) $
     showsPrec 6 expr . showString " " . showsPrec 11 expr'
     where apply_prec = 10
+
+instance Show Function where
+  show FPlus  = "+"
+  show FMinus = "-"
+  show FMult  = "*"
+  show FDiv   = "/"
+  show FAnd   = "AND"
+  show FOr    = "OR"
+  show FNot   = "NOT"
+
+instance Show Constant where 
+  show (CNat n) = show n
+  show (CChar c) = "\'" ++ [c] ++ "\'"
+  show CTrue = "TRUE"
+  show CFalse = "FALSE"
 
 instance Show Variable where 
   show (RawVar var) = var
@@ -44,6 +103,7 @@ data LambdaAnn = ABoundVar
                | AFreeVar
                | ARawVar
                | AConstant
+               | AFunction
                | AParen AParen
 
 data AParen = AParenYellow
@@ -75,6 +135,7 @@ ansiPrettyExp = reAnnotateS ansiStyle . prettyExp
     ansiStyle AFreeVar = color Green
     ansiStyle ARawVar = color Red
     ansiStyle AConstant = mempty
+    ansiStyle AFunction = mempty
     ansiStyle (AParen p) = parenStyle' p
 
     parenStyle' :: AParen -> AnsiStyle
@@ -89,7 +150,8 @@ prettyExpDoc :: Exp -> Doc LambdaAnn
 prettyExpDoc expr = evalState (sPretty expr) initParenState 
 
 sPretty :: Exp -> PrettyExp LambdaDoc
-sPretty (Constant c) = pure $ annStr AConstant c
+sPretty (Constant c) = pure $ annStr AConstant (show c)
+sPretty (Function f) = pure $ annStr AFunction (show f)
 sPretty (Variable var) = pure $ prettyVar var
 sPretty (Lambda var e) = do wrapper <- getParenWrapper 5 
                             ePretty <- tempState (setPrec 0) (sPretty e)

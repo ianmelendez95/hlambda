@@ -24,6 +24,7 @@ replaceVarShallow _ _ expr = expr
 
 mapExpressions :: (Exp -> Exp) -> Exp -> Exp
 mapExpressions _ c@(Constant _) = c
+mapExpressions _ f@(Function _) = f
 mapExpressions _ v@(Variable _) = v
 mapExpressions f (Apply e e') = Apply (f (mapExpressions f e)) (f (mapExpressions f e'))
 mapExpressions f (Lambda v e) = Lambda v (f (mapExpressions f e))

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 10d662ee0a926671aba384e0b04cbde62b8a3dd385ae79bee140dbe2abeb0d26
+-- hash: c589ef3de1502dd43d951c0529cdc15b3fc46caac6270f7f4bfe61dbf0c37694
 
 name:           hlambda
 version:        0.1.0.0
@@ -28,6 +28,8 @@ source-repository head
 library
   exposed-modules:
       Lambda.Beta
+      Lambda.Eval
+      Lambda.EvalExp
       Lambda.FreeBound
       Lambda.Lexer
       Lambda.Parser
@@ -76,4 +78,5 @@ test-suite hlambda-test
       HUnit
     , base >=4.7 && <5
     , hlambda
+    , hspec
   default-language: Haskell2010

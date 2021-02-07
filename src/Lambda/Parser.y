@@ -12,8 +12,9 @@ import Lambda.Lexer (alexScanTokens)
 %error { parseError }
 
 %token 
-  constant { T.Constant $$ }
-  variable { T.Variable $$ }
+  const    { T.Constant $$ }
+  var      { T.Variable $$ }
+  func     { T.Function $$ }
   '\\'     { T.Lambda }
   '.'      { T.Dot }
   '('      { T.LP }
@@ -22,15 +23,30 @@ import Lambda.Lexer (alexScanTokens)
 %%
 
 exp :: { S.Exp }
-exp : '\\' variable '.' exp { S.Lambda $2 $4 }
-    | exp term              { S.Apply $1 $2 }
-    | term                  { $1 }
+exp : '\\' var '.' exp        { S.Lambda $2 $4 }
+    | apply                   { $1 }
+    | term                    { $1 }
 
 term :: { S.Exp }    
-     : constant              { S.Constant $1 }
-     | variable              { S.Variable (S.RawVar $1) }
-     | '(' exp ')'           { $2 }
-     
+     : constant              { $1 }
+     | functionTerm          { $1 }
+
+functionTerm :: { S.Exp }     
+functionTerm : function    { $1 }
+             | variable    { $1 }
+             | '(' exp ')' { $2 }
+
+apply :: { S.Exp }     
+apply : functionTerm exp     { S.Apply $1 $2 } 
+
+variable :: { S.Exp }       
+variable : var               { S.Variable (S.RawVar $1) }
+
+function :: { S.Exp }
+function : func              { S.fromFunctionToken $1 }
+
+constant :: { S.Exp }
+constant : const             { S.fromConstantToken $1 }
 
 {
 parseError :: [T.Token] -> a

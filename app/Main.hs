@@ -6,6 +6,7 @@ import System.Environment (getArgs)
 import System.Console.Haskeline
 -- import Text.Pretty.Simple (pPrint)
 import Control.Monad.State.Lazy (liftIO)
+import Control.Exception (SomeException, catch)
 
 import Prettyprinter.Render.Terminal
 
@@ -40,12 +41,15 @@ evalLambda input = do let tokens = alexScanTokens input
                           marked = markBoundFree parsed
                           reduced = betaReduce marked
                           evaled = evalAfterBeta reduced
-                      putStr "tokens: "        >> print tokens
-                      putStr "parsed: "        >> print parsed
-                      putStr "raw: "           >> pPrint parsed
-                      putStr "marked: "        >> pPrint marked
-                      putStr "beta reduced: "  >> pPrint reduced
-                      putStr "evaled: "        >> pPrint evaled
+                      putStr "tokens: "        >> catchAll (print tokens)
+                      putStr "parsed: "        >> catchAll (print parsed)
+                      putStr "raw: "           >> catchAll (pPrint parsed)
+                      putStr "marked: "        >> catchAll (pPrint marked)
+                      putStr "beta reduced: "  >> catchAll (pPrint reduced)
+                      putStr "evaled: "        >> catchAll (pPrint evaled)
+
+catchAll :: IO () -> IO ()
+catchAll io = catch io (print :: SomeException -> IO ())
 
 pPrint :: Exp -> IO ()
 pPrint expr = renderIO System.IO.stdout (ansiPrettyExp expr) >> putChar '\n'

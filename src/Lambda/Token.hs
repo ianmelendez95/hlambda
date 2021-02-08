@@ -16,6 +16,7 @@ data Function = FPlus
               | FAnd
               | FOr 
               | FNot
+              | FIf
               deriving Show
 
 data Constant = CNat Int

@@ -32,6 +32,7 @@ data Function = FPlus
               | FAnd
               | FOr 
               | FNot
+              | FIf
 
 data Constant = CNat Int
               | CChar Char
@@ -61,6 +62,7 @@ fromFunctionToken T.FDiv   = Function FDiv
 fromFunctionToken T.FAnd   = Function FAnd
 fromFunctionToken T.FOr    = Function FOr 
 fromFunctionToken T.FNot   = Function FNot
+fromFunctionToken T.FIf    = Function FIf
 
 ---------
 -- Ops --
@@ -85,6 +87,7 @@ instance Show Function where
   show FAnd   = "AND"
   show FOr    = "OR"
   show FNot   = "NOT"
+  show FIf    = "IF"
 
 instance Show Constant where 
   show (CNat n) = show n

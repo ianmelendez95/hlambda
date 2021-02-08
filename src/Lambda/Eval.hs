@@ -46,14 +46,23 @@ builtinFunc S.FDiv   = makeApplicable2 (S.Function S.FDiv) divE
 builtinFunc S.FAnd   = makeApplicable2 (S.Function S.FAnd) andE
 builtinFunc S.FOr    = makeApplicable2 (S.Function S.FOr) orE
 builtinFunc S.FNot   = Appl (S.Function S.FNot) $ \e -> Exp (notE e)
+builtinFunc S.FIf    = makeApplicable3 (S.Function S.FIf) ifE 
+
+makeApplicable3 :: S.Exp -> (S.Exp -> S.Exp -> S.Exp -> S.Exp) -> Applicable
+makeApplicable3 funcExp f3 = 
+  Appl funcExp 
+    (\e1 -> Applicable $ makeApplicable2 (S.Apply funcExp e1) (f3 e1))
 
 makeApplicable2 :: S.Exp -> (S.Exp -> S.Exp -> S.Exp) -> Applicable
 makeApplicable2 funcExp f2 = 
   Appl funcExp 
-    (\e1 -> makeApplicable1 (S.Apply funcExp e1) (f2 e1))
+    (\e1 -> Applicable $ makeApplicable1 (S.Apply funcExp e1) (f2 e1))
 
-makeApplicable1 :: S.Exp -> (S.Exp -> S.Exp) -> EvalExp
-makeApplicable1 funcExp f = Applicable $ Appl funcExp $ \e -> Exp (f e)
+makeApplicable1 :: S.Exp -> (S.Exp -> S.Exp) -> Applicable
+makeApplicable1 funcExp f = Appl funcExp $ \e -> Exp (f e)
+
+ifE :: S.Exp -> S.Exp -> S.Exp -> S.Exp
+ifE cond tru fals = if readBool cond then tru else fals
 
 plus :: S.Exp -> S.Exp -> S.Exp
 plus = onNumbers (+)

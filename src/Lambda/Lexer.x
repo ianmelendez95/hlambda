@@ -16,6 +16,7 @@ $div           = \/
 @and           = A(nd|ND)
 @or            = O(r|R)
 @not           = N(ot|OT)
+@if            = I[fF]
 
 -- constants
 @true          = T(rue|RUE)
@@ -36,6 +37,7 @@ tokens :-
   @and                { \_ -> T.Function T.FAnd }
   @or                 { \_ -> T.Function T.FOr }
   @not                { \_ -> T.Function T.FNot }
+  @if                 { \_ -> T.Function T.FIf }
 
   @true               { \_ -> T.Constant T.CTrue }
   @false              { \_ -> T.Constant T.CFalse }

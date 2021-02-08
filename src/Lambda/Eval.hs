@@ -2,6 +2,8 @@
 -}
 module Lambda.Eval (evalRaw, evalAfterBeta) where 
 
+import Data.Maybe (fromMaybe)
+
 import Lambda.Beta (betaReduce)
 import qualified Lambda.Syntax as S
 
@@ -23,11 +25,44 @@ evalRaw = evalAfterBeta . betaReduce
 
 -- | apply any known constants
 evalAfterBeta :: S.Exp -> S.Exp
-evalAfterBeta expr 
-  = case eval expr of 
-      (Exp res) -> res
-      (Applicable (Appl res _)) -> res
-      (Cons h t) -> S.Apply (S.Apply (S.Function S.FCons) h) t
+evalAfterBeta expr = evalReducing expr
+  -- = case eval expr of 
+  --     (Exp res) -> res
+  --     (Applicable (Appl res _)) -> res
+  --     (Cons h t) -> S.Apply (S.Apply (S.Function S.FCons) h) t
+
+evalReducing :: S.Exp -> S.Exp
+evalReducing (S.Apply e1 e2) 
+  = let re1 = evalReducing e1 
+        re2 = evalReducing e2
+     in case evalApplyFunc re1 re2 of 
+          Nothing -> S.Apply re1 re2
+          Just res -> res
+evalReducing expr = expr
+
+evalApplyFunc :: S.Exp -> S.Exp -> Maybe S.Exp 
+evalApplyFunc (S.Apply (S.Function f) 
+                       (S.Constant c1))
+                       (S.Constant c2) = evalFuncOnTwoConsts f c1 c2
+evalApplyFunc _ _ = Nothing
+
+evalFuncOnTwoConsts :: S.Function -> S.Constant -> S.Constant -> Maybe S.Exp                    
+evalFuncOnTwoConsts S.FPlus  (S.CNat x) (S.CNat y) = Just . S.Constant . S.CNat $ (x + y)
+evalFuncOnTwoConsts S.FMinus (S.CNat x) (S.CNat y) = Just . S.Constant . S.CNat $ (x - y)
+evalFuncOnTwoConsts S.FMult  (S.CNat x) (S.CNat y) = Just . S.Constant . S.CNat $ (x * y)
+evalFuncOnTwoConsts S.FDiv   (S.CNat x) (S.CNat y) = Just . S.Constant . S.CNat $ (x `div` y)
+evalFuncOnTwoConsts S.FAnd   c1         c2         = onBoolsMaybe (&&) c1 c2
+evalFuncOnTwoConsts S.FOr    c1         c2         = onBoolsMaybe (||) c1 c2
+evalFuncOnTwoConsts _        _          _          = Nothing
+
+onBoolsMaybe :: (Bool -> Bool -> Bool) -> S.Constant -> S.Constant -> Maybe S.Exp
+onBoolsMaybe f b1 b2 = toBool <$> (f <$> readBoolMaybe b1 <*> readBoolMaybe b2)
+
+matchFuncOnTwoConsts :: S.Exp -> Maybe (S.Function, S.Constant, S.Constant)
+matchFuncOnTwoConsts (S.Apply (S.Apply (S.Function f) 
+                                       (S.Constant c)) 
+                                       (S.Constant c')) = Just (f, c, c')
+matchFuncOnTwoConsts _ = Nothing
 
 eval :: S.Exp -> EvalExp
 eval c@(S.Constant _) = Exp c 
@@ -130,6 +165,11 @@ readBool :: S.Exp -> Bool
 readBool (S.Constant S.CTrue) = True
 readBool (S.Constant S.CFalse) = False
 readBool expr = error $ "Expecting a boolean, got: " ++ show expr
+
+readBoolMaybe :: S.Constant -> Maybe Bool
+readBoolMaybe S.CTrue = Just True
+readBoolMaybe S.CFalse = Just False
+readBoolMaybe _ = Nothing
 
 readNumber :: S.Exp -> Int 
 readNumber (S.Constant (S.CNat val)) = val

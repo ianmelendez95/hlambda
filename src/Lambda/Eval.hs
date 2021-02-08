@@ -43,6 +43,9 @@ builtinFunc S.FPlus  = makeApplicable2 (S.Function S.FPlus) plus
 builtinFunc S.FMinus = makeApplicable2 (S.Function S.FMinus) minus
 builtinFunc S.FMult  = makeApplicable2 (S.Function S.FMult) mult
 builtinFunc S.FDiv   = makeApplicable2 (S.Function S.FDiv) divE
+builtinFunc S.FAnd   = makeApplicable2 (S.Function S.FAnd) andE
+builtinFunc S.FOr    = makeApplicable2 (S.Function S.FOr) orE
+builtinFunc S.FNot   = Appl (S.Function S.FNot) $ \e -> Exp (notE e)
 
 makeApplicable2 :: S.Exp -> (S.Exp -> S.Exp -> S.Exp) -> Applicable
 makeApplicable2 funcExp f2 = 
@@ -64,8 +67,29 @@ mult = onNumbers (*)
 divE :: S.Exp -> S.Exp -> S.Exp
 divE = onNumbers div
 
+andE :: S.Exp -> S.Exp -> S.Exp
+andE = onBools (&&)
+
+orE :: S.Exp -> S.Exp -> S.Exp
+orE = onBools (||)
+
+notE :: S.Exp -> S.Exp
+notE = toBool . not . readBool
+
 onNumbers :: (Int -> Int -> Int) -> S.Exp -> S.Exp -> S.Exp 
 onNumbers f e e' = S.Constant . S.CNat $ f (readNumber e) (readNumber e')
+
+toBool :: Bool -> S.Exp
+toBool True = S.Constant S.CTrue
+toBool False = S.Constant S.CFalse
+
+onBools :: (Bool -> Bool -> Bool) -> S.Exp -> S.Exp -> S.Exp 
+onBools f e e' = S.Constant $ if f (readBool e) (readBool e') then S.CTrue else S.CFalse
+
+readBool :: S.Exp -> Bool
+readBool (S.Constant S.CTrue) = True
+readBool (S.Constant S.CFalse) = False
+readBool expr = error $ "Expecting a boolean, got: " ++ show expr
 
 readNumber :: S.Exp -> Int 
 readNumber (S.Constant (S.CNat val)) = val

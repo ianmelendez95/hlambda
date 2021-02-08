@@ -24,3 +24,7 @@ main = hspec $ do
       let parsed = parseExpression "((+ 3) 4)"
           evaled = evalRaw parsed 
       pShow evaled `shouldBe` "7"
+    it "p12: evaluates AND 'AND TRUE FALSE'" $ do 
+      let parsed = parseExpression "AND TRUE FALSE"
+          evaled = evalRaw parsed 
+      pShow evaled `shouldBe` "FALSE"

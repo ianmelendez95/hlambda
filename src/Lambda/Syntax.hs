@@ -2,6 +2,7 @@ module Lambda.Syntax
   ( Exp (..)
   , Variable (..)
   , ansiPrettyExp
+  , pShow
   , varName
   , fromConstantToken
   , fromFunctionToken
@@ -20,7 +21,7 @@ data Exp = Constant Constant
          | Variable Variable 
          | Apply Exp Exp 
          | Lambda String Exp
-        --  deriving Show
+         deriving Show
 
 data Function = FPlus
               | FMinus 
@@ -68,8 +69,11 @@ varName (RawVar n) = n
 varName (FreeVar n) = n
 varName (BoundVar n) = n
 
-instance Show Exp where 
-  show = show . prettyExpDoc
+-- instance Show Exp where 
+--   show = show . prettyExpDoc
+
+pShow :: Exp -> String 
+pShow = show . prettyExpDoc
 
 instance Show Function where
   show FPlus  = "+"

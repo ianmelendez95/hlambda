@@ -31,3 +31,6 @@ main = hspec $ do
     it "p12: evaluates IF 'IF TRUE 1 2' && 'IF FALSE 1 2'" $ do
       pShow (evalRaw . parseExpression $ "IF TRUE 1 2") `shouldBe` "1"
       pShow (evalRaw . parseExpression $ "IF FALSE 1 2") `shouldBe` "2"
+    it "p12: evaluates CONS access '(CONS 1 2)'" $ do 
+      pShow (evalRaw . parseExpression $ "HEAD (CONS 1 2)") `shouldBe` "1"
+      pShow (evalRaw . parseExpression $ "TAIL (CONS 1 2)") `shouldBe` "2"

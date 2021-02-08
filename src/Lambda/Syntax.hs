@@ -33,6 +33,9 @@ data Function = FPlus
               | FOr 
               | FNot
               | FIf
+              | FCons 
+              | FHead 
+              | FTail
 
 data Constant = CNat Int
               | CChar Char
@@ -63,6 +66,9 @@ fromFunctionToken T.FAnd   = Function FAnd
 fromFunctionToken T.FOr    = Function FOr 
 fromFunctionToken T.FNot   = Function FNot
 fromFunctionToken T.FIf    = Function FIf
+fromFunctionToken T.FCons  = Function FCons
+fromFunctionToken T.FHead  = Function FHead
+fromFunctionToken T.FTail  = Function FTail
 
 ---------
 -- Ops --
@@ -88,6 +94,9 @@ instance Show Function where
   show FOr    = "OR"
   show FNot   = "NOT"
   show FIf    = "IF"
+  show FCons  = "CONS"
+  show FHead  = "HEAD"
+  show FTail  = "TAIL"
 
 instance Show Constant where 
   show (CNat n) = show n

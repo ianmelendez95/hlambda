@@ -6,6 +6,7 @@ import Lambda.Beta (betaReduce)
 import qualified Lambda.Syntax as S
 
 data EvalExp = Exp S.Exp
+             | Cons S.Exp S.Exp
              | Applicable Applicable
              deriving Show
 
@@ -22,9 +23,11 @@ evalRaw = evalAfterBeta . betaReduce
 
 -- | apply any known constants
 evalAfterBeta :: S.Exp -> S.Exp
-evalAfterBeta expr = case eval expr of 
-                       (Exp res) -> res
-                       (Applicable (Appl res _)) -> res
+evalAfterBeta expr 
+  = case eval expr of 
+      (Exp res) -> res
+      (Applicable (Appl res _)) -> res
+      (Cons h t) -> S.Apply (S.Apply (S.Function S.FCons) h) t
 
 eval :: S.Exp -> EvalExp
 eval c@(S.Constant _) = Exp c 
@@ -33,8 +36,9 @@ eval (S.Function f) = Applicable $ builtinFunc f
 eval (S.Apply funcExp argExp) 
   = case eval funcExp of 
       (Applicable appl) -> case eval argExp of 
-                             (Exp arg) -> apply appl arg
-                             arg -> error $ "Argument evaluated to an applicable: " ++ show arg
+                             a@(Applicable _) -> error $ "Argument evaluated to an applicable: " ++ show a
+                             (Exp expr) -> apply appl expr
+                             (Cons h t) -> apply appl $ consExp h t 
       func -> error $ "Expecting applicable function: " ++ show func
 
 -- | identifies the applicable function
@@ -47,6 +51,17 @@ builtinFunc S.FAnd   = makeApplicable2 (S.Function S.FAnd) andE
 builtinFunc S.FOr    = makeApplicable2 (S.Function S.FOr) orE
 builtinFunc S.FNot   = Appl (S.Function S.FNot) $ \e -> Exp (notE e)
 builtinFunc S.FIf    = makeApplicable3 (S.Function S.FIf) ifE 
+builtinFunc S.FCons  = makeApplicable2' (S.Function S.FCons) cons
+builtinFunc S.FHead  = Appl (S.Function S.FHead) consHead
+builtinFunc S.FTail  = Appl (S.Function S.FTail) consTail
+
+makeApplicable2' :: S.Exp -> (S.Exp -> S.Exp -> EvalExp) -> Applicable
+makeApplicable2' funcExp f2 = 
+  Appl funcExp 
+    (\e1 -> Applicable $ makeApplicable1' (S.Apply funcExp e1) (f2 e1))
+
+makeApplicable1' :: S.Exp -> (S.Exp -> EvalExp) -> Applicable 
+makeApplicable1' = Appl
 
 makeApplicable3 :: S.Exp -> (S.Exp -> S.Exp -> S.Exp -> S.Exp) -> Applicable
 makeApplicable3 funcExp f3 = 
@@ -60,6 +75,22 @@ makeApplicable2 funcExp f2 =
 
 makeApplicable1 :: S.Exp -> (S.Exp -> S.Exp) -> Applicable
 makeApplicable1 funcExp f = Appl funcExp $ \e -> Exp (f e)
+
+cons :: S.Exp -> S.Exp -> EvalExp
+cons = Cons
+
+consExp :: S.Exp -> S.Exp -> S.Exp
+consExp h = S.Apply (S.Apply (S.Function S.FCons) h)
+
+consHead :: S.Exp -> EvalExp
+consHead expr = case eval expr of 
+                  (Cons h _) -> Exp h
+                  res -> error $ "Invoked head on non-cons: " ++ show res
+
+consTail :: S.Exp -> EvalExp 
+consTail expr = case eval expr of
+                  (Cons _ t) -> Exp t
+                  res -> error $ "Invoked tail on non-cons: " ++ show res
 
 ifE :: S.Exp -> S.Exp -> S.Exp -> S.Exp
 ifE cond tru fals = if readBool cond then tru else fals

@@ -17,6 +17,9 @@ $div           = \/
 @or            = O(r|R)
 @not           = N(ot|OT)
 @if            = I[fF]
+@cons          = C(ons|ONS)
+@head          = H(ead|EAD)
+@tail          = T(ail|AIL)
 
 -- constants
 @true          = T(rue|RUE)
@@ -38,6 +41,9 @@ tokens :-
   @or                 { \_ -> T.Function T.FOr }
   @not                { \_ -> T.Function T.FNot }
   @if                 { \_ -> T.Function T.FIf }
+  @cons               { \_ -> T.Function T.FCons }
+  @head               { \_ -> T.Function T.FHead }
+  @tail               { \_ -> T.Function T.FTail }
 
   @true               { \_ -> T.Constant T.CTrue }
   @false              { \_ -> T.Constant T.CFalse }

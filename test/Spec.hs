@@ -1,11 +1,10 @@
 module Main where 
 
 import Test.Hspec 
-import Debug.Trace (trace)
 
 import Lambda.Parser
-import Lambda.Lexer
 import Lambda.Syntax
+import Lambda.Eval
 
 main :: IO ()
 main = hspec $ do 
@@ -17,3 +16,7 @@ main = hspec $ do
       let parsed = parseExpression "(+ (* 5 6) (* 8 3))"
       print parsed >> putChar '\n'
       pShow parsed `shouldBe` "+ (* 5 6) (* 8 3)"
+    it "p11: evaluates '(+ (* 5 6) (* 8 3))'" $ do 
+      let parsed = parseExpression "(+ (* 5 6) (* 8 3))"
+          evaled = evalRaw parsed 
+      pShow evaled `shouldBe` "54"

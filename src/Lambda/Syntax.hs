@@ -1,6 +1,8 @@
 module Lambda.Syntax 
   ( Exp (..)
   , Variable (..)
+  , Function (..)
+  , Constant (..)
   , ansiPrettyExp
   , pShow
   , varName

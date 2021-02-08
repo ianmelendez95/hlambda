@@ -16,7 +16,11 @@ main = hspec $ do
       let parsed = parseExpression "(+ (* 5 6) (* 8 3))"
       print parsed >> putChar '\n'
       pShow parsed `shouldBe` "+ (* 5 6) (* 8 3)"
-    it "p11: evaluates '(+ (* 5 6) (* 8 3))'" $ do 
+    it "p10: evaluates '(+ (* 5 6) (* 8 3))'" $ do 
       let parsed = parseExpression "(+ (* 5 6) (* 8 3))"
           evaled = evalRaw parsed 
       pShow evaled `shouldBe` "54"
+    it "p10: handles explicit currying '((+ 3) 4)'" $ do 
+      let parsed = parseExpression "((+ 3) 4)"
+          evaled = evalRaw parsed 
+      pShow evaled `shouldBe` "7"

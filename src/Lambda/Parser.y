@@ -26,15 +26,6 @@ exp :: { S.Exp }
 exp : term      { $1 }
     | apply     { $1 }
 
--- | an expression that *may* result in an applicable expression 
--- | (more accurately, no expression that *cannot* be applied is included, i.e. value constants)
--- functionExp :: { S.Exp }     
--- functionExp : function                { $1 }
---             | variable                { $1 }  -- the only ambiguous one, dependent on binding at runtime
---             | lambda                  { $1 }
---             | '(' functionExp ')'     { $2 }  -- parenthesized, as long as it's a function exp
---             | functionExp exp         { S.Apply $1 $2 }
-
 apply :: { S.Exp }
 apply : exp term   { S.Apply $1 $2}
 

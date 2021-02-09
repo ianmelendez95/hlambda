@@ -26,7 +26,7 @@ reduceApplyChain (Function func : rest)
       Left args -> foldApply $ Function func : args
       Right evaled -> reduceApplyChain evaled
 reduceApplyChain (Lambda var body : arg : rest) 
-  = reduceApplyChain (reduceLambda var (reduceAfterMarked arg) body : rest)
+  = reduceApplyChain $ parseApplyChain (reduceLambda var (reduceAfterMarked arg) body) ++ rest
 reduceApplyChain apply = foldApply apply
 
 foldApply :: [Exp] -> Exp

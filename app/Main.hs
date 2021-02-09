@@ -13,9 +13,8 @@ import Prettyprinter.Render.Terminal
 import Lambda.FreeBound
 import Lambda.Lexer (alexScanTokens)
 import Lambda.Parser (parser)
-import Lambda.Beta (betaReduce)
 import Lambda.Syntax (Exp, ansiPrettyExp)
-import Lambda.Eval (evalAfterBeta)
+import Lambda.Reduce (reduce)
 import qualified System.IO
 
 main :: IO ()
@@ -39,14 +38,12 @@ evalLambda :: String -> IO ()
 evalLambda input = do let tokens = alexScanTokens input
                           parsed = parser tokens
                           marked = markBoundFree parsed
-                          reduced = betaReduce marked
-                          evaled = evalAfterBeta reduced
+                          reduced = reduce marked
                       putStr "tokens: "        >> catchAll (print tokens)
                       putStr "parsed: "        >> catchAll (print parsed)
                       putStr "raw: "           >> catchAll (pPrint parsed)
                       putStr "marked: "        >> catchAll (pPrint marked)
                       putStr "beta reduced: "  >> catchAll (pPrint reduced)
-                      putStr "evaled: "        >> catchAll (pPrint evaled)
 
 catchAll :: IO () -> IO ()
 catchAll io = catch io (print :: SomeException -> IO ())

@@ -33,6 +33,7 @@ term :: { S.Exp }
 term : function    { $1 }
      | variable    { $1 }
      | constant    { $1 }
+     | lambda      { $1 }
      | '(' exp ')' { $2 }
 
 lambda :: { S.Exp }

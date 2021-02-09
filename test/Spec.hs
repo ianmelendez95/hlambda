@@ -4,8 +4,7 @@ import Test.Hspec
 
 import Lambda.Parser
 import Lambda.Syntax
-import Lambda.Eval
-import Lambda.Reduce
+import Lambda.Reduce (reduce)
 
 main :: IO ()
 main = hspec $ do 

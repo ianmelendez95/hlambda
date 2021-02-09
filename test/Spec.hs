@@ -68,6 +68,9 @@ main = hspec $ do
     it "p19: eta reduces simple function application" $ do 
       showReduced "(\\x. + 1 x)" `shouldBe` "+ 1"
 
+    it "p20: equivalence by applying arbitrary argument" $ do 
+      showReduced "If True ((\\p.p) 3) w" `shouldBe` showReduced "(\\x.3) w"
+
   where 
     showParsed = pShow . parseExpression
     showReduced = pShow . reduce . parseExpression

@@ -5,6 +5,7 @@ module Lambda.Syntax
   , Constant (..)
   , ansiPrettyExp
   , pShow
+  , showMarked
   , varName
   , fromConstantToken
   , fromFunctionToken
@@ -16,6 +17,8 @@ import Prettyprinter.Render.Terminal
     ( color,
       AnsiStyle,
       Color(Cyan, Blue, Green, Red, Yellow, Magenta) )
+import Prettyprinter.Render.Util.SimpleDocTree (treeForm, renderSimplyDecorated)
+import Data.Text (Text, unpack, pack)
 import qualified Lambda.Token as T
 
 data Exp = Constant Constant 
@@ -77,11 +80,30 @@ varName (RawVar n) = n
 varName (FreeVar n) = n
 varName (BoundVar n) = n
 
+--------------
+-- Showing --
+--------------
+
 -- instance Show Exp where 
 --   show = show . prettyExpDoc
 
 pShow :: Exp -> String 
 pShow = show . prettyExpDoc
+
+-- renderSimplyDecorated
+--    :: Monoid out
+--    => (Text -> out)       -- ^ Render plain 'Text'
+--    -> (ann -> out -> out) -- ^ How to modify an element with an annotation
+--    -> SimpleDocTree ann
+--    -> out
+showMarked :: Exp -> String 
+showMarked expr = unpack $ renderSimplyDecorated id renderMarked (treeForm $ prettyExp expr)
+  where 
+    renderMarked :: LambdaAnn -> Text -> Text 
+    renderMarked ABoundVar var = var <> pack ":b"
+    renderMarked AFreeVar var = var <> pack ":f"
+    renderMarked ARawVar var = var <> pack ":r"
+    renderMarked _ var = var
 
 instance Show Function where
   show FPlus  = "+"
@@ -132,7 +154,7 @@ initParenState :: ParenState
 initParenState = ParenState 0 AParenMagenta
 
 ------------------
--- PRETTY PRINT --
+-- Pretty Print --
 ------------------
 
 ansiPrettyExp :: Exp -> SimpleDocStream AnsiStyle
@@ -164,7 +186,7 @@ sPretty (Variable var) = pure $ prettyVar var
 sPretty (Lambda var e) = do wrapper <- getParenWrapper 5 
                             ePretty <- tempState (setPrec 0) (sPretty e)
                             pure $ wrapper $ backslash
-                                           <> annotate ABoundVar (annStr ABoundVar var) 
+                                           <> annStr ABoundVar var 
                                            <> dot 
                                            <+> ePretty
 sPretty (Apply e e') = do wrapper <- getParenWrapper 10

@@ -24,13 +24,15 @@ main = hspec $ do
       let parsed = parseExpression "((+ 3) 4)"
           evaled = reduce parsed 
       pShow evaled `shouldBe` "7"
-    it "p12: evaluates AND 'AND TRUE FALSE'" $ do 
+    it "p12: reduces AND 'AND TRUE FALSE'" $ do 
       let parsed = parseExpression "AND TRUE FALSE"
           evaled = reduce parsed 
       pShow evaled `shouldBe` "FALSE"
-    it "p12: evaluates IF 'IF TRUE 1 2' && 'IF FALSE 1 2'" $ do
+    it "p12: reduces IF 'IF TRUE 1 2' && 'IF FALSE 1 2'" $ do
       pShow (reduce . parseExpression $ "IF TRUE 1 2") `shouldBe` "1"
       pShow (reduce . parseExpression $ "IF FALSE 1 2") `shouldBe` "2"
-    it "p12: evaluates CONS access '(CONS 1 2)'" $ do 
+    it "p12: reduces CONS access '(CONS 1 2)'" $ do 
       pShow (reduce . parseExpression $ "HEAD (CONS 1 2)") `shouldBe` "1"
       pShow (reduce . parseExpression $ "TAIL (CONS 1 2)") `shouldBe` "2"
+    it "p13: reduces lambda abstr '(\\x. + x 1) 4" $ do
+      pShow (reduce . parseExpression $ "(\\x. + x 1) 4") `shouldBe` "5"

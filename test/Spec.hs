@@ -17,10 +17,10 @@ main = hspec $ do
     it "p10: parses '(+ (* 5 6) (* 8 3))'" $ do 
       showParsed "(+ (* 5 6) (* 8 3))" `shouldBe` "+ (* 5 6) (* 8 3)"
 
-    it "p10: evaluates '(+ (* 5 6) (* 8 3))'" $ do 
+    it "p10: reduces '(+ (* 5 6) (* 8 3))'" $ do 
       showReduced "(+ (* 5 6) (* 8 3))" `shouldBe` "54"
 
-    it "p10: handles explicit currying '((+ 3) 4)'" $ do 
+    it "p10: reduces explicit currying '((+ 3) 4)'" $ do 
       showReduced "((+ 3) 4)" `shouldBe` "7"
 
     it "p12: reduces AND 'AND TRUE FALSE'" $ do 
@@ -37,8 +37,10 @@ main = hspec $ do
     it "p13: reduces lambda abstr '(\\x. + x 1) 4" $ do
       showReduced "(\\x. + x 1) 4" `shouldBe` "5"
 
-    it "p14: identifies bound and free '(\\x. + x y) 4'" $ do
+    it "p14: identifies bound and free" $ do
       showMarked' "(\\x. + x y) 4" `shouldBe` "(\\x:b. + x:b y:f) 4"
+      showMarked' "\\x. + ((\\y. + y z) 7) x" `shouldBe` "\\x:b. + ((\\y:b. + y:b z:f) 7) x:b"
+      showMarked' "+ x ((\\x. + x 1) 4)" `shouldBe` "+ x:f ((\\x:b. + x:b 1) 4)"
 
   where 
     showParsed = pShow . parseExpression

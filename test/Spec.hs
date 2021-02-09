@@ -42,6 +42,12 @@ main = hspec $ do
       showMarked' "\\x. + ((\\y. + y z) 7) x" `shouldBe` "\\x:b. + ((\\y:b. + y:b z:f) 7) x:b"
       showMarked' "+ x ((\\x. + x 1) 4)" `shouldBe` "+ x:f ((\\x:b. + x:b 1) 4)"
 
+    it "p15: reduces simple lambda" $ do 
+      showReduced "(\\x. + x 1) 4" `shouldBe` "5"
+
+    it "p16: reduces multiple occurrence lambda" $ do
+      showReduced "(\\x. + x x) 5" `shouldBe` "10"
+
   where 
     showParsed = pShow . parseExpression
     showReduced = pShow . reduce . parseExpression

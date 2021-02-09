@@ -1,6 +1,9 @@
+{-# LANGUAGE QuasiQuotes #-}
+
 module Main where 
 
 import Test.Hspec 
+import Text.RawString.QQ(r)
 
 import Lambda.Parser ( parseExpression )
 import Lambda.Syntax ( pShow, showMarked )
@@ -58,7 +61,9 @@ main = hspec $ do
       showReduced "(\\x.(\\x. + (- x 1)) x 3) 9" `shouldBe` "11"
       showReduced "(\\x.(\\x. x)) 1 2" `shouldBe` "2"
 
-    -- TODO: fail on name capture
+    it "p17: purely functional cons" $ do 
+      -- HEAD (CONS p q) = CONS p q (\a.\b.a) = (\a.\b.\f. f a b) p q (\a.\b.a) 
+      showReduced [r|(\a.\b.\f. f a b) p q (\a.\b.a)|] `shouldBe` "p"
 
   where 
     showParsed = pShow . parseExpression

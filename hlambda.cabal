@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: ad977ac28d808c60ffcf191abf41e3159c2c0a31ee79769ef30129d842dafa6c
+-- hash: dd859089698dc507c007ea073323110c749a7192c92b15750bf988598f7e04cb
 
 name:           hlambda
 version:        0.1.0.0
@@ -78,4 +78,5 @@ test-suite hlambda-test
     , base >=4.7 && <5
     , hlambda
     , hspec
+    , raw-strings-qq
   default-language: Haskell2010

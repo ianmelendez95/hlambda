@@ -60,3 +60,4 @@ tests:
     - hlambda
     - HUnit
     - hspec
+    - raw-strings-qq

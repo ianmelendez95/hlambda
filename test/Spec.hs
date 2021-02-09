@@ -54,6 +54,12 @@ main = hspec $ do
     it "p16: reduces lambda func app" $ do 
       showReduced "(\\f. f 3) (\\x. + x 1)" `shouldBe` "4"
 
+    it "p17: accounts for nested lambda var conflicts" $ do 
+      showReduced "(\\x.(\\x. + (- x 1)) x 3) 9" `shouldBe` "11"
+      showReduced "(\\x.(\\x. x)) 1 2" `shouldBe` "2"
+
+    -- TODO: fail on name capture
+
   where 
     showParsed = pShow . parseExpression
     showReduced = pShow . reduce . parseExpression

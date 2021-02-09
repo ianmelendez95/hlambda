@@ -26,7 +26,7 @@ reduceApplyChain (Function func : rest)
       Left args -> foldApply $ Function func : args
       Right evaled -> reduceApplyChain evaled
 reduceApplyChain (Lambda var body : arg : rest) 
-  = reduceApplyChain $ parseApplyChain (reduceLambda var (reduceAfterMarked arg) body) ++ rest
+  = reduceApplyChain $ parseApplyChain (reduceLambda var body arg) ++ rest
 reduceApplyChain apply = foldApply apply
 
 foldApply :: [Exp] -> Exp
@@ -105,20 +105,16 @@ reduceTailApplication exps = Left exps
 ------------
 
 reduceLambda :: String -> Exp -> Exp -> Exp
-reduceLambda var val = mapExpressions (replaceVarShallow var val)
+reduceLambda var body val = replaceVar var val body 
 
-replaceVarShallow :: String -> Exp -> Exp -> Exp
-replaceVarShallow var _ v@(Variable (FreeVar var')) 
-  = if var == var' then error $ "Possible name capture: " ++ var else v
-replaceVarShallow var expr v@(Variable (BoundVar var')) 
-  = if var == var' then expr else v
-replaceVarShallow var _ v@(Variable (RawVar var')) 
-  = if var == var' then error $ "Haven't identified bound/free vars: " ++ show v else v
-replaceVarShallow _ _ expr = expr
+-- showLambdaUpdate :: String -> Exp -> Exp -> String 
+-- showLambdaUpdate var body newVal = "(" ++ pShow body ++ ")[(" ++ pShow newVal ++ ")/" ++ var ++ "]"
 
-mapExpressions :: (Exp -> Exp) -> Exp -> Exp
-mapExpressions _ c@(Constant _) = c
-mapExpressions _ f@(Function _) = f
-mapExpressions _ v@(Variable _) = v
-mapExpressions f (Apply e e') = Apply (f (mapExpressions f e)) (f (mapExpressions f e'))
-mapExpressions f (Lambda v e) = Lambda v (f (mapExpressions f e))
+replaceVar :: String -> Exp -> Exp -> Exp
+replaceVar _ _ c@(Constant _) = c
+replaceVar _ _ f@(Function _) = f
+replaceVar name val v@(Variable var) = if varName var == name then val else v
+replaceVar name newExp (Apply e1 e2) = Apply (replaceVar name newExp e1) 
+                                                (replaceVar name newExp e2)
+replaceVar name newExp l@(Lambda v e) = if v == name then l
+                                                     else Lambda v (replaceVar name newExp e)

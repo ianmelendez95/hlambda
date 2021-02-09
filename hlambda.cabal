@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: c589ef3de1502dd43d951c0529cdc15b3fc46caac6270f7f4bfe61dbf0c37694
+-- hash: 4c105404d3f96a1eb6986ece329b4e61c6518d464fc2e84e5ca0f12578c1c132
 
 name:           hlambda
 version:        0.1.0.0
@@ -33,6 +33,7 @@ library
       Lambda.FreeBound
       Lambda.Lexer
       Lambda.Parser
+      Lambda.Reduce
       Lambda.Syntax
       Lambda.Token
   other-modules:

@@ -155,20 +155,17 @@ onNumbers :: (Int -> Int -> Int) -> S.Exp -> S.Exp -> S.Exp
 onNumbers f e e' = S.Constant . S.CNat $ f (readNumber e) (readNumber e')
 
 toBool :: Bool -> S.Exp
-toBool True = S.Constant S.CTrue
-toBool False = S.Constant S.CFalse
+toBool = S.Constant . S.CBool 
 
 onBools :: (Bool -> Bool -> Bool) -> S.Exp -> S.Exp -> S.Exp 
-onBools f e e' = S.Constant $ if f (readBool e) (readBool e') then S.CTrue else S.CFalse
+onBools f e e' = if f (readBool e) (readBool e') then toBool True else toBool False
 
 readBool :: S.Exp -> Bool
-readBool (S.Constant S.CTrue) = True
-readBool (S.Constant S.CFalse) = False
+readBool (S.Constant (S.CBool b)) = b
 readBool expr = error $ "Expecting a boolean, got: " ++ show expr
 
 readBoolMaybe :: S.Constant -> Maybe Bool
-readBoolMaybe S.CTrue = Just True
-readBoolMaybe S.CFalse = Just False
+readBoolMaybe (S.CBool b) = Just b
 readBoolMaybe _ = Nothing
 
 readNumber :: S.Exp -> Int 

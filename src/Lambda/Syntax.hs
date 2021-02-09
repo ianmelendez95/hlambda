@@ -39,8 +39,7 @@ data Function = FPlus
 
 data Constant = CNat Int
               | CChar Char
-              | CTrue 
-              | CFalse
+              | CBool Bool 
 
 data Variable = RawVar String 
               | FreeVar String 
@@ -54,8 +53,7 @@ data Variable = RawVar String
 fromConstantToken :: T.Constant -> Exp 
 fromConstantToken (T.CNat n)   = Constant (CNat n) 
 fromConstantToken (T.CChar n)  = Constant (CChar n) 
-fromConstantToken T.CTrue  = Constant CTrue 
-fromConstantToken T.CFalse = Constant CFalse 
+fromConstantToken (T.CBool b)  = Constant (CBool b) 
 
 fromFunctionToken :: T.Function -> Exp
 fromFunctionToken T.FPlus  = Function FPlus
@@ -101,8 +99,8 @@ instance Show Function where
 instance Show Constant where 
   show (CNat n) = show n
   show (CChar c) = "\'" ++ [c] ++ "\'"
-  show CTrue = "TRUE"
-  show CFalse = "FALSE"
+  show (CBool True) = "TRUE"
+  show (CBool False) = "FALSE"
 
 instance Show Variable where 
   show (RawVar var) = var

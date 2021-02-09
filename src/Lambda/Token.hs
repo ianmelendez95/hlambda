@@ -24,6 +24,5 @@ data Function = FPlus
 
 data Constant = CNat Int
               | CChar Char
-              | CTrue 
-              | CFalse
+              | CBool Bool 
               deriving Show

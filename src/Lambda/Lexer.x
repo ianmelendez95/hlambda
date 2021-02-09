@@ -45,8 +45,8 @@ tokens :-
   @head               { \_ -> T.Function T.FHead }
   @tail               { \_ -> T.Function T.FTail }
 
-  @true               { \_ -> T.Constant T.CTrue }
-  @false              { \_ -> T.Constant T.CFalse }
+  @true               { \_ -> T.Constant (T.CBool True) }
+  @false              { \_ -> T.Constant (T.CBool False) }
   @number             { \n -> T.Constant $ T.CNat (read n) }
   @char               { \c -> T.Constant $ T.CChar (head c) }
 

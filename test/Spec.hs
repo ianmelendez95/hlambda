@@ -65,6 +65,9 @@ main = hspec $ do
       -- HEAD (CONS p q) = CONS p q (\a.\b.a) = (\a.\b.\f. f a b) p q (\a.\b.a) 
       showReduced [r|(\a.\b.\f. f a b) p q (\a.\b.a)|] `shouldBe` "p"
 
+    it "p19: eta reduces simple function application" $ do 
+      showReduced "(\\x. + 1 x)" `shouldBe` "+ 1"
+
   where 
     showParsed = pShow . parseExpression
     showReduced = pShow . reduce . parseExpression

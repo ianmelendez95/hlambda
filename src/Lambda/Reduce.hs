@@ -13,8 +13,26 @@ reduceAfterMarked :: Exp -> Exp
 reduceAfterMarked c@(Constant _) = c
 reduceAfterMarked f@(Function _) = f
 reduceAfterMarked v@(Variable _) = v
-reduceAfterMarked l@(Lambda _ _) = l
+reduceAfterMarked l@(Lambda var body) = maybe l reduceAfterMarked $ etaReduceLambda var body
 reduceAfterMarked s@(Apply _ _) = reduceApplyChain . parseApplyChain $ s
+
+-------------------
+-- Eta Reduction --
+-------------------
+
+etaReduceLambda :: String -> Exp -> Maybe Exp
+etaReduceLambda var_name (Apply func_exp (Variable var_arg)) 
+  = if var_name == varName var_arg && not (varFreeInExp var_name func_exp)
+      then Just func_exp
+      else Nothing
+etaReduceLambda _ _ = Nothing
+
+varFreeInExp :: String -> Exp -> Bool
+varFreeInExp _ (Constant _) = False
+varFreeInExp _ (Function _) = False
+varFreeInExp name (Variable var) = varName var == name
+varFreeInExp name (Apply e1 e2)  = varFreeInExp name e1 || varFreeInExp name e2
+varFreeInExp name (Lambda v e) = v /= name && varFreeInExp name e
 
 -----------
 -- Apply --

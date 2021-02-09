@@ -48,8 +48,11 @@ main = hspec $ do
     it "p16: reduces multiple occurrence lambda" $ do
       showReduced "(\\x. + x x) 5" `shouldBe` "10"
 
-    it "p17: reduces nested lambdas" $ do
+    it "p16: reduces nested lambdas" $ do
       showReduced "(\\x.(\\y. - y x)) 4 5" `shouldBe` "1"
+
+    it "p16: reduces lambda func app" $ do 
+      showReduced "(\\f. f 3) (\\x. + x 1)" `shouldBe` "4"
 
   where 
     showParsed = pShow . parseExpression

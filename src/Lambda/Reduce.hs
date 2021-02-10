@@ -134,7 +134,7 @@ replaceVarWithValInBody _ _ c@(Constant _) = c
 replaceVarWithValInBody _ _ f@(Function _) = f
 replaceVarWithValInBody name val v@(Variable var) = if varName var == name then val else v
 replaceVarWithValInBody name newExp (Apply e1 e2) = Apply (replaceVarWithValInBody name newExp e1) 
-                                             (replaceVarWithValInBody name newExp e2)
+                                                          (replaceVarWithValInBody name newExp e2)
 replaceVarWithValInBody name new_exp l@(Lambda v e)
   | v == name = l
   | (name `elem` freeVariables [] e) && (v `elem` freeVariables [] new_exp)

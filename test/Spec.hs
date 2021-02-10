@@ -73,8 +73,7 @@ main = hspec $ do
 
     it "p21: resolving name capture by alpha-conversion" $ do 
       showReduced "(\\f.\\x. f x) x" `shouldBe` "\\y. x y"
-      -- showReduced "(\\f.\\x. f (f x)) (\\f.\\x. f (f x))" 
-      --   `shouldBe` [r|(\x. (\f.\x. f (f x)) (\y. x (x y)))|]
+      showReduced "(\\f.\\x. f (f x)) x" `shouldBe` "\\y. x (x y)"
 
     it "p21: accounts for partial name-capture" $ do 
       showReduced "(\\x. x (\\y. x y)) y" `shouldBe` "y (\\z. y z)"

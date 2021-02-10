@@ -149,7 +149,7 @@ replaceVarWithValInBody name new_exp l@(Lambda v e)
 alphaConvertRestricted :: [String] -> String -> Exp -> (String, Exp)
 alphaConvertRestricted taken_names var body 
   = let new_name = newName taken_names var 
-     in (new_name, alphaConvert var (newName taken_names var) body)
+     in (new_name, alphaConvert var new_name body)
 
 -- | rather unsafely converts instances of the old name with the new name
 -- | only scrutinizing on formal parameters (that is, if encounter a lambda with the formal parameter 

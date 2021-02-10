@@ -71,6 +71,17 @@ main = hspec $ do
     it "p20: equivalence by applying arbitrary argument" $ do 
       showReduced "If True ((\\p.p) 3) w" `shouldBe` showReduced "(\\x.3) w"
 
+    it "p21: resolving name capture by alpha-conversion" $ do 
+      showReduced "(\\f.\\x. f x) x" `shouldBe` "\\y. x y"
+      -- showReduced "(\\f.\\x. f (f x)) (\\f.\\x. f (f x))" 
+      --   `shouldBe` [r|(\x. (\f.\x. f (f x)) (\y. x (x y)))|]
+
+    it "p21: accounts for partial name-capture" $ do 
+      showReduced "(\\x. x (\\y. x y)) y" `shouldBe` "y (\\z. y z)"
+    
+    it "p21: isn't too eager to alpha convert" $ do 
+      showReduced "(\\x. x (\\y. y)) y" `shouldBe` "y (\\y. y)"
+
   where 
     showParsed = pShow . parseExpression
     showReduced = pShow . reduce . parseExpression

@@ -2,6 +2,9 @@ module Lambda.Reduce (reduce) where
 
 -- new reduction strategy that emulates laziness
 
+import Data.List (insert, union)
+import Data.Char (isLower)
+
 import Lambda.Syntax
 import Lambda.FreeBound
 
@@ -22,17 +25,13 @@ reduceAfterMarked s@(Apply _ _) = reduceApplyChain . parseApplyChain $ s
 
 etaReduceLambda :: String -> Exp -> Maybe Exp
 etaReduceLambda var_name (Apply func_exp (Variable var_arg)) 
-  = if var_name == varName var_arg && not (varFreeInExp var_name func_exp)
+  = if var_name == varName var_arg && not (varFreeInExp func_exp var_name)
       then Just func_exp
       else Nothing
 etaReduceLambda _ _ = Nothing
 
-varFreeInExp :: String -> Exp -> Bool
-varFreeInExp _ (Constant _) = False
-varFreeInExp _ (Function _) = False
-varFreeInExp name (Variable var) = varName var == name
-varFreeInExp name (Apply e1 e2)  = varFreeInExp name e1 || varFreeInExp name e2
-varFreeInExp name (Lambda v e) = v /= name && varFreeInExp name e
+varFreeInExp :: Exp -> String -> Bool
+varFreeInExp expr = (`elem` freeVariables [] expr)
 
 -----------
 -- Apply --
@@ -123,16 +122,68 @@ reduceTailApplication exps = Left exps
 ------------
 
 reduceLambda :: String -> Exp -> Exp -> Exp
-reduceLambda var body val = replaceVar var val body 
+reduceLambda var body val = replaceVarWithValInBody var val body
 
 -- showLambdaUpdate :: String -> Exp -> Exp -> String 
 -- showLambdaUpdate var body newVal = "(" ++ pShow body ++ ")[(" ++ pShow newVal ++ ")/" ++ var ++ "]"
 
-replaceVar :: String -> Exp -> Exp -> Exp
-replaceVar _ _ c@(Constant _) = c
-replaceVar _ _ f@(Function _) = f
-replaceVar name val v@(Variable var) = if varName var == name then val else v
-replaceVar name newExp (Apply e1 e2) = Apply (replaceVar name newExp e1) 
-                                                (replaceVar name newExp e2)
-replaceVar name newExp l@(Lambda v e) = if v == name then l
-                                                     else Lambda v (replaceVar name newExp e)
+-- | replaceVarWithValInBody is called when we are applying a lambda abstraction to an argument,
+-- | replacing instances of the parameter 'name' with the 'new_exp'
+replaceVarWithValInBody :: String -> Exp -> Exp -> Exp
+replaceVarWithValInBody _ _ c@(Constant _) = c
+replaceVarWithValInBody _ _ f@(Function _) = f
+replaceVarWithValInBody name val v@(Variable var) = if varName var == name then val else v
+replaceVarWithValInBody name newExp (Apply e1 e2) = Apply (replaceVarWithValInBody name newExp e1) 
+                                             (replaceVarWithValInBody name newExp e2)
+replaceVarWithValInBody name new_exp l@(Lambda v e)
+  | v == name = l
+  | (name `elem` freeVariables [] e) && (v `elem` freeVariables [] new_exp)
+      = let (new_v, new_e) = alphaConvertRestricted (freeVariables [] new_exp `union` freeVariables [v] e) v e
+         in Lambda new_v (replaceVarWithValInBody name new_exp new_e)
+  | otherwise = Lambda v (replaceVarWithValInBody name new_exp e)
+
+-- | performs an alpha conversion, where the new name is restricted by the existing 
+-- | 'taken' or free variables that would result in a conflict if used
+alphaConvertRestricted :: [String] -> String -> Exp -> (String, Exp)
+alphaConvertRestricted taken_names var body 
+  = let new_name = newName taken_names var 
+     in (new_name, alphaConvert var (newName taken_names var) body)
+
+-- | rather unsafely converts instances of the old name with the new name
+-- | only scrutinizing on formal parameters (that is, if encounter a lambda with the formal parameter 
+-- | matching the old name, it doesn't continue)
+-- | 
+-- | unsafe in that it makes no discernment for whether it is replacing the name with 
+-- | a variable that is also free in the expression
+alphaConvert :: String -> String -> Exp -> Exp
+alphaConvert _ _ c@(Constant _) = c
+alphaConvert _ _ f@(Function _) = f 
+alphaConvert old_name new_name (Variable var) = Variable $ mapVarName (\n -> if n == old_name then new_name else n) var
+alphaConvert old_name new_name (Apply e1 e2) = Apply (alphaConvert old_name new_name e1)
+                                                     (alphaConvert old_name new_name e2)
+alphaConvert old_name new_name l@(Lambda v e)
+  | old_name == v = l -- name is already bound, doesn't matter
+  | otherwise = Lambda v (alphaConvert old_name new_name e)
+
+newName :: [String] -> String -> String 
+newName taken name
+  | succ_name `elem` taken = newName taken succ_name
+  | otherwise = succ_name
+  where 
+    succ_name = succName name
+
+succName :: String -> String 
+succName [] = error "empty name"
+succName [c] 
+  | not (isLower c) = error $ "variable not lowercase: " ++ [c]
+  | c == 'z'        = "z'"
+  | otherwise       = [succ c]
+succName name = name ++ "'"
+
+freeVariables :: [String] -> Exp -> [String]
+freeVariables _ (Constant _) = []
+freeVariables _ (Function _) = []
+freeVariables bound (Variable var) = [varName var | varName var `notElem` bound]
+freeVariables bound (Apply e1 e2)  = freeVariables bound e1 ++ freeVariables bound e2
+freeVariables bound (Lambda v e) = freeVariables (insert v bound) e
+ 

@@ -7,6 +7,7 @@ module Lambda.Syntax
   , pShow
   , showMarked
   , varName
+  , mapVarName
   , fromConstantToken
   , fromFunctionToken
   ) where 
@@ -79,6 +80,11 @@ varName :: Variable -> String
 varName (RawVar n) = n
 varName (FreeVar n) = n
 varName (BoundVar n) = n
+
+mapVarName :: (String -> String) -> Variable -> Variable 
+mapVarName f (RawVar n) = RawVar (f n)
+mapVarName f (FreeVar n) = FreeVar (f n)
+mapVarName f (BoundVar n) = BoundVar (f n)
 
 --------------
 -- Showing --

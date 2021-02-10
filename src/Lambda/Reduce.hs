@@ -121,6 +121,8 @@ reduceTailApplication exps = Left exps
 -- Lambda --
 ------------
 
+-- | reduce lambda, replacing instances of var in body with val
+-- | following the rules in 'Figure 2.3 Definition of E[M/x]'
 reduceLambda :: String -> Exp -> Exp -> Exp
 reduceLambda var body val = replaceVarWithValInBody var val body
 

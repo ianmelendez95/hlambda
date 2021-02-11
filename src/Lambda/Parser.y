@@ -8,7 +8,8 @@ import qualified Lambda.Token as T
 import Lambda.Lexer (alexScanTokens)
 }
 
-%name parser 
+%name mParser exp
+%monad { Either String } { >>= } { return }
 %tokentype { T.Token }
 %error { parseError }
 
@@ -62,5 +63,12 @@ parseError :: [T.Token] -> a
 parseError tokens = error $ "Parse Error: " ++ show tokens
 
 parseExpression :: String -> E.Exp
-parseExpression = parser . alexScanTokens
+parseExpression = eitherError . mParser . alexScanTokens                        
+
+parser :: [T.Token] -> E.Exp
+parser = eitherError . mParser
+
+eitherError :: Either String E.Exp -> E.Exp
+eitherError (Left err) = error $ "Woah dude, " ++ err
+eitherError (Right res) = res
 }

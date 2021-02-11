@@ -19,6 +19,7 @@ data LambdaAnn = ABoundVar
                | AConstant
                | AFunction
                | AParen AParen
+               | None
 
 data AParen = AParenYellow
             | AParenMagenta
@@ -52,6 +53,7 @@ lambdaToAnsi = reAnnotateS ansiStyle
     ansiStyle ARawVar = color Red
     ansiStyle AConstant = mempty
     ansiStyle AFunction = mempty
+    ansiStyle None = mempty
     ansiStyle (AParen p) = parenStyle' p
 
     parenStyle' :: AParen -> AnsiStyle

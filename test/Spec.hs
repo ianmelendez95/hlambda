@@ -94,5 +94,5 @@ main = hspec $ do
   where 
     showParsed = pShow . parseExpression
     showReduced = pShow . reduce . parseExpression
-    showEvaled = pShow . (`eval` emptyEnvironment) . parseExpression
+    showEvaled = pShow . eval . parseExpression
     showMarked' = showMarked . markBoundFree . parseExpression

@@ -91,11 +91,13 @@ main = hspec $ do
     it "p29: performs simple eval" $ do 
       showEvaled "+ 3 4" `shouldBe` "7" 
 
-  describe "3.2 The enriched lambda calculus" $ do
+  describe "3.2 The Enriched Lambda Calculus" $ do
     it "p41: evaluates simple let expression" $ do
       showReduced "let x = 3 in (* x x)" `shouldBe` "9"
     it "p41: evaluates let expression in lambda expr" $ do 
       showReduced "+ 1 (let x = 3 in (* x x))" `shouldBe` "10"
+    it "p41: evaluates nested let expression" $ do 
+      showReduced "let x = 3 in (let y = 4 in (* x y))" `shouldBe` "12"
 
   where 
     showParsed = pShow . parseExpression

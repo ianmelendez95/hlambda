@@ -71,15 +71,19 @@ reduceFunctionApplication FIf    = reduceIfApplication
 reduceFunctionApplication FCons  = Left -- Cons is lazy, and mark Left so we don't continue evaluating
 reduceFunctionApplication FHead  = ((:[]) <$>) . reduceHeadApplication
 reduceFunctionApplication FTail  = ((:[]) <$>) . reduceTailApplication
+reduceFunctionApplication FEq    = ((:[]) <$>) . reduceBinaryNumFuncApplication (==) 
 
 reduceArithmeticApplication :: (Int -> Int -> Int) -> [Exp]  -> Either [Exp] Exp
-reduceArithmeticApplication f [arg_exp1, arg_exp2]
+reduceArithmeticApplication = reduceBinaryNumFuncApplication
+
+reduceBinaryNumFuncApplication :: ToConstant a => (Int -> Int -> a) -> [Exp] -> Either [Exp] Exp
+reduceBinaryNumFuncApplication f [arg_exp1, arg_exp2]
   = case reduceAfterMarked arg_exp1 of 
       arg1@(Constant (CNat x)) -> case reduceAfterMarked arg_exp2 of 
-                                    Constant (CNat y) -> Right . Constant . CNat $ f x y
+                                    Constant (CNat y) -> Right . Constant . toConstant $ f x y
                                     arg2 -> Left [arg1, arg2]
       arg1 -> Left [arg1, arg_exp2]
-reduceArithmeticApplication _ exps = Left exps
+reduceBinaryNumFuncApplication _ exps = Left exps
 
 reduceLogicApplication :: (Bool -> Bool -> Bool) -> [Exp]  -> Either [Exp] Exp
 reduceLogicApplication f [arg_exp1, arg_exp2] 

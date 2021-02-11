@@ -44,6 +44,7 @@ tokens :-
   @cons               { \_ -> T.Function T.FCons }
   @head               { \_ -> T.Function T.FHead }
   @tail               { \_ -> T.Function T.FTail }
+  \=                  { \_ -> T.Function T.FEq }
 
   @true               { \_ -> T.Constant (T.CBool True) }
   @false              { \_ -> T.Constant (T.CBool False) }

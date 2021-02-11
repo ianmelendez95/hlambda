@@ -20,6 +20,7 @@ data Function = FPlus
               | FCons
               | FHead 
               | FTail
+              | FEq
               deriving Show
 
 data Constant = CNat Int

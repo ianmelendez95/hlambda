@@ -81,6 +81,10 @@ main = hspec $ do
     it "p21: isn't too eager to alpha convert" $ do 
       showReduced "(\\x. x (\\y. y)) y" `shouldBe` "y (\\y. y)"
 
+    it "p27: evaluates recursive fibonacci" $ do 
+      showReduced [r|(\h.(\x. h (x x)) (\x. h (x x))) (\fac.\n. If (= n 0) 1 (* n (fac (- n 1)))) 4|] 
+        `shouldBe` "24"
+
   where 
     showParsed = pShow . parseExpression
     showReduced = pShow . reduce . parseExpression

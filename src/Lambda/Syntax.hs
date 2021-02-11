@@ -3,6 +3,7 @@ module Lambda.Syntax
   , Variable (..)
   , Function (..)
   , Constant (..)
+  , ToConstant (..)
   , ansiPrettyExp
   , pShow
   , showMarked
@@ -40,6 +41,7 @@ data Function = FPlus
               | FCons 
               | FHead 
               | FTail
+              | FEq
 
 data Constant = CNat Int
               | CChar Char
@@ -49,6 +51,20 @@ data Variable = RawVar String
               | FreeVar String 
               | BoundVar String
               -- deriving Show
+
+----------------
+-- ToConstant --
+----------------
+
+class ToConstant a where 
+  toConstant :: a -> Constant
+
+instance ToConstant Int where 
+  toConstant = CNat
+instance ToConstant Char where
+  toConstant = CChar
+instance ToConstant Bool where
+  toConstant = CBool
 
 ----------------------
 -- Token Conversion --
@@ -71,6 +87,7 @@ fromFunctionToken T.FIf    = Function FIf
 fromFunctionToken T.FCons  = Function FCons
 fromFunctionToken T.FHead  = Function FHead
 fromFunctionToken T.FTail  = Function FTail
+fromFunctionToken T.FEq    = Function FEq
 
 ---------
 -- Ops --

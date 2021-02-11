@@ -140,6 +140,7 @@ instance Show Function where
   show FCons  = "CONS"
   show FHead  = "HEAD"
   show FTail  = "TAIL"
+  show FEq    = "="
 
 instance Show Constant where 
   show (CNat n) = show n

@@ -4,8 +4,6 @@ module Lambda.Syntax
   , Function (..)
   , Constant (..)
   , ToConstant (..)
-  , ansiPrettyExp
-  , pShow
   , showMarked
   , varName
   , mapVarName
@@ -15,13 +13,11 @@ module Lambda.Syntax
 
 import Prettyprinter
 import Control.Monad.State.Lazy
-import Prettyprinter.Render.Terminal
-    ( color,
-      AnsiStyle,
-      Color(Cyan, Blue, Green, Red, Yellow, Magenta) )
 import Prettyprinter.Render.Util.SimpleDocTree (treeForm, renderSimplyDecorated)
 import Data.Text (Text, unpack, pack)
+
 import qualified Lambda.Token as T
+import Lambda.Pretty
 
 data Exp = Constant Constant 
          | Function Function
@@ -107,12 +103,6 @@ mapVarName f (BoundVar n) = BoundVar (f n)
 -- Showing --
 --------------
 
--- instance Show Exp where 
---   show = show . prettyExpDoc
-
-pShow :: Exp -> String 
-pShow = show . prettyExpDoc
-
 -- renderSimplyDecorated
 --    :: Monoid out
 --    => (Text -> out)       -- ^ Render plain 'Text'
@@ -120,7 +110,7 @@ pShow = show . prettyExpDoc
 --    -> SimpleDocTree ann
 --    -> out
 showMarked :: Exp -> String 
-showMarked expr = unpack $ renderSimplyDecorated id renderMarked (treeForm $ prettyExp expr)
+showMarked expr = unpack $ renderSimplyDecorated id renderMarked (treeForm $ prettyStream expr)
   where 
     renderMarked :: LambdaAnn -> Text -> Text 
     renderMarked ABoundVar var = var <> pack ":b"
@@ -153,17 +143,9 @@ instance Show Variable where
   show (FreeVar var) = var
   show (BoundVar var) = var
 
-data LambdaAnn = ABoundVar
-               | AFreeVar
-               | ARawVar
-               | AConstant
-               | AFunction
-               | AParen AParen
-
-data AParen = AParenYellow
-            | AParenMagenta
-            | AParenCyan
-            deriving (Show)
+------------------
+-- Pretty Print --
+------------------
 
 data ParenState = ParenState {
     parenPrec :: Int,
@@ -174,31 +156,11 @@ type LambdaDoc = Doc LambdaAnn
 type PrettyExp = State ParenState
 type ParenWrapper = (LambdaDoc -> LambdaDoc)
 
+instance PrettyLambda Exp where 
+  prettyDoc = prettyExpDoc
+
 initParenState :: ParenState
 initParenState = ParenState 0 AParenMagenta
-
-------------------
--- Pretty Print --
-------------------
-
-ansiPrettyExp :: Exp -> SimpleDocStream AnsiStyle
-ansiPrettyExp = reAnnotateS ansiStyle . prettyExp
-  where
-    ansiStyle :: LambdaAnn -> AnsiStyle 
-    ansiStyle ABoundVar = color Blue
-    ansiStyle AFreeVar = color Green
-    ansiStyle ARawVar = color Red
-    ansiStyle AConstant = mempty
-    ansiStyle AFunction = mempty
-    ansiStyle (AParen p) = parenStyle' p
-
-    parenStyle' :: AParen -> AnsiStyle
-    parenStyle' AParenYellow = color Yellow
-    parenStyle' AParenMagenta = color Magenta
-    parenStyle' AParenCyan = color Cyan
-
-prettyExp :: Exp -> SimpleDocStream LambdaAnn
-prettyExp = layoutPretty defaultLayoutOptions . prettyExpDoc
 
 prettyExpDoc :: Exp -> Doc LambdaAnn
 prettyExpDoc expr = evalState (sPretty expr) initParenState 
@@ -243,18 +205,7 @@ updateParenStyle :: ParenState -> ParenState
 updateParenStyle pState@ParenState { parenStyle = style } 
   = pState { parenStyle = nextParenAnn style }
 
-nextParenAnn :: AParen -> AParen
-nextParenAnn AParenYellow = AParenMagenta
-nextParenAnn AParenMagenta = AParenCyan
-nextParenAnn AParenCyan = AParenYellow
-
-annParens :: LambdaAnn -> (Doc LambdaAnn -> Doc LambdaAnn)
-annParens a = enclose (annotate a $ pretty "(") (annotate a $ pretty ")")
-
 prettyVar :: Variable -> Doc LambdaAnn
 prettyVar (FreeVar name)  = annStr AFreeVar name
 prettyVar (BoundVar name) = annStr ABoundVar name
 prettyVar (RawVar name)   = annStr ARawVar name
-
-annStr :: LambdaAnn -> String -> Doc LambdaAnn
-annStr a = annotate a . pretty

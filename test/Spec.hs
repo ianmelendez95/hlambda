@@ -5,14 +5,16 @@ module Main where
 import Test.Hspec 
 import Text.RawString.QQ(r)
 
-import Lambda.Parser ( parseExpression )
-import Lambda.Syntax ( pShow, showMarked )
+import Lambda.Parser (parseExpression)
+import Lambda.Syntax (showMarked)
 import Lambda.FreeBound (markBoundFree)
+import Lambda.Pretty (PrettyLambda (..))
 import Lambda.Reduce (reduce)
+import Lambda.Eval (eval)
 
 main :: IO ()
 main = hspec $ do 
-  describe "Raw Parsing" $ do 
+  describe "<= 2.4" $ do 
 
     it "p9: parses '(+ 4 5)'" $ do 
       showParsed "(+ 4 5)" `shouldBe` "+ 4 5"
@@ -84,8 +86,13 @@ main = hspec $ do
     it "p27: evaluates recursive fibonacci" $ do 
       showReduced [r|(\h.(\x. h (x x)) (\x. h (x x))) (\fac.\n. If (= n 0) 1 (* n (fac (- n 1)))) 4|] 
         `shouldBe` "24"
+  
+  describe "2.5 The Denotational Semantics" $ do 
+    it "p29: performs simple eval" $ do 
+      showEvaled "+ 3 4" `shouldBe` "7" 
 
   where 
     showParsed = pShow . parseExpression
     showReduced = pShow . reduce . parseExpression
+    showEvaled = pShow . eval . parseExpression
     showMarked' = showMarked . markBoundFree . parseExpression

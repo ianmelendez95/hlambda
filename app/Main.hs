@@ -39,7 +39,7 @@ loop =
 evalLambda :: String -> IO ()
 evalLambda input = do let tokens = alexScanTokens input
                           parsedEnriched = parser tokens
-                          parsed = enrichedToLambda parsedEnriched
+                          parsed = toLambda parsedEnriched
                           marked = markBoundFree parsed
                           reduced = reduce parsedEnriched
                           evaled = eval parsedEnriched

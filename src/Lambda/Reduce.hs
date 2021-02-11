@@ -6,13 +6,14 @@ import Data.List (insert, union)
 import Data.Char (isLower)
 
 import Lambda.Syntax
+import qualified Lambda.Enriched as E
 import Lambda.FreeBound
 
 -- reduceEnriched :: Enriched -> Exp
 -- reduceEnriched = reduce . enrichedToLambda
 
-reduce :: Enriched -> Exp 
-reduce = reduceAfterMarked . markBoundFree . enrichedToLambda
+reduce :: E.Exp -> Exp
+reduce = reduceAfterMarked . markBoundFree . toLambda
 
 -- TODO: reduce WHNF
 reduceAfterMarked :: Exp -> Exp 

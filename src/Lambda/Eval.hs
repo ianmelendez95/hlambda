@@ -5,6 +5,7 @@ module Lambda.Eval
   ) where 
 
 import Lambda.Reduce (reduce)
+import qualified Lambda.Enriched as E
 import qualified Lambda.Syntax as S
 import Lambda.Pretty
 
@@ -38,7 +39,7 @@ emptyEnvironment = const Bottom
 -- |   
 -- |   2.5.2 introduces the idea of bottom, where so far it seems to reflect that if reduction
 -- |         cannot result in a value (no normal form), then it is 'bottom'
-eval :: S.Enriched -> Value
+eval :: E.Exp -> Value
 eval = toValue . reduce 
 
 -- eval (S.Variable var) env = env var

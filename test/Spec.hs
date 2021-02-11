@@ -6,7 +6,7 @@ import Test.Hspec
 import Text.RawString.QQ(r)
 
 import Lambda.Parser (parseExpression)
-import Lambda.Syntax (showMarked, enrichedToLambda)
+import Lambda.Syntax (ToLambda (..), showMarked)
 import Lambda.FreeBound (markBoundFree)
 import Lambda.Pretty (PrettyLambda (..))
 import Lambda.Reduce (reduce)
@@ -94,9 +94,11 @@ main = hspec $ do
   describe "3.2 The enriched lambda calculus" $ do
     it "p41: evaluates simple let expression" $ do
       showReduced "let x = 3 in (* x x)" `shouldBe` "9"
+    it "p41: evaluates let expression in lambda expr" $ do 
+      showReduced "+ 1 (let x = 3 in (* x x))" `shouldBe` "10"
 
   where 
     showParsed = pShow . parseExpression
     showReduced = pShow . reduce . parseExpression
     showEvaled = pShow . eval . parseExpression
-    showMarked' = showMarked . markBoundFree . enrichedToLambda . parseExpression
+    showMarked' = showMarked . markBoundFree . toLambda . parseExpression

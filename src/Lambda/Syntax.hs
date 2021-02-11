@@ -1,11 +1,10 @@
 module Lambda.Syntax 
-  ( Enriched (..)
-  , Exp (..)
+  ( Exp (..)
   , Variable (..)
   , Function (..)
   , Constant (..)
+  , ToLambda (..)
   , ToConstant (..)
-  , enrichedToLambda
   , showMarked
   , varName
   , mapVarName
@@ -20,9 +19,6 @@ import Data.Text (Text, unpack, pack)
 
 import qualified Lambda.Token as T
 import Lambda.Pretty
-
-data Enriched = Let String Exp Exp
-              | Exp Exp
 
 data Exp = Constant Constant 
          | Function Function
@@ -52,6 +48,13 @@ data Variable = RawVar String
               | BoundVar String
               -- deriving Show
 
+--------------
+-- ToLambda --
+--------------
+
+class ToLambda a where 
+  toLambda :: a -> Exp
+
 ----------------
 -- ToConstant --
 ----------------
@@ -65,14 +68,6 @@ instance ToConstant Char where
   toConstant = CChar
 instance ToConstant Bool where
   toConstant = CBool
-
-----------------------
--- Enriched -> Pure --
-----------------------
-
-enrichedToLambda :: Enriched -> Exp 
-enrichedToLambda (Let var val body) = Apply (Lambda var body) val
-enrichedToLambda (Exp expr) = expr
 
 ----------------------
 -- Token Conversion --
@@ -129,9 +124,6 @@ showMarked expr = unpack $ renderSimplyDecorated id renderMarked (treeForm $ pre
     renderMarked ARawVar var = var <> pack ":r"
     renderMarked _ var = var
 
-instance Show Enriched where 
-  show = pShow
-
 instance Show Exp where 
   show = pShow
 
@@ -172,14 +164,6 @@ data ParenState = ParenState {
 type LambdaDoc = Doc LambdaAnn
 type PrettyExp = State ParenState
 type ParenWrapper = (LambdaDoc -> LambdaDoc)
-
-instance PrettyLambda Enriched where 
-  prettyDoc (Exp expr) = prettyExpDoc expr
-  prettyDoc (Let var val body) = pretty "let" <+> pretty var 
-                                              <+> pretty "=" 
-                                              <+> prettyDoc val 
-                                              <+> pretty "in"
-                                              <+> prettyDoc body
 
 instance PrettyLambda Exp where 
   prettyDoc = prettyExpDoc

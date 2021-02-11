@@ -6,6 +6,10 @@ import qualified Lambda.Token as T
 
 %wrapper "basic"
 
+-- keywords
+@let           = let
+@in            = in
+
 -- arithmetic functions
 $plus          = \+
 $minus         = \-
@@ -33,6 +37,9 @@ $div           = \/
 tokens :- 
   $white+ ;
 
+  @let                { \_ -> T.Let }
+  @in                 { \_ -> T.In  }
+
   $plus               { \_ -> T.Function T.FPlus }
   $minus              { \_ -> T.Function T.FMinus }
   $mult               { \_ -> T.Function T.FMult }
@@ -44,7 +51,7 @@ tokens :-
   @cons               { \_ -> T.Function T.FCons }
   @head               { \_ -> T.Function T.FHead }
   @tail               { \_ -> T.Function T.FTail }
-  \=                  { \_ -> T.Function T.FEq }
+  \=                  { \_ -> T.Equal }
 
   @true               { \_ -> T.Constant (T.CBool True) }
   @false              { \_ -> T.Constant (T.CBool False) }

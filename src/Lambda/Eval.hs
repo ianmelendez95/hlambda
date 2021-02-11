@@ -38,7 +38,7 @@ emptyEnvironment = const Bottom
 -- |   
 -- |   2.5.2 introduces the idea of bottom, where so far it seems to reflect that if reduction
 -- |         cannot result in a value (no normal form), then it is 'bottom'
-eval :: S.Exp -> Value
+eval :: S.Enriched -> Value
 eval = toValue . reduce 
 
 -- eval (S.Variable var) env = env var

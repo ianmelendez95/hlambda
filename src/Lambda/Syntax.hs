@@ -1,9 +1,11 @@
 module Lambda.Syntax 
-  ( Exp (..)
+  ( Enriched (..)
+  , Exp (..)
   , Variable (..)
   , Function (..)
   , Constant (..)
   , ToConstant (..)
+  , enrichedToLambda
   , showMarked
   , varName
   , mapVarName
@@ -19,12 +21,14 @@ import Data.Text (Text, unpack, pack)
 import qualified Lambda.Token as T
 import Lambda.Pretty
 
+data Enriched = Let String Exp Exp
+              | Exp Exp
+
 data Exp = Constant Constant 
          | Function Function
          | Variable Variable 
          | Apply Exp Exp 
          | Lambda String Exp
-         deriving Show
 
 data Function = FPlus
               | FMinus 
@@ -63,6 +67,14 @@ instance ToConstant Bool where
   toConstant = CBool
 
 ----------------------
+-- Enriched -> Pure --
+----------------------
+
+enrichedToLambda :: Enriched -> Exp 
+enrichedToLambda (Let var val body) = Apply (Lambda var body) val
+enrichedToLambda (Exp expr) = expr
+
+----------------------
 -- Token Conversion --
 ----------------------
 
@@ -83,7 +95,6 @@ fromFunctionToken T.FIf    = Function FIf
 fromFunctionToken T.FCons  = Function FCons
 fromFunctionToken T.FHead  = Function FHead
 fromFunctionToken T.FTail  = Function FTail
-fromFunctionToken T.FEq    = Function FEq
 
 ---------
 -- Ops --
@@ -117,6 +128,12 @@ showMarked expr = unpack $ renderSimplyDecorated id renderMarked (treeForm $ pre
     renderMarked AFreeVar var = var <> pack ":f"
     renderMarked ARawVar var = var <> pack ":r"
     renderMarked _ var = var
+
+instance Show Enriched where 
+  show = pShow
+
+instance Show Exp where 
+  show = pShow
 
 instance Show Function where
   show FPlus  = "+"
@@ -155,6 +172,14 @@ data ParenState = ParenState {
 type LambdaDoc = Doc LambdaAnn
 type PrettyExp = State ParenState
 type ParenWrapper = (LambdaDoc -> LambdaDoc)
+
+instance PrettyLambda Enriched where 
+  prettyDoc (Exp expr) = prettyExpDoc expr
+  prettyDoc (Let var val body) = pretty "let" <+> pretty var 
+                                              <+> pretty "=" 
+                                              <+> prettyDoc val 
+                                              <+> pretty "in"
+                                              <+> prettyDoc body
 
 instance PrettyLambda Exp where 
   prettyDoc = prettyExpDoc

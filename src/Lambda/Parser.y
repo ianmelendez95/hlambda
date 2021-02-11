@@ -12,15 +12,25 @@ import Lambda.Lexer (alexScanTokens)
 %error { parseError }
 
 %token 
+  let      { T.Let }
+  in       { T.In  }
   const    { T.Constant $$ }
   var      { T.Variable $$ }
   func     { T.Function $$ }
+  '='      { T.Equal  }
   '\\'     { T.Lambda }
-  '.'      { T.Dot }
-  '('      { T.LP }
-  ')'      { T.RP }
+  '.'      { T.Dot    }
+  '('      { T.LP     }
+  ')'      { T.RP     }
 
 %%
+
+enriched :: { S.Enriched }
+enriched : letExpression          { $1 }
+         | exp                    { S.Exp $1 }
+
+letExpression :: { S.Enriched }
+letExpression : let var '=' exp in exp   { S.Let $2 $4 $6 }
 
 exp :: { S.Exp }
 exp : term      { $1 }
@@ -44,6 +54,7 @@ variable : var               { S.Variable (S.RawVar $1) }
 
 function :: { S.Exp }
 function : func              { S.fromFunctionToken $1 }
+         | '='               { S.Function S.FEq       }
 
 constant :: { S.Exp }
 constant : const             { S.fromConstantToken $1 }
@@ -52,6 +63,6 @@ constant : const             { S.fromConstantToken $1 }
 parseError :: [T.Token] -> a
 parseError tokens = error $ "Parse Error: " ++ show tokens
 
-parseExpression :: String -> S.Exp
+parseExpression :: String -> S.Enriched
 parseExpression = parser . alexScanTokens
 }

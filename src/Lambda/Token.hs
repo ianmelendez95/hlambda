@@ -7,6 +7,9 @@ data Token = Function Function
            | Dot 
            | LP
            | RP
+           | Let 
+           | In
+           | Equal
            deriving Show
 
 data Function = FPlus
@@ -20,7 +23,6 @@ data Function = FPlus
               | FCons
               | FHead 
               | FTail
-              | FEq
               deriving Show
 
 data Constant = CNat Int

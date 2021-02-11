@@ -8,8 +8,11 @@ import Data.Char (isLower)
 import Lambda.Syntax
 import Lambda.FreeBound
 
-reduce :: Exp -> Exp 
-reduce = reduceAfterMarked . markBoundFree
+-- reduceEnriched :: Enriched -> Exp
+-- reduceEnriched = reduce . enrichedToLambda
+
+reduce :: Enriched -> Exp 
+reduce = reduceAfterMarked . markBoundFree . enrichedToLambda
 
 -- TODO: reduce WHNF
 reduceAfterMarked :: Exp -> Exp 

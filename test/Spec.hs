@@ -10,7 +10,7 @@ import Lambda.Syntax (showMarked)
 import Lambda.FreeBound (markBoundFree)
 import Lambda.Pretty (PrettyLambda (..))
 import Lambda.Reduce (reduce)
-import Lambda.Eval (eval)
+import Lambda.Eval (eval, emptyEnvironment)
 
 main :: IO ()
 main = hspec $ do 
@@ -94,5 +94,5 @@ main = hspec $ do
   where 
     showParsed = pShow . parseExpression
     showReduced = pShow . reduce . parseExpression
-    showEvaled = pShow . eval . parseExpression
+    showEvaled = pShow . (`eval` emptyEnvironment) . parseExpression
     showMarked' = showMarked . markBoundFree . parseExpression

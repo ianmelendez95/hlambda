@@ -1,5 +1,5 @@
 {
-module Lambda.Parser (parser, parseExpression) where 
+module Lambda.Parser (ParseResult, parser, parseExpression) where 
 
 import Data.Char
 import qualified Lambda.Enriched as E
@@ -8,8 +8,8 @@ import qualified Lambda.Token as T
 import Lambda.Lexer (alexScanTokens)
 }
 
-%name mParser exp
-%monad { Either String } { >>= } { return }
+%name parser exp
+%monad { ParseResult } { >>= } { return }
 %tokentype { T.Token }
 %error { parseError }
 
@@ -59,16 +59,11 @@ constant :: { S.Exp }
 constant : const             { S.fromConstantToken $1 }
 
 {
-parseError :: [T.Token] -> a
-parseError tokens = error $ "Parse Error: " ++ show tokens
+type ParseResult = Either String
 
-parseExpression :: String -> E.Exp
-parseExpression = eitherError . mParser . alexScanTokens                        
+parseError :: [T.Token] -> ParseResult a
+parseError tokens = Left $ "Parse Error, tokens left: " ++ show tokens
 
-parser :: [T.Token] -> E.Exp
-parser = eitherError . mParser
-
-eitherError :: Either String E.Exp -> E.Exp
-eitherError (Left err) = error $ "Woah dude, " ++ err
-eitherError (Right res) = res
+parseExpression :: String -> ParseResult E.Exp
+parseExpression = parser . alexScanTokens                        
 }

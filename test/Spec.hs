@@ -2,8 +2,11 @@
 
 module Main where 
 
-import Test.Hspec 
+import Test.Hspec hiding (shouldBe) 
+import qualified Test.Hspec as TH
+import Test.HUnit.Base (assertFailure)
 import Text.RawString.QQ(r)
+import Control.Monad (join)
 
 import Lambda.Parser (parseExpression)
 import Lambda.Syntax (ToLambda (..), showMarked)
@@ -71,7 +74,7 @@ main = hspec $ do
       showReduced "(\\x. + 1 x)" `shouldBe` "+ 1"
 
     it "p20: equivalence by applying arbitrary argument" $ do 
-      showReduced "If True ((\\p.p) 3) w" `shouldBe` showReduced "(\\x.3) w"
+      join (shouldBe (showReduced "If True ((\\p.p) 3) w") <$> (showReduced "(\\x.3) w"))
 
     it "p21: resolving name capture by alpha-conversion" $ do 
       showReduced "(\\f.\\x. f x) x" `shouldBe` "\\y. x y"
@@ -100,7 +103,14 @@ main = hspec $ do
       showReduced "let x = 3 in (let y = 4 in (* x y))" `shouldBe` "12"
 
   where 
-    showParsed = pShow . parseExpression
-    showReduced = pShow . reduce . parseExpression
-    showEvaled = pShow . eval . parseExpression
-    showMarked' = showMarked . markBoundFree . toLambda . parseExpression
+    shouldBe :: (Show a, Eq a) => IO a -> a -> IO ()
+    shouldBe io val = join ((`TH.shouldBe` val) <$> io)
+
+    showParsed = (pShow <$>) . parseExpr
+    showReduced = (pShow . reduce <$>) . parseExpr
+    showEvaled = (pShow . eval <$>) . parseExpr
+    showMarked' = (showMarked . markBoundFree . toLambda <$>) . parseExpr
+
+    parseExpr input = case parseExpression input of
+                        (Left err) -> assertFailure err 
+                        (Right expr) -> return expr

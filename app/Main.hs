@@ -38,18 +38,20 @@ loop =
 
 evalLambda :: String -> IO ()
 evalLambda input = do let tokens = alexScanTokens input
-                          parsedEnriched = parser tokens
-                          parsed = toLambda parsedEnriched
-                          marked = markBoundFree parsed
-                          reduced = reduce parsedEnriched
-                          evaled = eval parsedEnriched
-                      putStr "tokens: "        >> catchAll (print tokens)
-                      putStr "enriched: "      >> catchAll (pPrint parsedEnriched)
-                      putStr "parsed: "        >> catchAll (pPrint parsed)
-                      putStr "raw: "           >> catchAll (pPrint parsed)
-                      putStr "marked: "        >> catchAll (pPrint marked)
-                      putStr "beta reduced: "  >> catchAll (pPrint reduced)
-                      putStr "evaled: "        >> catchAll (pPrint evaled)
+                      case parser tokens of 
+                        Left err -> error err
+                        Right parsedEnriched -> 
+                          do let parsed = toLambda parsedEnriched
+                                 marked = markBoundFree parsed
+                                 reduced = reduce parsedEnriched
+                                 evaled = eval parsedEnriched
+                             putStr "tokens: "        >> catchAll (print tokens)
+                             putStr "enriched: "      >> catchAll (pPrint parsedEnriched)
+                             putStr "parsed: "        >> catchAll (pPrint parsed)
+                             putStr "raw: "           >> catchAll (pPrint parsed)
+                             putStr "marked: "        >> catchAll (pPrint marked)
+                             putStr "beta reduced: "  >> catchAll (pPrint reduced)
+                             putStr "evaled: "        >> catchAll (pPrint evaled)
 
 catchAll :: IO () -> IO ()
 catchAll io = catch io (print :: SomeException -> IO ())

@@ -11,7 +11,7 @@ import Control.Exception (SomeException, catch)
 import Prettyprinter.Render.Terminal
 
 import Lambda.FreeBound
-import Lambda.Lexer (alexScanTokens)
+import Lambda.Lexer (scanTokens)
 import Lambda.Syntax
 import Lambda.Parser (parser)
 import Lambda.Pretty (PrettyLambda (..))
@@ -37,7 +37,7 @@ loop =
                         loop
 
 evalLambda :: String -> IO ()
-evalLambda input = do let tokens = alexScanTokens input
+evalLambda input = do let tokens = scanTokens input
                       case parser tokens of 
                         Left err -> error err
                         Right parsedEnriched -> 

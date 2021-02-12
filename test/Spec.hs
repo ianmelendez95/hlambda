@@ -103,7 +103,7 @@ main = hspec $ do
 
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()
-    ioShouldBe io val = join ((`shouldBe` val) <$> io)
+    ioShouldBe io val = (`shouldBe` val) =<< io
 
     showParsed = (pShow <$>) . parseExpr
     showReduced = (pShow . reduce <$>) . parseExpr

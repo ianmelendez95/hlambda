@@ -1,4 +1,10 @@
-module Lambda.Token (Token (..), Function (..), Constant (..)) where 
+module Lambda.Token (LocToken (..), Token (..), Function (..), Constant (..)) where 
+
+data LocToken = LToken {
+    locLine  :: Int 
+  , locCol   :: Int 
+  , locToken :: Token
+  }
 
 data Token = Function Function
            | Constant Constant

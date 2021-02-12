@@ -1,10 +1,10 @@
 {
-module Lambda.Lexer (alexScanTokens) where 
+module Lambda.Lexer (alexScanTokens, scanTokens) where 
 
 import qualified Lambda.Token as T
 }
 
-%wrapper "basic"
+%wrapper "posn"
 
 -- keywords
 @let           = let
@@ -37,29 +37,39 @@ $div           = \/
 tokens :- 
   $white+ ;
 
-  @let                { \_ -> T.Let }
-  @in                 { \_ -> T.In  }
+  @let                { located $ \_ -> T.Let }
+  @in                 { located $ \_ -> T.In  }
 
-  $plus               { \_ -> T.Function T.FPlus }
-  $minus              { \_ -> T.Function T.FMinus }
-  $mult               { \_ -> T.Function T.FMult }
-  $div                { \_ -> T.Function T.FDiv }
-  @and                { \_ -> T.Function T.FAnd }
-  @or                 { \_ -> T.Function T.FOr }
-  @not                { \_ -> T.Function T.FNot }
-  @if                 { \_ -> T.Function T.FIf }
-  @cons               { \_ -> T.Function T.FCons }
-  @head               { \_ -> T.Function T.FHead }
-  @tail               { \_ -> T.Function T.FTail }
-  \=                  { \_ -> T.Equal }
+  $plus               { located $ \_ -> T.Function T.FPlus }
+  $minus              { located $ \_ -> T.Function T.FMinus }
+  $mult               { located $ \_ -> T.Function T.FMult }
+  $div                { located $ \_ -> T.Function T.FDiv }
+  @and                { located $ \_ -> T.Function T.FAnd }
+  @or                 { located $ \_ -> T.Function T.FOr }
+  @not                { located $ \_ -> T.Function T.FNot }
+  @if                 { located $ \_ -> T.Function T.FIf }
+  @cons               { located $ \_ -> T.Function T.FCons }
+  @head               { located $ \_ -> T.Function T.FHead }
+  @tail               { located $ \_ -> T.Function T.FTail }
+  \=                  { located $ \_ -> T.Equal }
 
-  @true               { \_ -> T.Constant (T.CBool True) }
-  @false              { \_ -> T.Constant (T.CBool False) }
-  @number             { \n -> T.Constant $ T.CNat (read n) }
-  @char               { \c -> T.Constant $ T.CChar (head c) }
+  @true               { located $ \_ -> T.Constant (T.CBool True) }
+  @false              { located $ \_ -> T.Constant (T.CBool False) }
+  @number             { located $ \n -> T.Constant $ T.CNat (read n) }
+  @char               { located $ \c -> T.Constant $ T.CChar (head c) }
 
-  @variable           { \v -> T.Variable v }
-  \\                  { \_ -> T.Lambda     }
-  \.                  { \_ -> T.Dot        }
-  \(                  { \_ -> T.LP         }
-  \)                  { \_ -> T.RP         }
+  @variable           { located $ \v -> T.Variable v }
+  \\                  { located $ \_ -> T.Lambda     }
+  \.                  { located $ \_ -> T.Dot        }
+  \(                  { located $ \_ -> T.LP         }
+  \)                  { located $ \_ -> T.RP         }
+
+{
+-- %wrapper "posn" => { ... } :: AlexPosn -> String -> token
+
+located :: (String -> T.Token) -> AlexPosn -> String -> T.LocToken
+located f (AlexPn _ line col) str = T.LToken line col (f str)
+
+scanTokens :: String -> [T.Token]
+scanTokens = map T.locToken . alexScanTokens
+}

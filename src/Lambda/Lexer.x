@@ -27,6 +27,9 @@ $div           = \/
 @head          = H(ead|EAD)
 @tail          = T(ail|AIL)
 
+-- the Y Combinator (!!)
+$ycomb         = Y
+
 -- constants
 @true          = T(rue|RUE)
 @false         = F(alse|ALSE)
@@ -57,6 +60,7 @@ tokens :-
   @cons               { located $ \_ -> T.Function T.FCons }
   @head               { located $ \_ -> T.Function T.FHead }
   @tail               { located $ \_ -> T.Function T.FTail }
+  $ycomb              { located $ \_ -> T.Function T.FY}
   \=                  { located $ \_ -> T.Equal }
 
   @true               { located $ \_ -> T.Constant (T.CBool True) }

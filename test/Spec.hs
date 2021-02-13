@@ -87,6 +87,10 @@ main = hspec $ do
     it "p27: evaluates recursive fibonacci" $ do 
       showReduced [r|(\h.(\x. h (x x)) (\x. h (x x))) (\fac.\n. If (= n 0) 1 (* n (fac (- n 1)))) 4|] 
         `ioShouldBe` "24"
+
+    it "p28: supports builtin Y combinator" $ do 
+      showReduced "Y (\\fac.\\n. IF (= n 0) 1 (* n (fac (- n 1)))) 4"
+        `ioShouldBe` "24"
   
   describe "2.5 The Denotational Semantics" $ do 
     it "p29: performs simple eval" $ do 

@@ -37,6 +37,7 @@ data Function = FPlus
               | FCons 
               | FHead 
               | FTail
+              | FY   -- The Glorious Y Combinator
               | FEq
 
 data Constant = CNat Int
@@ -90,6 +91,7 @@ fromFunctionToken T.FIf    = Function FIf
 fromFunctionToken T.FCons  = Function FCons
 fromFunctionToken T.FHead  = Function FHead
 fromFunctionToken T.FTail  = Function FTail
+fromFunctionToken T.FY     = Function FY
 
 ---------
 -- Ops --
@@ -140,6 +142,7 @@ instance Show Function where
   show FHead  = "HEAD"
   show FTail  = "TAIL"
   show FEq    = "="
+  show FY     = "Y"
 
 instance Show Constant where 
   show (CNat n) = show n

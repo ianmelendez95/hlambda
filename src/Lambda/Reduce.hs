@@ -75,6 +75,7 @@ reduceFunctionApplication FIf    = reduceIfApplication
 reduceFunctionApplication FCons  = Left -- Cons is lazy, and mark Left so we don't continue evaluating
 reduceFunctionApplication FHead  = ((:[]) <$>) . reduceHeadApplication
 reduceFunctionApplication FTail  = ((:[]) <$>) . reduceTailApplication
+reduceFunctionApplication FY     = reduceYCombApplication
 reduceFunctionApplication FEq    = ((:[]) <$>) . reduceBinaryNumFuncApplication (==) 
 
 reduceArithmeticApplication :: (Int -> Int -> Int) -> [Exp]  -> Either [Exp] Exp
@@ -124,6 +125,10 @@ reduceTailApplication (cons_exp : rest)
       [Function FCons, _, tail_exp] -> Right tail_exp
       _ -> Left (cons_exp : rest)
 reduceTailApplication exps = Left exps
+
+reduceYCombApplication :: [Exp] -> Either [Exp] [Exp]
+reduceYCombApplication [] = Left []
+reduceYCombApplication (arg : rest) = Right (arg : Apply (Function FY) arg : rest)
 
 ------------
 -- Lambda --

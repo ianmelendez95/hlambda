@@ -39,6 +39,7 @@ data Function = FPlus
               | FCons
               | FHead 
               | FTail
+              | FY
               deriving Show
 
 data Constant = CNat Int

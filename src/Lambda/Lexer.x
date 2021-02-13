@@ -2,6 +2,7 @@
 module Lambda.Lexer (alexScanTokens, scanTokens) where 
 
 import qualified Lambda.Token as T
+
 }
 
 %wrapper "monadUserState"
@@ -79,12 +80,16 @@ tokens :-
 
 -- runAlex    :: String -> Alex a -> Either String a
 
-type AlexUserState = ()
-alexInitUserState = ()
+data AlexUserState = UserState { 
+   user_layout_state :: LayoutState,
+   user_m_next_token :: Maybe T.LocToken
+ }
 
 data LayoutState = LNone 
                  | LStart  Int -- col
                  | LActive Int -- line
+
+alexInitUserState = UserState LNone Nothing
 
 alexEOF :: Alex T.LocToken
 alexEOF = return (T.LToken 0 0 T.EOF)
@@ -92,12 +97,24 @@ alexEOF = return (T.LToken 0 0 T.EOF)
 located :: (String -> T.Token) -> AlexAction T.LocToken
 located f = token (\((AlexPn _ line col), _, _, input) len -> T.LToken line col $ f (take len input))
 
+getLayoutState :: Alex LayoutState
+getLayoutState = Alex $ \s@AlexState{alex_ust=(UserState layout_state _)} 
+  -> Right (s, layout_state)
+
+getMNextToken :: Alex (Maybe T.LocToken)
+getMNextToken = Alex $ \s@AlexState{alex_ust=(UserState _ next_token)} 
+  -> Right (s, next_token)
+
 alexMonadScanAll :: Alex [T.LocToken]
-alexMonadScanAll = do t <- alexMonadScan
-                      case t of 
-                        (T.LToken _ _ T.EOF) -> return []
-                        _     -> do ts <- alexMonadScanAll
-                                    return (t : ts)
+alexMonadScanAll 
+  = do nt <- getMNextToken
+       case nt of 
+         Just t -> (t:) <$> alexMonadScanAll
+         Nothing -> do t <- alexMonadScan
+                       case t of 
+                         (T.LToken _ _ T.EOF) -> return []
+                         _     -> do ts <- alexMonadScanAll
+                                     return (t : ts)
 
 alexScanTokens :: String -> [T.LocToken]
 alexScanTokens input = case runAlex input alexMonadScanAll of 

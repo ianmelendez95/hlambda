@@ -14,6 +14,7 @@ import Lambda.Lexer (alexScanTokens, scanTokens)
 %error { parseError }
 
 %token 
+  letrec   { T.Letrec }
   let      { T.Let }
   in       { T.In  }
   const    { T.Constant $$ }
@@ -36,7 +37,8 @@ exp : letExpression { $1 }
     | term          { $1 }
 
 letExpression :: { E.Exp }
-letExpression : let '{' letBindings '}' in exp   { E.Let $3 $6 }
+letExpression : let    '{' letBindings '}' in exp       { E.Let $3 $6 }
+              | letrec '{' letBindings '}' in exp       { E.Letrec $3 $6 }
 
 letBindings :: { [(String, E.Exp)] }
 letBindings : letBindings ';' letBinding { $3 : $1 }

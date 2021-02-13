@@ -5,7 +5,6 @@ module Main where
 import Test.Hspec 
 import Test.HUnit.Base (assertFailure)
 import Text.RawString.QQ(r)
-import Control.Monad (join)
 
 import Lambda.Parser (parseExpression)
 import Lambda.Syntax (ToLambda (..), showMarked)
@@ -73,7 +72,7 @@ main = hspec $ do
       showReduced "(\\x. + 1 x)" `ioShouldBe` "+ 1"
 
     it "p20: equivalence by applying arbitrary argument" $ do 
-      join (ioShouldBe (showReduced "If True ((\\p.p) 3) w") <$> (showReduced "(\\x.3) w"))
+      ioShouldBe (showReduced "If True ((\\p.p) 3) w") =<< showReduced "(\\x.3) w"
 
     it "p21: resolving name capture by alpha-conversion" $ do 
       showReduced "(\\f.\\x. f x) x" `ioShouldBe` "\\y. x y"
@@ -104,6 +103,12 @@ main = hspec $ do
       showReduced "let x = 3\n    y = 4\n in (* x y)" `ioShouldBe` "12"
     it "evaluates multiple single line let expression" $ do 
       showReduced "let x = 3; y = 4 in (* x y)" `ioShouldBe` "12"
+  
+  describe "3.2.2 Simple letrec Expressions" $ do
+    it "p42: evaluates fib letrec" $ do 
+      showReduced "letrec factorial = \\n. IF (= n 0) 1 (* n (factorial (- n 1))) in factorial 4"
+       `ioShouldBe` "24"
+    
 
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()

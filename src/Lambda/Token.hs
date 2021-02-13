@@ -22,6 +22,7 @@ data Token = Function Function
            | RC
            | Semi
            | Let 
+           | Letrec
            | In
            | Equal
            | EOF

@@ -8,6 +8,7 @@ import qualified Lambda.Token as T
 %wrapper "monadUserState"
 
 -- keywords
+@letrec        = letrec
 @let           = let
 @in            = in
 
@@ -41,8 +42,9 @@ $semi          = \;
 tokens :- 
   $white+ ;
 
-  @let                { located $ \_ -> T.Let }
-  @in                 { located $ \_ -> T.In  }
+  @letrec             { located $ \_ -> T.Letrec }
+  @let                { located $ \_ -> T.Let    }
+  @in                 { located $ \_ -> T.In     }
 
   $plus               { located $ \_ -> T.Function T.FPlus }
   $minus              { located $ \_ -> T.Function T.FMinus }
@@ -146,6 +148,12 @@ alexMonadScanAll
                                       (lt:) <$> alexMonadScanAll
                     LStart _ _  -> alexError "Layout: 'let' within layout bounds"
                     LActive _ _ -> alexError "Layout: 'let' within layout bounds"
+                lt@(T.LToken l c T.Letrec) -> 
+                  case layout of 
+                    LNone       -> do putLayoutState (LStart l c)
+                                      (lt:) <$> alexMonadScanAll
+                    LStart _ _  -> alexError "Layout: 'letrec' within layout bounds"
+                    LActive _ _ -> alexError "Layout: 'letrec' within layout bounds"
                 lt@(T.LToken l c T.In) -> let mkTok = T.LToken l c in
                   case layout of 
                     LActive _ _ -> do putLayoutState LNone

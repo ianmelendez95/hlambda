@@ -1,14 +1,15 @@
 module Lambda.Token 
-  ( Token (..)
+  ( LocToken (..)
+  , Token (..)
   , Function (..)
   , Constant (..)
   ) where 
 
--- data LocToken = LToken {
---     locLine  :: Int 
---   , locCol   :: Int 
---   , locToken :: Token
---   }
+data LocToken = LToken {
+    locLine  :: Int 
+  , locCol   :: Int 
+  , locToken :: Token
+  }
 
 data Token = Function Function
            | Constant Constant

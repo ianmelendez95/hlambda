@@ -82,31 +82,28 @@ tokens :-
 type AlexUserState = ()
 alexInitUserState = ()
 
-alexEOF = return T.EOF
+data LayoutState = LNone 
+                 | LStart  Int -- col
+                 | LActive Int -- line
 
-located :: (String -> T.Token) -> AlexAction T.Token
-located f = token (\(_, _, _, input) len -> f (take len input))
+alexEOF :: Alex T.LocToken
+alexEOF = return (T.LToken 0 0 T.EOF)
 
--- alexScanTokens str = go (alexStartPos,'\n',[],str)
---   where go inp@(pos,_,_,str) =
---           case alexScan inp 0 of
---                 AlexEOF -> []
---                 AlexError ((AlexPn _ line column),_,_,_) -> error $ "lexical error at " ++ (show line) ++ " line, " ++ (show column) ++ " column"
---                 AlexSkip  inp' len     -> go inp'
---                 AlexToken inp' len act -> act pos (take len str) : go inp'
+located :: (String -> T.Token) -> AlexAction T.LocToken
+located f = token (\((AlexPn _ line col), _, _, input) len -> T.LToken line col $ f (take len input))
 
-alexMonadScanAll :: Alex [T.Token]
+alexMonadScanAll :: Alex [T.LocToken]
 alexMonadScanAll = do t <- alexMonadScan
                       case t of 
-                        T.EOF -> return []
+                        (T.LToken _ _ T.EOF) -> return []
                         _     -> do ts <- alexMonadScanAll
                                     return (t : ts)
 
-alexScanTokens :: String -> [T.Token]
+alexScanTokens :: String -> [T.LocToken]
 alexScanTokens input = case runAlex input alexMonadScanAll of 
                          Left err -> error err 
                          Right res -> res
 
 scanTokens :: String -> [T.Token]
-scanTokens = alexScanTokens
+scanTokens = map T.locToken . alexScanTokens
 }

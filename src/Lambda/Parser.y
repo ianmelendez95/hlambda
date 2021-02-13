@@ -5,7 +5,7 @@ import Data.Char
 import qualified Lambda.Enriched as E
 import qualified Lambda.Syntax as S
 import qualified Lambda.Token as T
-import Lambda.Lexer (alexScanTokens)
+import Lambda.Lexer (alexScanTokens, scanTokens)
 }
 
 %name parser exp
@@ -65,5 +65,5 @@ parseError :: [T.Token] -> ParseResult a
 parseError tokens = Left $ "Parse Error, tokens left: " ++ show tokens
 
 parseExpression :: String -> ParseResult E.Exp
-parseExpression = parser . alexScanTokens                        
+parseExpression = parser . scanTokens                        
 }

@@ -86,8 +86,8 @@ data AlexUserState = UserState {
  }
 
 data LayoutState = LNone 
-                 | LStart  Int -- col
-                 | LActive Int -- line
+                 | LStart  Int Int -- line, col
+                 | LActive Int Int -- line, col
 
 alexInitUserState = UserState LNone Nothing
 
@@ -100,6 +100,14 @@ located f = token (\((AlexPn _ line col), _, _, input) len -> T.LToken line col 
 getLayoutState :: Alex LayoutState
 getLayoutState = Alex $ \s@AlexState{alex_ust=(UserState layout_state _)} 
   -> Right (s, layout_state)
+
+putLayoutState :: LayoutState -> Alex ()
+putLayoutState layout_state = Alex $ \s@AlexState{alex_ust=ust} 
+  -> Right (s{alex_ust=(putInUserState ust)}, ())
+  where 
+    -- TODO: perform check on update
+    putInUserState :: AlexUserState -> AlexUserState
+    putInUserState (UserState _ next_token) = UserState layout_state next_token
 
 getMNextToken :: Alex (Maybe T.LocToken)
 getMNextToken = Alex $ \s@AlexState{alex_ust=(UserState _ next_token)} 
@@ -118,19 +126,39 @@ alexMonadScanAll
   = do nt <- getMNextToken
        case nt of 
          Just t -> (t:) <$> alexMonadScanAll
-         Nothing -> do t <- alexMonadScan
-                       layout <- getLayoutState
-                       case t of 
-                         (T.LToken l c T.EOF) -> case layout of 
-                                                   LStart _  -> alexError "EOF: Expecting layout start token"
-                                                   LNone     -> return []
-                                                   LActive _ -> return [T.LToken l c T.RC]
-                         (T.LToken _ _ T.Let) -> case layout of 
-                                                   LNone -> undefined -- TODO: do dis
-                                                   LStart _ -> alexError "Layout: 'let' within layout bounds"
-                                                   LActive _ -> undefined -- TODO: do dis
-                         _     -> do ts <- alexMonadScanAll
-                                     return (t : ts)
+         Nothing -> 
+           do t <- alexMonadScan
+              layout <- getLayoutState
+              case t of 
+                (T.LToken l c T.EOF) -> 
+                  case layout of 
+                    LStart _ _  -> alexError "EOF: Expecting layout start token"
+                    LNone       -> return []
+                    LActive _ _ -> return [T.LToken l c T.RC]
+                lt@(T.LToken l c T.Let) -> 
+                  case layout of 
+                    LNone       -> do putLayoutState (LStart l c)
+                                      (lt:) <$> alexMonadScanAll
+                    LStart _ _  -> alexError "Layout: 'let' within layout bounds"
+                    LActive _ _ -> alexError "Layout: 'let' within layout bounds"
+                lt@(T.LToken l c T.In) -> let mkTok = T.LToken l c in
+                  case layout of 
+                    LActive _ _ -> do putLayoutState LNone
+                                      ([mkTok T.RC, lt] ++) <$> alexMonadScanAll
+                    LStart  _ _ -> do putLayoutState LNone
+                                      ([mkTok T.LC, mkTok T.RC] ++) <$> alexMonadScanAll
+                    LNone       -> alexError "Layout: 'in' without preceding 'let'"
+                lt@(T.LToken l c _)  -> let mkTok = T.LToken l c in
+                  case layout of 
+                    LStart  _ _ -> do putLayoutState (LActive l c)
+                                      ([mkTok T.LC, lt] ++) <$> alexMonadScanAll
+                    LActive lay_line lay_col
+                      | l <  lay_line -> alexError "Illegal state: current line before layout line"
+                      | l == lay_line -> (lt :) <$> alexMonadScanAll
+                      | c <  lay_col  -> alexError "Layout: token left of layout"
+                      | c == lay_col  -> ([mkTok T.Semi, lt] ++) <$> alexMonadScanAll
+                      | otherwise     -> (lt :) <$> alexMonadScanAll
+                    LNone       -> (lt :) <$> alexMonadScanAll
 
 alexScanTokens :: String -> [T.LocToken]
 alexScanTokens input = case runAlex input alexMonadScanAll of 

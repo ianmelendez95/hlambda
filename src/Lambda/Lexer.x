@@ -4,7 +4,7 @@ module Lambda.Lexer (alexScanTokens, scanTokens) where
 import qualified Lambda.Token as T
 }
 
-%wrapper "monad"
+%wrapper "monadUserState"
 
 -- keywords
 @let           = let
@@ -78,6 +78,9 @@ tokens :-
 -- newtype Alex a = Alex { unAlex :: AlexState -> Either String (AlexState, a) }
 
 -- runAlex    :: String -> Alex a -> Either String a
+
+type AlexUserState = ()
+alexInitUserState = ()
 
 alexEOF = return T.EOF
 

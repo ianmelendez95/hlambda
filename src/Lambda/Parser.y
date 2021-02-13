@@ -24,6 +24,9 @@ import Lambda.Lexer (alexScanTokens, scanTokens)
   '.'      { T.Dot    }
   '('      { T.LP     }
   ')'      { T.RP     }
+  ';'     { T.Semi   }
+  '{'      { T.LC     }
+  '}'      { T.RC     }
 
 %%
 
@@ -33,7 +36,16 @@ exp : letExpression { $1 }
     | term          { $1 }
 
 letExpression :: { E.Exp }
-letExpression : let var '=' exp in exp   { E.Let $2 $4 $6 }
+letExpression : let '{' letBindings '}' in exp   { E.Let $3 $6 }
+
+letBindings :: { [(String, E.Exp)] }
+letBindings : letBindings ';' letBinding { $3 : $1 }
+            | letBindings ';'            { $1 }
+            | letBinding                 { [$1] }
+            | {- empty -}                { [] }
+
+letBinding :: { (String, E.Exp )}
+letBinding : var '=' exp { ($1, $3) }
 
 apply :: { E.Exp }
 apply : exp term   { E.Apply $1 $2 }

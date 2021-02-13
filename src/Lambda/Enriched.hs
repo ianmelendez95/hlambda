@@ -7,20 +7,28 @@ import Lambda.Pretty
 import Lambda.Syntax (ToLambda (..))
 import qualified Lambda.Syntax as S
 
-data Exp = Let String Exp Exp
+data Exp = Let [LetBinding] Exp
          | Pure S.Exp
          | Apply Exp Exp 
          | Lambda String Exp
+        
+type LetBinding = (String, Exp)
 
 --------------
 -- ToLambda --
 --------------
 
 instance ToLambda Exp where
-  toLambda (Let var val body) = S.Apply (S.Lambda var (toLambda body)) (toLambda val)
+  toLambda (Let bindings body) = letToLambda bindings body
   toLambda (Apply e1 e2) = S.Apply (toLambda e1) (toLambda e2)
   toLambda (Lambda var body) = S.Lambda var (toLambda body)
   toLambda (Pure expr) = expr
+
+letToLambda :: [LetBinding] -> Exp -> S.Exp
+letToLambda [] body = toLambda body
+letToLambda ((var, val):bs) body 
+  = let inner = Let bs body
+     in S.Apply (S.Lambda var (toLambda inner)) (toLambda val) 
 
 ----------------------
 -- Enriched -> Pure --
@@ -56,11 +64,12 @@ prettyExpDoc expr = evalState (sPretty expr) initParenState
 
 sPretty :: Exp -> PrettyExp LambdaDoc
 sPretty (Pure expr) = pure $ prettyDoc expr
-sPretty (Let var val body) = pure $ pretty "let" <+> pretty var 
-                                                 <+> pretty "=" 
-                                                 <+> prettyDoc val 
-                                                 <+> pretty "in"
-                                                 <+> prettyDoc body
+sPretty (Let bindings body) = pure $ pretty "let" <+> prettyBindings bindings 
+                                                  <+> pretty "in"
+                                                  <+> prettyDoc body
+  where 
+    prettyBindings [] = mempty
+    prettyBindings ((var, val):bs) = pretty var <+> pretty "=" <+> prettyDoc val <+> prettyBindings bs
 sPretty (Lambda var e) = do wrapper <- getParenWrapper 5 
                             ePretty <- tempState (setPrec 0) (sPretty e)
                             pure $ wrapper $ backslash

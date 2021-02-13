@@ -38,6 +38,7 @@ loop =
 
 evalLambda :: String -> IO ()
 evalLambda input = do let tokens = scanTokens input
+                      putStr "tokens: "        >> catchAll (print tokens)
                       case parser tokens of 
                         Left err -> error err
                         Right parsedEnriched -> 
@@ -45,7 +46,6 @@ evalLambda input = do let tokens = scanTokens input
                                  marked = markBoundFree parsed
                                  reduced = reduce parsedEnriched
                                  evaled = eval parsedEnriched
-                             putStr "tokens: "        >> catchAll (print tokens)
                              putStr "enriched: "      >> catchAll (pPrint parsedEnriched)
                              putStr "parsed: "        >> catchAll (pPrint parsed)
                              putStr "raw: "           >> catchAll (pPrint parsed)

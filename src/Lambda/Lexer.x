@@ -35,6 +35,9 @@ $div           = \/
 -- variable
 @variable      = [a-z][a-zA-Z0-9']*
 
+-- layout
+$semi          = \;
+
 tokens :- 
   $white+ ;
 
@@ -64,6 +67,8 @@ tokens :-
   \.                  { located $ \_ -> T.Dot        }
   \(                  { located $ \_ -> T.LP         }
   \)                  { located $ \_ -> T.RP         }
+
+  $semi               { located $ \_ -> T.Semi       }
 
 {
 -- %wrapper "posn"  => { ... } :: AlexPosn -> String -> token
@@ -148,6 +153,10 @@ alexMonadScanAll
                     LStart  _ _ -> do putLayoutState LNone
                                       ([mkTok T.LC, mkTok T.RC] ++) <$> alexMonadScanAll
                     LNone       -> alexError "Layout: 'in' without preceding 'let'"
+                lt@(T.LToken l c T.Semi) -> let mkTok = T.LToken l c in
+                  case layout of 
+                    LNone       -> alexError "Layout: ';' outside of layout context"
+                    _           -> (lt :) <$> alexMonadScanAll
                 lt@(T.LToken l c _)  -> let mkTok = T.LToken l c in
                   case layout of 
                     LStart  _ _ -> do putLayoutState (LActive l c)

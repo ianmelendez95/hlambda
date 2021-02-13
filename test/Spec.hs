@@ -102,6 +102,8 @@ main = hspec $ do
       showReduced "let x = 3 in (let y = 4 in (* x y))" `ioShouldBe` "12"
     it "p41: evaluates multiple let expression" $ do 
       showReduced "let x = 3\n    y = 4\n in (* x y)" `ioShouldBe` "12"
+    it "evaluates multiple single line let expression" $ do 
+      showReduced "let x = 3; y = 4 in (* x y)" `ioShouldBe` "12"
 
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()

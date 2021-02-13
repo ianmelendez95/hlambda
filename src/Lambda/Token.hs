@@ -44,7 +44,3 @@ data Constant = CNat Int
               | CChar Char
               | CBool Bool 
               deriving Show
-
--- hello = let x = 5
---            y = 10
---             in 1 + 2

@@ -4,7 +4,7 @@ module Lambda.Lexer (alexScanTokens, scanTokens) where
 import qualified Lambda.Token as T
 }
 
-%wrapper "posn"
+%wrapper "monad"
 
 -- keywords
 @let           = let
@@ -65,11 +65,45 @@ tokens :-
   \)                  { located $ \_ -> T.RP         }
 
 {
--- %wrapper "posn" => { ... } :: AlexPosn -> String -> token
+-- %wrapper "posn"  => { ... } :: AlexPosn -> String -> token
 
-located :: (String -> T.Token) -> AlexPosn -> String -> T.LocToken
-located f (AlexPn _ line col) str = T.LToken line col (f str)
+-- %wrapper "monad" => { ... } :: AlexAction result
+
+-- [Available]
+
+-- type AlexInput         = (AlexPosn, Char, [Byte], String)
+
+-- type AlexAction result = AlexInput -> Int -> Alex result
+
+-- newtype Alex a = Alex { unAlex :: AlexState -> Either String (AlexState, a) }
+
+-- runAlex    :: String -> Alex a -> Either String a
+
+alexEOF = return T.EOF
+
+located :: (String -> T.Token) -> AlexAction T.Token
+located f = token (\(_, _, _, input) len -> f (take len input))
+
+-- alexScanTokens str = go (alexStartPos,'\n',[],str)
+--   where go inp@(pos,_,_,str) =
+--           case alexScan inp 0 of
+--                 AlexEOF -> []
+--                 AlexError ((AlexPn _ line column),_,_,_) -> error $ "lexical error at " ++ (show line) ++ " line, " ++ (show column) ++ " column"
+--                 AlexSkip  inp' len     -> go inp'
+--                 AlexToken inp' len act -> act pos (take len str) : go inp'
+
+alexMonadScanAll :: Alex [T.Token]
+alexMonadScanAll = do t <- alexMonadScan
+                      case t of 
+                        T.EOF -> return []
+                        _     -> do ts <- alexMonadScanAll
+                                    return (t : ts)
+
+alexScanTokens :: String -> [T.Token]
+alexScanTokens input = case runAlex input alexMonadScanAll of 
+                         Left err -> error err 
+                         Right res -> res
 
 scanTokens :: String -> [T.Token]
-scanTokens = map T.locToken . alexScanTokens
+scanTokens = alexScanTokens
 }

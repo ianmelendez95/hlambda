@@ -1,10 +1,14 @@
-module Lambda.Token (LocToken (..), Token (..), Function (..), Constant (..)) where 
+module Lambda.Token 
+  ( Token (..)
+  , Function (..)
+  , Constant (..)
+  ) where 
 
-data LocToken = LToken {
-    locLine  :: Int 
-  , locCol   :: Int 
-  , locToken :: Token
-  }
+-- data LocToken = LToken {
+--     locLine  :: Int 
+--   , locCol   :: Int 
+--   , locToken :: Token
+--   }
 
 data Token = Function Function
            | Constant Constant
@@ -16,6 +20,7 @@ data Token = Function Function
            | Let 
            | In
            | Equal
+           | EOF
            deriving Show
 
 data Function = FPlus

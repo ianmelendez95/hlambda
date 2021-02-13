@@ -65,5 +65,5 @@ parseError :: [T.Token] -> ParseResult a
 parseError tokens = Left $ "Parse Error, tokens left: " ++ show tokens
 
 parseExpression :: String -> ParseResult E.Exp
-parseExpression = parser . map T.locToken . alexScanTokens                        
+parseExpression = parser . alexScanTokens                        
 }

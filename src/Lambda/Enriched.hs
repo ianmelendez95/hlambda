@@ -26,8 +26,14 @@ instance ToLambda Exp where
   toLambda (Lambda var body) = S.Lambda var (toLambda body)
   toLambda (Pure expr) = expr
 
+-- | (letrec v = B in E) = (let v = Y (\v. B) in E) - p42
 letrecToLambda ::[LetBinding] -> Exp -> S.Exp
-letrecToLambda = undefined
+letrecToLambda [] body = toLambda body
+letrecToLambda [(var, val)] body = toLambda $ 
+  let applyY = Apply (Pure $ S.Function S.FY) 
+      new_val = applyY (Lambda var val)
+   in Let [(var, new_val)] body  
+letrecToLambda _ _ = error "letrec: no support for multiple bindings (yet)"
 
 letToLambda :: [LetBinding] -> Exp -> S.Exp
 letToLambda [] body = toLambda body

@@ -105,14 +105,30 @@ getMNextToken :: Alex (Maybe T.LocToken)
 getMNextToken = Alex $ \s@AlexState{alex_ust=(UserState _ next_token)} 
   -> Right (s, next_token)
 
+putMNextToken :: T.LocToken -> Alex ()
+putMNextToken next_token = Alex $ \s@AlexState{alex_ust=ust} 
+  -> Right (s{alex_ust=(putInUserState ust)}, ())
+  where 
+    putInUserState :: AlexUserState -> AlexUserState 
+    putInUserState (UserState l Nothing) = UserState l (Just next_token)
+    putInUserState (UserState _ (Just t)) = error $ "Token already in 'next token': " ++ show t
+
 alexMonadScanAll :: Alex [T.LocToken]
 alexMonadScanAll 
   = do nt <- getMNextToken
        case nt of 
          Just t -> (t:) <$> alexMonadScanAll
          Nothing -> do t <- alexMonadScan
+                       layout <- getLayoutState
                        case t of 
-                         (T.LToken _ _ T.EOF) -> return []
+                         (T.LToken l c T.EOF) -> case layout of 
+                                                   LStart _  -> alexError "EOF: Expecting layout start token"
+                                                   LNone     -> return []
+                                                   LActive _ -> return [T.LToken l c T.RC]
+                         (T.LToken _ _ T.Let) -> case layout of 
+                                                   LNone -> undefined -- TODO: do dis
+                                                   LStart _ -> alexError "Layout: 'let' within layout bounds"
+                                                   LActive _ -> undefined -- TODO: do dis
                          _     -> do ts <- alexMonadScanAll
                                      return (t : ts)
 

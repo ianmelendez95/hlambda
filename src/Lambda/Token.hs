@@ -9,7 +9,7 @@ data LocToken = LToken {
     locLine  :: Int 
   , locCol   :: Int 
   , locToken :: Token
-  }
+  } deriving Show
 
 data Token = Function Function
            | Constant Constant
@@ -18,6 +18,8 @@ data Token = Function Function
            | Dot 
            | LP
            | RP
+           | LC
+           | RC
            | Let 
            | In
            | Equal

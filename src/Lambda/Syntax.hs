@@ -12,8 +12,7 @@ module Lambda.Syntax
   , fromFunctionToken
   ) where 
 
-import Prettyprinter
-import Control.Monad.State.Lazy
+import Prettyprinter ( (<+>), backslash, dot )
 import Prettyprinter.Render.Util.SimpleDocTree (treeForm, renderSimplyDecorated)
 import Data.Text (Text, unpack, pack)
 
@@ -159,25 +158,10 @@ instance Show Variable where
 -- Pretty Print --
 ------------------
 
-data ParenState = ParenState {
-    parenPrec :: Int,
-    parenStyle :: AParen
-  }
-
-type LambdaDoc = Doc LambdaAnn
-type PrettyExp = State ParenState
-type ParenWrapper = (LambdaDoc -> LambdaDoc)
-
 instance PrettyLambda Exp where 
-  prettyDoc = prettyExpDoc
+  prettyDoc = mkPrettyDocFromParenS sPretty
 
-initParenState :: ParenState
-initParenState = ParenState 0 AParenMagenta
-
-prettyExpDoc :: Exp -> Doc LambdaAnn
-prettyExpDoc expr = evalState (sPretty expr) initParenState 
-
-sPretty :: Exp -> PrettyExp LambdaDoc
+sPretty :: Exp -> PrettyParenS LambdaDoc
 sPretty (Constant c) = pure $ annStr AConstant (show c)
 sPretty (Function f) = pure $ annStr AFunction (show f)
 sPretty (Variable var) = pure $ prettyVar var
@@ -191,31 +175,6 @@ sPretty (Apply e e') = do wrapper <- getParenWrapper 10
                           ePretty <- tempState (setPrec 6) (sPretty e)
                           ePretty' <- tempState (setPrec 11) (sPretty e')
                           pure $ wrapper $ ePretty <+> ePretty'
-
-tempState :: PrettyExp () -> PrettyExp a -> PrettyExp a
-tempState change pe = do s <- get 
-                         change
-                         res <- pe
-                         put s
-                         return res
-
-setPrec :: Int -> PrettyExp ()
-setPrec prec = modify (\ps -> ps { parenPrec = prec })
-
--- | main reason for using state, so we can get the paren wrapper and update the paren state
--- | in one swoop (still probably too obfuscated to be worth it)
-getParenWrapper :: Int -> PrettyExp ParenWrapper
-getParenWrapper prec = do pPrec <- gets parenPrec
-                          if pPrec <= prec
-                            then pure id 
-                            else getWrapper
-  where 
-    getWrapper :: PrettyExp ParenWrapper
-    getWrapper = annParens . AParen <$> (gets parenStyle <* modify updateParenStyle)
-
-updateParenStyle :: ParenState -> ParenState
-updateParenStyle pState@ParenState { parenStyle = style } 
-  = pState { parenStyle = nextParenAnn style }
 
 prettyVar :: Variable -> Doc LambdaAnn
 prettyVar (FreeVar name)  = annStr AFreeVar name

@@ -112,7 +112,11 @@ main = hspec $ do
     it "p42: evaluates fib letrec" $ do 
       showReduced "letrec factorial = \\n. IF (= n 0) 1 (* n (factorial (- n 1))) in factorial 4"
        `ioShouldBe` "24"
-    
+
+  describe "3.3 Translating Miranda" $ do
+    it "p44: evaluates simple program" $ do 
+      evalAndShowMiranda "square n = n * n\n2 * (square 5)"
+        `ioShouldBe` "50"
 
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()
@@ -122,6 +126,8 @@ main = hspec $ do
     showReduced = (pShow . reduce <$>) . parseExpr
     showEvaled = (pShow . eval <$>) . parseExpr
     showMarked' = (showMarked . markBoundFree . toLambda <$>) . parseExpr
+
+    evalAndShowMiranda = undefined
 
     parseExpr input = case parseExpression input of
                         (Left err) -> assertFailure err 

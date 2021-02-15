@@ -6,11 +6,6 @@ import qualified Miranda.Token as T
 
 %wrapper "monadUserState"
 
--- keywords
-@letrec        = letrec
-@let           = let
-@in            = in
-
 -- arithmetic functions
 $plus          = \+
 $minus         = \-
@@ -50,18 +45,6 @@ tokens :-
   $minus              { located $ \_ -> T.InfixOp T.IMinus }
   $mult               { located $ \_ -> T.InfixOp T.IMult }
   $div                { located $ \_ -> T.InfixOp T.IDiv }
-
-  -- @and                { located $ \_ -> T.Function T.FAnd }
-  -- @or                 { located $ \_ -> T.Function T.FOr }
-  -- @not                { located $ \_ -> T.Function T.FNot }
-  -- @if                 { located $ \_ -> T.Function T.FIf }
-  -- @cons               { located $ \_ -> T.Function T.FCons }
-  -- @head               { located $ \_ -> T.Function T.FHead }
-  -- @tail               { located $ \_ -> T.Function T.FTail }
-  -- $ycomb              { located $ \_ -> T.Function T.FY}
-
-  -- @true               { located $ \_ -> T.Constant (T.CBool True) }
-  -- @false              { located $ \_ -> T.Constant (T.CBool False) }
 
   @number             { located $ \n -> T.Constant $ T.CNat (read n) }
   @char               { located $ \c -> T.Constant $ T.CChar (head c) }

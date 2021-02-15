@@ -14,6 +14,13 @@ data Exp = Let [LetBinding] Exp
         
 type LetBinding = (String, Exp)
 
+----------------
+-- ToEnriched --
+----------------
+
+class ToEnriched a where 
+  toEnriched :: a -> Exp
+
 --------------
 -- ToLambda --
 --------------

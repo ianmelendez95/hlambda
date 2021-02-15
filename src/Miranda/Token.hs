@@ -6,6 +6,8 @@ module Miranda.Token
   ) where 
 
 import Lambda.Pretty
+import qualified Lambda.Enriched as E
+import qualified Lambda.Syntax as S
 
 data LocToken = LToken {
     locLine  :: Int 
@@ -50,3 +52,14 @@ instance Show Constant where
   show (CNat x) = show x
   show (CChar c) = ['\'', c , '\'']
   show (CBool b) = show b
+
+instance E.ToEnriched Constant where 
+  toEnriched (CNat x)  = E.Pure . S.Constant . S.CNat  $ x
+  toEnriched (CChar c) = E.Pure . S.Constant . S.CChar $ c
+  toEnriched (CBool b) = E.Pure . S.Constant . S.CBool $ b
+
+instance E.ToEnriched InfixOp where 
+  toEnriched IPlus  = E.Pure . S.Function $ S.FPlus
+  toEnriched IMinus = E.Pure . S.Function $ S.FMinus
+  toEnriched IMult  = E.Pure . S.Function $ S.FMult
+  toEnriched IDiv   = E.Pure . S.Function $ S.FDiv

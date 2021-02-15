@@ -19,6 +19,10 @@ import Lambda.Pretty
       setPrec,
       getParenWrapper,
       mkPrettyDocFromParenS )
+import Lambda.Enriched (ToEnriched (..))
+import Lambda.Syntax (ToLambda (..))
+import qualified Lambda.Enriched as E
+import qualified Lambda.Syntax as S
 
 ----------------------
 -- Lambda Expressions --
@@ -47,6 +51,31 @@ instance Show Def where
 
 instance Show Exp where 
   show = pShow
+
+---------------------------
+-- ToEnriched (ToLambda) --
+---------------------------
+
+instance ToLambda Prog where 
+  toLambda = toLambda . toEnriched
+
+instance ToEnriched Prog where 
+  toEnriched (Prog defs expr) = E.Let (map toBinding defs) (toEnriched expr)
+
+toBinding :: Def -> E.LetBinding
+toBinding (VarDef var_name var_value) = (var_name, toEnriched var_value)
+toBinding (FuncDef func_name var_names body) = (func_name, wrapLambda var_names (toEnriched body))
+  where 
+    wrapLambda :: [String] -> E.Exp -> E.Exp
+    wrapLambda [] expr = expr
+    wrapLambda (n:ns) expr = E.Lambda n (wrapLambda ns expr)
+
+instance ToEnriched Exp where 
+  toEnriched (Constant c)        = toEnriched c
+  toEnriched (BuiltinOp _)       = undefined
+  toEnriched (Variable x)        = E.Pure (S.Variable (S.RawVar x))
+  toEnriched (Apply e1 e2)       = E.Apply (toEnriched e1) (toEnriched e2)
+  toEnriched (InfixApp op e1 e2) = E.Apply (E.Apply (toEnriched op) (toEnriched e1)) (toEnriched e2)
 
 ------------------
 -- Pretty Print --

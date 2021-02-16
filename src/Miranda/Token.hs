@@ -16,9 +16,11 @@ data LocToken = LToken {
   } deriving Show
 
 data Token = Constant Constant
+           | Constructor String
            | Variable String 
            | InfixOp InfixOp
-           | Lambda
+           | TypeEq
+           | VertBar
            | Dot 
            | LP
            | RP

@@ -2,7 +2,7 @@
 module Miranda.Parser 
   ( ParseResult, 
     parser, 
-    funcDefParser,
+    parseDef,
     parseProgram
   ) where 
 
@@ -13,27 +13,33 @@ import Miranda.Lexer (alexScanTokens, scanTokens, scanTokensEither)
 }
 
 %name parser program
-%name funcDefParser funcDef
+%name defParser def
 %monad { ParseResult } { >>= } { return }
 %tokentype { T.Token }
 %error { parseError }
 
 %token 
-  const    { T.Constant $$ }
-  var      { T.Variable $$ }
-  infixOp  { T.InfixOp  $$ }
-  '='      { T.Equal  }
-  '('      { T.LP     }
-  ')'      { T.RP     }
-  ';'      { T.Semi   }
-  '{'      { T.LC     }
-  '}'      { T.RC     }
+  const       { T.Constant $$    }
+  constr      { T.Constructor $$ }
+  var         { T.Variable $$    }
+  infixOp     { T.InfixOp  $$    }
+  '='         { T.Equal   }
+  typeeq      { T.TypeEq  }
+  '('         { T.LP      }
+  ')'         { T.RP      }
+  ';'         { T.Semi    }
+  '{'         { T.LC      }
+  '}'         { T.RC      }
+  '|'         { T.VertBar }
 
 %%
 
 program :: { S.Prog }
 program : '{' exp '}'          { S.Prog [] $2 }
         | '{' defs ';' exp '}' { S.Prog (reverse $2) $4}
+
+-------------------------------------------------------------------------------
+-- Defs
 
 defs :: { [S.Def] }
 defs : defs ';' def    { $3 : $1 }
@@ -42,17 +48,46 @@ defs : defs ';' def    { $3 : $1 }
 def :: { S.Def }
 def : funcDef { $1 }
     | varDef  { $1 }
+    | typeDef { $1 }
+
+-------------------------------------------------------------------------------
+-- Func Def
 
 funcDef :: { S.Def }
 funcDef : var funcParams '=' exp    { S.FuncDef $1 (reverse $2) $4 }
 
--- funcParams have *at least one* variable (otherwise it would be a var definition)
+-- REVERSE!!: funcParams have *at least one* variable (otherwise it would be a var definition)
 funcParams :: { [String] }
 funcParams : funcParams var     { $2 : $1 }
            | var                { [$1] }
 
+-------------------------------------------------------------------------------
+-- Var Def
+
 varDef :: { S.Def }
 varDef : var '=' exp            { S.VarDef $1 $3 }
+
+-------------------------------------------------------------------------------
+-- Type Def
+
+typeDef :: { S.Def }
+typeDef : var typeeq constructors  { S.TypeDef $1 (reverse $3) }
+
+-- REVERSE!!
+constructors :: { [(String, [String])] }
+constructors : constructors '|' constructor { $3 : $1 }
+             | constructor                  { [$1] }
+
+constructor :: { (String, [String]) }
+constructor : constr constrTypes   { ($1, reverse $2) }
+
+-- REVERSE!!
+constrTypes :: { [String] }
+constrTypes : constrTypes var    { $2 : $1 }
+            | {- empty -}        { [] }
+
+-------------------------------------------------------------------------------
+-- Expressions
 
 exp :: { S.Exp }
 exp : apply         { $1 }
@@ -81,6 +116,9 @@ type ParseResult = Either String
 
 parseError :: [T.Token] -> ParseResult a
 parseError tokens = Left $ "Parse Error, tokens left: " ++ show tokens
+
+parseDef :: String -> ParseResult S.Def
+parseDef input = scanTokensEither input >>= defParser . tail . init
 
 parseProgram :: String -> ParseResult S.Prog
 parseProgram input = scanTokensEither input >>= parser

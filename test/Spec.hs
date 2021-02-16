@@ -10,7 +10,8 @@ import Parse
 import Lambda.Pretty (PrettyLambda (..))
 import Lambda.Reduce (reduce)
 import qualified Lambda.Enriched as E (Exp (..))
-import qualified Miranda.Syntax as M (Prog (..))
+import Miranda.Parser (parseDef)
+import qualified Miranda.Syntax as M (Prog (..), Def)
 
 main :: IO ()
 main = hspec $ do 
@@ -131,6 +132,11 @@ main = hspec $ do
     it "p48: average example" $ do 
       showReducedMiranda "average a b = (a+b)/2\naverage 2 (3+5)"  `ioShouldBe` "5"
       showReducedMiranda "average a b = (a+b)/2\n2 $average (3+5)" `ioShouldBe` "5"
+    
+  describe "4.1 Introduction to Structured Types" $ do 
+    it "p52: parses simple tree type" $ do 
+      parseDefIO "tree ::= LEAF num | BRANCH tree tree" 
+        `ioShouldBe` "tree ::= LEAF num | BRANCH tree tree"
 
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()
@@ -139,10 +145,14 @@ main = hspec $ do
     showReducedMiranda :: String -> IO String
     showReducedMiranda input = pShow . reduce <$> (parseHunit input :: IO M.Prog)
 
+    parseDefIO :: String -> IO String
+    parseDefIO input = pShow <$> (parseHunit :: String -> IO M.Def) input 
+
     showReducedEnriched :: String -> IO String
     showReducedEnriched input = pShow . reduce <$> (parseHunit input :: IO E.Exp)
 
     parseHunit :: Parse a => String -> IO a
-    parseHunit input = case parse input of
-                        (Left err) -> assertFailure err 
-                        (Right expr) -> return expr
+    parseHunit = eitherHUnit . parse
+
+    eitherHUnit :: Either String a -> IO a
+    eitherHUnit = either assertFailure pure

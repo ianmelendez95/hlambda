@@ -27,9 +27,11 @@ $div           = \/
 @number        = [0-9]+
 @char          = \'[a-zA-Z]\'
 
--- variable
+-- identifiers
 @variable      = [a-z][a-zA-Z0-9']*
-@infix_var    = \$@variable
+@constructor   = [A-Z][a-zA-Z0-9']*
+@typeeq        = \:\:\=
+@infix_var     = \$@variable
 
 -- layout
 $semi          = \;
@@ -38,6 +40,7 @@ tokens :-
   $white+ ;
 
   \=                  { located $ \_ -> T.Equal }
+  @typeeq             { located $ \_ -> T.TypeEq }
 
   $plus               { located $ \_ -> T.InfixOp T.IPlus }
   $minus              { located $ \_ -> T.InfixOp T.IMinus }
@@ -47,11 +50,13 @@ tokens :-
   @number             { located $ \n -> T.Constant $ T.CNat (read n) }
   @char               { located $ \c -> T.Constant $ T.CChar (head c) }
 
-  @variable           { located $ \v -> T.Variable v }
+  @variable           { located $ \v -> T.Variable v    }
+  @constructor        { located $ \c -> T.Constructor c }
   @infix_var          { located $ \v -> T.InfixOp . T.IVar $ tail v }
 
   \(                  { located $ \_ -> T.LP         }
   \)                  { located $ \_ -> T.RP         }
+  \|                  { located $ \_ -> T.VertBar    }
 
   $semi               { located $ \_ -> T.Semi       }
 

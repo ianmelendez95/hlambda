@@ -7,6 +7,7 @@ module Miranda.Syntax
   ) where 
 
 import Prettyprinter
+import Data.List (intersperse)
 
 import qualified Miranda.Token as T
 import Lambda.Pretty
@@ -33,6 +34,9 @@ data Prog = Prog [Def] Exp
 -- p48: Figure 3.3
 data Def = FuncDef String [String] Exp
          | VarDef String Exp
+         | TypeDef String [Constr]
+
+type Constr = (String, [String])
 
 data Exp = Constant T.Constant 
          | BuiltinOp ()
@@ -97,6 +101,12 @@ sPrettyDef (FuncDef func_name vars body) =
          pvars = hsep . map pretty $ vars
          pbody = prettyDoc body
      pure $ pname <+> pvars <+> pretty "=" <+> pbody
+sPrettyDef (TypeDef type_name constrs) = 
+  pure $ pretty type_name <+> pretty "::=" 
+                          <+> hsep (intersperse (pretty "|") (map prettyConstructor constrs))
+  where 
+    prettyConstructor :: Constr -> LambdaDoc
+    prettyConstructor (name, vars) = hsep . map pretty $ (name : vars)
 sPrettyDef (VarDef name value) = 
   do let pname = pretty name 
          pvalue = prettyDoc value

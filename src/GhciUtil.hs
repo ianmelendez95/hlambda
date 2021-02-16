@@ -8,7 +8,7 @@ import Lambda.Enriched (Exp (..))
 import Lambda.ToLambda
 
 import Miranda.Lexer (scanTokens)
-import Miranda.Syntax (Prog)
+import Miranda.Syntax (Prog, Def)
 
 evalMiranda :: String -> IO () 
 evalMiranda = pPrint . reduce . either error id . (parse :: String -> Either String Prog)
@@ -18,6 +18,9 @@ toLambdaMiranda = pPrint . toLambda . parseMiranda
 
 parseMiranda :: String -> Prog
 parseMiranda = eitherError . parse
+
+parseMirandaDef :: String -> Def 
+parseMirandaDef = eitherError . parse
 
 lexMiranda :: String -> String
 lexMiranda = show . scanTokens
@@ -30,3 +33,5 @@ pPrint = putStrLn . pShow
 
 eitherError :: Either String a -> a
 eitherError = either error id
+
+-- tree ::= Leaf num | Branch tree tree

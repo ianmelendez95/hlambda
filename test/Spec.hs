@@ -127,6 +127,11 @@ main = hspec $ do
     it "p47: evaluates user-defined infix" $ do 
       showReducedMiranda "mult x y = x * y\n2 $mult 3" `ioShouldBe` "6"
 
+  describe "3.6 An Example" $ do
+    it "p48: average example" $ do 
+      showReducedMiranda "average a b = (a+b)/2\naverage 2 (3+5)"  `ioShouldBe` "5"
+      showReducedMiranda "average a b = (a+b)/2\n2 $average (3+5)" `ioShouldBe` "5"
+
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()
     ioShouldBe io val = (`shouldBe` val) =<< io

@@ -57,9 +57,14 @@ funcDef :: { S.Def }
 funcDef : var funcParams '=' exp    { S.FuncDef $1 (reverse $2) $4 }
 
 -- REVERSE!!: funcParams have *at least one* variable (otherwise it would be a var definition)
-funcParams :: { [String] }
-funcParams : funcParams var     { $2 : $1 }
-           | var                { [$1] }
+funcParams :: { [S.Pattern] }
+funcParams : funcParams patt     { $2 : $1 }
+           | patt                { [$1] }
+
+patt :: { S.Pattern }
+patt : var                 { S.PVar $1    }
+     | constr              { S.PConstr ($1, []) }
+     | '(' constructor ')' { S.PConstr $2 }
 
 -------------------------------------------------------------------------------
 -- Var Def

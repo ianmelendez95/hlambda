@@ -1,6 +1,7 @@
 module Miranda.Syntax 
   ( Prog (..) 
   , Def (..)
+  , Pattern (..)
   , Exp (..)
   -- , ToLambda (..)
   -- , showMarked
@@ -32,11 +33,14 @@ import qualified Lambda.Syntax as S
 data Prog = Prog [Def] Exp
 
 -- p48: Figure 3.3
-data Def = FuncDef String [String] Exp
+data Def = FuncDef String [Pattern] Exp
          | VarDef String Exp
          | TypeDef String [Constr]
 
 type Constr = (String, [String])
+
+data Pattern = PVar String 
+             | PConstr Constr
 
 data Exp = Constant T.Constant 
          | BuiltinOp ()
@@ -72,9 +76,9 @@ toBinding :: Def -> E.LetBinding
 toBinding (VarDef var_name var_value) = (var_name, toEnriched var_value)
 toBinding (FuncDef func_name var_names body) = (func_name, wrapLambda var_names (toEnriched body))
   where 
-    wrapLambda :: [String] -> E.Exp -> E.Exp
+    wrapLambda :: [Pattern] -> E.Exp -> E.Exp
     wrapLambda [] expr = expr
-    wrapLambda (n:ns) expr = E.Lambda n (wrapLambda ns expr)
+    wrapLambda ((PVar n):ns) expr = E.Lambda n (wrapLambda ns expr)
 
 instance ToEnriched Exp where 
   toEnriched (Constant c)        = toEnriched c
@@ -93,25 +97,35 @@ instance PrettyLambda Prog where
 instance PrettyLambda Def where 
   prettyDoc = mkPrettyDocFromParenS sPrettyDef
 
+instance PrettyLambda Pattern where 
+  prettyDoc = mkPrettyDocFromParenS sPrettyPattern
+
 instance PrettyLambda Exp where 
   prettyDoc = mkPrettyDocFromParenS sPrettyExp
 
 sPrettyDef :: Def -> PrettyParenS LambdaDoc 
 sPrettyDef (FuncDef func_name vars body) = 
   do let pname = pretty func_name
-         pvars = hsep . map pretty $ vars
+         pvars = hsep . map prettyDoc $ vars
          pbody = prettyDoc body
      pure $ pname <+> pvars <+> pretty "=" <+> pbody
 sPrettyDef (TypeDef type_name constrs) = 
-  pure $ pretty type_name <+> pretty "::=" 
-                          <+> hsep (intersperse (pretty "|") (map prettyConstructor constrs))
-  where 
-    prettyConstructor :: Constr -> LambdaDoc
-    prettyConstructor (name, vars) = hsep . map pretty $ (name : vars)
+  do pConstrs <- tempState (setPrec 0) (mapM prettyConstructor constrs)
+     pure $ pretty type_name <+> pretty "::=" 
+                             <+> hsep (intersperse (pretty "|") pConstrs)
 sPrettyDef (VarDef name value) = 
   do let pname = pretty name 
          pvalue = prettyDoc value
      pure $ pname <+> pretty "=" <+> pvalue
+
+sPrettyPattern :: Pattern -> PrettyParenS LambdaDoc
+sPrettyPattern (PVar v) = pure $ pretty v
+sPrettyPattern (PConstr c) = tempState (setPrec 11) (prettyConstructor c)
+
+prettyConstructor :: Constr -> PrettyParenS LambdaDoc
+prettyConstructor (name, vars) = do wrapper <- if null vars then pure id 
+                                                            else getParenWrapper 10 
+                                    pure . wrapper $ hsep . map pretty $ (name : vars)
 
 sPrettyExp :: Exp -> PrettyParenS LambdaDoc
 sPrettyExp (Constant c)    = pure $ annStr AConstant (show c)

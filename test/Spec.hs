@@ -10,7 +10,6 @@ import Parse
 import Lambda.Pretty (PrettyLambda (..))
 import Lambda.Reduce (reduce)
 import qualified Lambda.Enriched as E (Exp (..))
-import Miranda.Parser (parseDef)
 import qualified Miranda.Syntax as M (Prog (..), Def)
 
 main :: IO ()
@@ -140,6 +139,9 @@ main = hspec $ do
     it "p52: parses constructors as functions" $ do
       parseDefIO "tree1 = BRANCH (BRANCH (LEAF 1) (LEAF 2)) (LEAF 3)"
         `ioShouldBe` "tree1 = BRANCH (BRANCH (LEAF 1) (LEAF 2)) (LEAF 3)"
+    it "p52: parses constructors as args" $ do
+      parseDefIO "reflect (LEAF n) = LEAF n" 
+        `ioShouldBe` "reflect (LEAF n) = LEAF n"
 
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()

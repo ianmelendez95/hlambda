@@ -41,6 +41,7 @@ type Constr = (String, [String])
 data Exp = Constant T.Constant 
          | BuiltinOp ()
          | Variable String 
+         | Constructor String
          | Apply Exp Exp 
          | InfixApp T.InfixOp Exp Exp
 
@@ -113,9 +114,10 @@ sPrettyDef (VarDef name value) =
      pure $ pname <+> pretty "=" <+> pvalue
 
 sPrettyExp :: Exp -> PrettyParenS LambdaDoc
-sPrettyExp (Constant c) = pure $ annStr AConstant (show c)
-sPrettyExp (BuiltinOp _) = pure . pretty $ "I don't exist wtf"
-sPrettyExp (Variable v) = pure $ pretty v
+sPrettyExp (Constant c)    = pure $ annStr AConstant (show c)
+sPrettyExp (BuiltinOp _)   = pure . pretty $ "I don't exist wtf"
+sPrettyExp (Variable v)    = pure $ pretty v
+sPrettyExp (Constructor c) = pure $ pretty c
 sPrettyExp (InfixApp infx e1 e2) = do wrapper <- getParenWrapper 10
                                       ep1 <- tempState (setPrec 6) (sPrettyExp e1)
                                       ep2 <- tempState (setPrec 11) (sPrettyExp e2)

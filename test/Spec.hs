@@ -137,6 +137,9 @@ main = hspec $ do
     it "p52: parses simple tree type" $ do 
       parseDefIO "tree ::= LEAF num | BRANCH tree tree" 
         `ioShouldBe` "tree ::= LEAF num | BRANCH tree tree"
+    it "p52: parses constructors as functions" $ do
+      parseDefIO "tree1 = BRANCH (BRANCH (LEAF 1) (LEAF 2)) (LEAF 3)"
+        `ioShouldBe` "tree1 = BRANCH (BRANCH (LEAF 1) (LEAF 2)) (LEAF 3)"
 
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()

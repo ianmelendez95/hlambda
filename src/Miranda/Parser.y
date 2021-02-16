@@ -102,6 +102,7 @@ infixApp : exp infixOp exp  { S.InfixApp $2 $1 $3 }
 
 term :: { S.Exp }            
 term : variable         { $1 }
+     | constr           { S.Constructor $1 }
      | constant         { $1 }
      | '(' exp ')'      { $2 }
 

@@ -1,4 +1,4 @@
-module Lambda.Reduce (reduce) where 
+module Lambda.Reduce (Reducible (..)) where 
 
 -- new reduction strategy that emulates laziness
 

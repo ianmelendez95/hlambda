@@ -1,5 +1,5 @@
 -- | Primarily for use in GHCI
-module SimpleEval where 
+module GhciUtil where 
 
 import Parse
 import Lambda.Reduce (Reducible (..))

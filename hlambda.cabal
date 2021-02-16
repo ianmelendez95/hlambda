@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: fb44b2ca393b4536dcd1a4a1d4d2d71824300f2eba6d01ee0e5bfcfbcbeef326
+-- hash: bcf98ecbbe53fac12fb5439aa41a036e4b266d9d1e78e5faaf1e1dd371adc38c
 
 name:           hlambda
 version:        0.1.0.0
@@ -27,6 +27,7 @@ source-repository head
 
 library
   exposed-modules:
+      GhciUtil
       Lambda.Enriched
       Lambda.Eval
       Lambda.FreeBound
@@ -41,7 +42,6 @@ library
       Miranda.Syntax
       Miranda.Token
       Parse
-      SimpleEval
   other-modules:
       Paths_hlambda
   hs-source-dirs:

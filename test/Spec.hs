@@ -7,22 +7,17 @@ import Test.HUnit.Base (assertFailure)
 import Text.RawString.QQ(r)
 
 import Parse
-import Lambda.Parser (parseExpression)
-import Lambda.Syntax (ToLambda (..), showMarked)
-import Lambda.FreeBound (markBoundFree)
 import Lambda.Pretty (PrettyLambda (..))
 import Lambda.Reduce (reduce)
-import Lambda.Eval (eval)
 import qualified Lambda.Enriched as E (Exp (..))
-import qualified Lambda.Syntax as S (Exp (..))
 import qualified Miranda.Syntax as M (Prog (..))
 
 main :: IO ()
 main = hspec $ do 
   describe "<= 2.4" $ do 
 
-    -- | retiring parse checks, later attempts at reduction
-    -- | clearly exercise this functionality
+    -- -- retiring parse checks, later attempts at reduction
+    -- -- clearly exercise this functionality
     -- it "p9: parses '(+ 4 5)'" $ do 
     --   showParsed "(+ 4 5)" `ioShouldBe` "+ 4 5"
     -- it "p10: parses '(+ (* 5 6) (* 8 3))'" $ do 
@@ -48,9 +43,9 @@ main = hspec $ do
     it "p13: reduces lambda abstr '(\\x. + x 1) 4" $ do
       showReducedEnriched "(\\x. + x 1) 4" `ioShouldBe` "5"
 
-    -- | retiring this test, as it's almost entirely useless 
-    -- | since bound/free is really only relevant in nested contexts,
-    -- | and is accomplished operationally, not by marking variables in the AST
+    -- -- retiring this test, as it's almost entirely useless 
+    -- -- since bound/free is really only relevant in nested contexts,
+    -- -- and is accomplished operationally, not by marking variables in the AST
     -- it "p14: identifies bound and free" $ do
     --   showMarked' "(\\x. + x y) 4" `ioShouldBe` "(\\x:b. + x:b y:f) 4"
     --   showMarked' "\\x. + ((\\y. + y z) 7) x" `ioShouldBe` "\\x:b. + ((\\y:b. + y:b z:f) 7) x:b"
@@ -100,10 +95,10 @@ main = hspec $ do
       showReducedEnriched "Y (\\fac.\\n. IF (= n 0) 1 (* n (fac (- n 1)))) 4"
         `ioShouldBe` "24"
   
-  -- | retiring eval for now, since for the lambda calculus
-  -- | all of the interesting operational behavior is in reduction,
-  -- | where *this* eval just checks for normal form and returns 'bottom' 
-  -- | if not
+  -- -- retiring eval for now, since for the lambda calculus
+  -- -- all of the interesting operational behavior is in reduction,
+  -- -- where *this* eval just checks for normal form and returns 'bottom' 
+  -- -- if not
   -- describe "2.5 The Denotational Semantics" $ do 
   --   it "p29: performs simple eval" $ do 
   --     showEvaled "+ 3 4" `ioShouldBe` "7" 
@@ -129,6 +124,8 @@ main = hspec $ do
     it "p44: evaluates simple program" $ do 
       showReducedMiranda "square n = n * n\n2 * (square 5)"
         `ioShouldBe` "50"
+    it "p47: evaluates user-defined infix" $ do 
+      showReducedMiranda "mult x y = x * y\n2 $mult 3" `ioShouldBe` "6"
 
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()

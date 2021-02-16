@@ -21,9 +21,6 @@ $div           = \/
 @head          = H(ead|EAD)
 @tail          = T(ail|AIL)
 
--- the Y Combinator (!!)
-$ycomb         = Y
-
 -- constants
 @true          = T(rue|RUE)
 @false         = F(alse|ALSE)
@@ -32,6 +29,7 @@ $ycomb         = Y
 
 -- variable
 @variable      = [a-z][a-zA-Z0-9']*
+@infix_var    = \$@variable
 
 -- layout
 $semi          = \;
@@ -50,6 +48,8 @@ tokens :-
   @char               { located $ \c -> T.Constant $ T.CChar (head c) }
 
   @variable           { located $ \v -> T.Variable v }
+  @infix_var          { located $ \v -> T.InfixOp . T.IVar $ tail v }
+
   \(                  { located $ \_ -> T.LP         }
   \)                  { located $ \_ -> T.RP         }
 

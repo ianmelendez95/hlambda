@@ -1,5 +1,5 @@
 {
-module Miranda.Lexer (alexScanTokens, scanTokens) where 
+module Miranda.Lexer (alexScanTokens, scanTokens, scanTokensEither) where 
 
 import qualified Miranda.Token as T
 }
@@ -114,6 +114,9 @@ alexScanTokens :: String -> [T.LocToken]
 alexScanTokens input = case runAlex input alexMonadScanAll of 
                          Left err -> error err 
                          Right res -> res
+
+scanTokensEither :: String -> Either String [T.Token]
+scanTokensEither input = map T.locToken <$> runAlex input alexMonadScanAll
 
 scanTokens :: String -> [T.Token]
 scanTokens = map T.locToken . alexScanTokens

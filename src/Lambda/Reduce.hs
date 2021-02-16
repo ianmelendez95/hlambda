@@ -7,13 +7,20 @@ import Data.Char (isLower)
 
 import Lambda.Syntax
 import qualified Lambda.Enriched as E
+import qualified Miranda.Syntax as M
 import Lambda.FreeBound
 
--- reduceEnriched :: Enriched -> Exp
--- reduceEnriched = reduce . enrichedToLambda
+class Reducible a where 
+  reduce :: a -> Exp
 
-reduce :: E.Exp -> Exp
-reduce = reduceAfterMarked . markBoundFree . toLambda
+instance Reducible M.Prog where 
+  reduce = reduce . toLambda
+
+instance Reducible E.Exp where 
+  reduce = reduce . toLambda
+
+instance Reducible Exp where 
+  reduce = reduceAfterMarked . markBoundFree
 
 -- TODO: reduce WHNF
 reduceAfterMarked :: Exp -> Exp 

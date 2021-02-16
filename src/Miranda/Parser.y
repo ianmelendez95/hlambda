@@ -3,13 +3,13 @@ module Miranda.Parser
   ( ParseResult, 
     parser, 
     funcDefParser,
-    parseExpression
+    parseProgram
   ) where 
 
 import Data.Char
 import qualified Miranda.Syntax as S
 import qualified Miranda.Token as T
-import Miranda.Lexer (alexScanTokens, scanTokens)
+import Miranda.Lexer (alexScanTokens, scanTokens, scanTokensEither)
 }
 
 %name parser program
@@ -82,6 +82,6 @@ type ParseResult = Either String
 parseError :: [T.Token] -> ParseResult a
 parseError tokens = Left $ "Parse Error, tokens left: " ++ show tokens
 
-parseExpression :: String -> ParseResult S.Prog
-parseExpression = parser . scanTokens                        
+parseProgram :: String -> ParseResult S.Prog
+parseProgram input = scanTokensEither input >>= parser
 }

@@ -40,8 +40,9 @@ data Exp = Constant T.Constant
          | Apply Exp Exp 
          | InfixApp T.InfixOp Exp Exp
 
--- instance Show Prog where 
---   show = undefined
+----------
+-- Show --
+----------
 
 instance Show Prog where 
   show = pShow

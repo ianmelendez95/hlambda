@@ -32,6 +32,7 @@ $div           = \/
 @constructor   = [A-Z][a-zA-Z0-9']*
 @typeeq        = \:\:\=
 @infix_var     = \$@variable
+@gentypevar    = \*\*+   -- single asterisk consumed by $mult
 
 -- layout
 $semi          = \;
@@ -53,6 +54,7 @@ tokens :-
   @variable           { located $ \v -> T.Variable v    }
   @constructor        { located $ \c -> T.Constructor c }
   @infix_var          { located $ \v -> T.InfixOp . T.IVar $ tail v }
+  @gentypevar         { located $ \v -> T.GenTypeVar (length v) }
 
   \(                  { located $ \_ -> T.LP         }
   \)                  { located $ \_ -> T.RP         }

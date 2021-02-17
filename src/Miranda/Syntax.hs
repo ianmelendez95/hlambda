@@ -1,6 +1,9 @@
 module Miranda.Syntax 
   ( Prog (..) 
   , Def (..)
+  , GenTypeVar
+  , Constr
+  , ConstrArg (..)
   , Pattern (..)
   , Exp (..)
   -- , ToLambda (..)
@@ -35,9 +38,14 @@ data Prog = Prog [Def] Exp
 -- p48: Figure 3.3
 data Def = FuncDef String [Pattern] Exp
          | VarDef String Exp
-         | TypeDef String [Constr]
+         | TypeDef String [GenTypeVar] [Constr]
 
-type Constr = (String, [String])
+type GenTypeVar = Int
+type Constr = (String, [ConstrArg])
+
+data ConstrArg = CAVar String 
+               | CAGenTypeVar GenTypeVar
+               | CAList [ConstrArg]
 
 data Pattern = PVar String 
              | PConstr Constr
@@ -109,10 +117,17 @@ sPrettyDef (FuncDef func_name vars body) =
          pvars = hsep . map prettyDoc $ vars
          pbody = prettyDoc body
      pure $ pname <+> pvars <+> pretty "=" <+> pbody
-sPrettyDef (TypeDef type_name constrs) = 
+sPrettyDef (TypeDef type_name type_vars constrs) = 
   do pConstrs <- tempState (setPrec 0) (mapM prettyConstructor constrs)
-     pure $ pretty type_name <+> pretty "::=" 
-                             <+> hsep (intersperse (pretty "|") pConstrs)
+     pure $ prettyLHS type_name type_vars 
+              <+> pretty "::=" 
+              <+> hsep (intersperse (pretty "|") pConstrs)
+  where 
+    prettyLHS :: String -> [GenTypeVar] -> LambdaDoc
+    prettyLHS name vars = 
+      if null vars then pretty name 
+                   else pretty name <+> hsep (map prettyTypeVar type_vars)
+
 sPrettyDef (VarDef name value) = 
   do let pname = pretty name 
          pvalue = prettyDoc value
@@ -125,7 +140,18 @@ sPrettyPattern (PConstr c) = tempState (setPrec 11) (prettyConstructor c)
 prettyConstructor :: Constr -> PrettyParenS LambdaDoc
 prettyConstructor (name, vars) = do wrapper <- if null vars then pure id 
                                                             else getParenWrapper 10 
-                                    pure . wrapper $ hsep . map pretty $ (name : vars)
+                                    pvars <- tempState (setPrec 11) (mapM prettyConstrArg vars)
+                                    pure . wrapper $ hsep (pretty name : pvars)
+
+prettyConstrArg :: ConstrArg -> PrettyParenS LambdaDoc
+prettyConstrArg (CAVar v) = pure $ pretty v
+prettyConstrArg (CAGenTypeVar gt) = pure $ prettyTypeVar gt
+prettyConstrArg (CAList arg_list) = do wrapper <- getParenWrapper 10 
+                                       pargs <- mapM prettyConstrArg arg_list
+                                       pure . wrapper $ hsep pargs
+
+prettyTypeVar :: GenTypeVar -> LambdaDoc
+prettyTypeVar = pretty . (`replicate` '*')
 
 sPrettyExp :: Exp -> PrettyParenS LambdaDoc
 sPrettyExp (Constant c)    = pure $ annStr AConstant (show c)

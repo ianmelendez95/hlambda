@@ -19,18 +19,25 @@ import Miranda.Lexer (alexScanTokens, scanTokens, scanTokensEither)
 %error { parseError }
 
 %token 
-  const       { T.Constant $$    }
-  constr      { T.Constructor $$ }
-  var         { T.Variable $$    }
-  infixOp     { T.InfixOp  $$    }
-  '='         { T.Equal   }
-  typeeq      { T.TypeEq  }
-  '('         { T.LP      }
-  ')'         { T.RP      }
-  ';'         { T.Semi    }
-  '{'         { T.LC      }
-  '}'         { T.RC      }
-  '|'         { T.VertBar }
+  const       { T.Constant $$       }
+  constr      { T.Constructor $$    }
+  var         { T.Variable $$       }
+  plus        { T.InfixOp T.IPlus       }
+  minus       { T.InfixOp T.IMinus      }
+  mult        { T.InfixOp T.IMult       }
+  div         { T.InfixOp T.IDiv        }
+  infix_var   { T.InfixOp (T.IVar _)    } -- $<var-name>
+
+  gtype_2plus { T.GenTypeVar $$     }   -- '2plus' because it's two or more '**', since '*' is mult
+
+  '='         { T.Equal             }
+  '::='       { T.TypeEq            }
+  '('         { T.LP                }
+  ')'         { T.RP                }
+  ';'         { T.Semi              }
+  '{'         { T.LC                }
+  '}'         { T.RC                }
+  '|'         { T.VertBar           }
 
 %%
 
@@ -76,20 +83,39 @@ varDef : var '=' exp            { S.VarDef $1 $3 }
 -- Type Def
 
 typeDef :: { S.Def }
-typeDef : var typeeq constructors  { S.TypeDef $1 (reverse $3) }
+typeDef : var genTypeVars '::=' constructors  { S.TypeDef $1 (reverse $2) (reverse $4) }
 
 -- REVERSE!!
-constructors :: { [(String, [String])] }
+constructors :: { [S.Constr] }
 constructors : constructors '|' constructor { $3 : $1 }
              | constructor                  { [$1] }
 
-constructor :: { (String, [String]) }
+constructor :: { S.Constr } -- Constr = (String, [ConstrArg])
 constructor : constr constrTypes   { ($1, reverse $2) }
 
 -- REVERSE!!
-constrTypes :: { [String] }
-constrTypes : constrTypes var    { $2 : $1 }
-            | {- empty -}        { [] }
+constrTypes :: { [S.ConstrArg] }
+constrTypes : constrTypes constrArg { $2 : $1 }
+            | {- empty -}           { [] }
+
+constrArg :: { S.ConstrArg } -- ConstrArg = CAVar String | CAGenTypeVar GenTypeVar
+constrArg : var                 { S.CAVar $1 }
+          | genTypeVar          { S.CAGenTypeVar $1 }
+          | '(' constrArgs ')'  { S.CAList (reverse $2) }
+
+-- REVERSE!!
+constrArgs :: { [S.ConstrArg] }
+constrArgs : constrArgs constrArg     { $2 : $1 }
+           | {- empty -}              { [] }
+
+-- REVERSE!!
+genTypeVars :: { [S.GenTypeVar] }
+genTypeVars : genTypeVars genTypeVar  { $2 : $1 }
+            | {- empty -}             { [] }
+
+genTypeVar :: { S.GenTypeVar } -- GenTypeVar = Int
+genTypeVar : mult             { 1 }
+           | gtype_2plus      { $1 }
 
 -------------------------------------------------------------------------------
 -- Expressions
@@ -105,6 +131,13 @@ apply : exp term   { S.Apply $1 $2 }
 infixApp :: { S.Exp }
 infixApp : exp infixOp exp  { S.InfixApp $2 $1 $3 }
 
+infixOp :: { T.InfixOp }
+infixOp : plus      { getInfixOp $1 }
+        | minus     { getInfixOp $1 }
+        | mult      { getInfixOp $1 }
+        | div       { getInfixOp $1 }
+        | infix_var { getInfixOp $1 }
+
 term :: { S.Exp }            
 term : variable         { $1 }
      | constr           { S.Constructor $1 }
@@ -119,6 +152,10 @@ constant : const             { S.Constant $1 }
 
 {
 type ParseResult = Either String
+
+getInfixOp :: T.Token -> T.InfixOp
+getInfixOp (T.InfixOp i) = i
+getInfixOp tok = error $ "Not an infix op: " ++ show tok
 
 parseError :: [T.Token] -> ParseResult a
 parseError tokens = Left $ "Parse Error, tokens left: " ++ show tokens

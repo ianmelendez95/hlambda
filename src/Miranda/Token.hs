@@ -19,6 +19,7 @@ data Token = Constant Constant
            | Constructor String
            | Variable String 
            | InfixOp InfixOp
+           | GenTypeVar Int -- generic type variable: *, **, ***, ...
            | TypeEq
            | VertBar
            | Dot 

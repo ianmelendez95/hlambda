@@ -161,11 +161,11 @@ main = hspec $ do
     
     it "p53: translates list special syntax" $ do
       parseMirandaExpIO "[]"
-        `ioShouldBe` "NIL"
+        `ioShouldBe` "[]"
       -- parseMirandaExpIO "(x:xs)"
       --   `ioShouldBe` "CONS x xs"
-      -- parseMirandaExpIO "[x,y,z]"
-      --   `ioShouldBe` "CONS x (CONS y (CONS z NIL))"
+      parseMirandaExpIO "[x,y,z]"
+        `ioShouldBe` "[x,y,z]"
 
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()

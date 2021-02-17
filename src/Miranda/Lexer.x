@@ -49,7 +49,7 @@ tokens :-
   $div                { located $ \_ -> T.InfixOp T.IDiv }
 
   @number             { located $ \n -> T.Constant $ T.CNat (read n) }
-  @char               { located $ \c -> T.Constant $ T.CChar (head c) }
+  @char               { located $ \c -> T.Constant $ T.CChar (c !! 1) }
 
   @variable           { located $ \v -> T.Variable v    }
   @constructor        { located $ \c -> T.Constructor c }

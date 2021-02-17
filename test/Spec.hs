@@ -151,12 +151,19 @@ main = hspec $ do
       parseDefIO "tree * ::= LEAF * | BRANCH (tree *) (tree *)"
         `ioShouldBe` "tree * ::= LEAF * | BRANCH (tree *) (tree *)"
 
+    it "p53: parses constructor in expressions" $ do 
+      parseMirandaExpIO "BRANCH (LEAF 'a') (LEAF 'b')"
+        `ioShouldBe` "BRANCH (LEAF 'a') (LEAF 'b')"
+
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()
     ioShouldBe io val = (`shouldBe` val) =<< io
 
     showReducedMiranda :: String -> IO String
     showReducedMiranda input = pShow . reduce <$> (parseHunit input :: IO M.Prog)
+
+    parseMirandaExpIO :: String -> IO String 
+    parseMirandaExpIO input = pShow <$> (parseHunit :: String -> IO M.Prog) input
 
     parseDefIO :: String -> IO String
     parseDefIO input = pShow <$> (parseHunit :: String -> IO M.Def) input 

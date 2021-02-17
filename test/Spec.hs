@@ -155,6 +155,10 @@ main = hspec $ do
       parseMirandaExpIO "BRANCH (LEAF 'a') (LEAF 'b')"
         `ioShouldBe` "BRANCH (LEAF 'a') (LEAF 'b')"
 
+    it "p53: parses list definition" $ do
+      parseDefIO "list * ::= NIL | CONS * (list *)"
+        `ioShouldBe` "list * ::= NIL | CONS * (list *)"
+
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()
     ioShouldBe io val = (`shouldBe` val) =<< io

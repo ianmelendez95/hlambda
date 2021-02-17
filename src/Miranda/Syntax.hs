@@ -162,7 +162,11 @@ sPrettyExp (Variable v)    = pure $ pretty v
 sPrettyExp (Constructor c) = pure $ pretty c
 sPrettyExp (ListLit exp_list) = 
   do pexp_list <- mapM sPrettyExp exp_list
-     return $ (lbracket <> hcat (intersperse comma pexp_list) <> rbracket)
+     return (lbracket <> hcat (intersperse comma pexp_list) <> rbracket)
+sPrettyExp (ListColon exp_list) = 
+  do wrapper <- getParenWrapper 10
+     pexp_list <- mapM sPrettyExp exp_list
+     return $ wrapper (hcat (intersperse colon pexp_list))
 sPrettyExp (InfixApp infx e1 e2) = do wrapper <- getParenWrapper 10
                                       ep1 <- tempState (setPrec 6) (sPrettyExp e1)
                                       ep2 <- tempState (setPrec 11) (sPrettyExp e2)

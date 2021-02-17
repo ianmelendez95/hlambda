@@ -128,6 +128,7 @@ exp :: { S.Exp }
 exp : apply         { $1 }
     | infixApp      { $1 }
     | listLit       { $1 }
+    | listColonLit  { $1 }
     | term          { $1 }
 
 apply :: { S.Exp }
@@ -162,9 +163,17 @@ listLit :: { S.Exp }
 listLit : '[' ']'             { S.ListLit [] }
         | '[' commaSepExp ']' { S.ListLit (reverse $2) }
 
+listColonLit :: { S.Exp }
+listColonLit : colonSepExp ':' exp    { S.ListColon (reverse ($3 : $1)) }
+
 -- REVERSE!!
 commaSepExp :: { [S.Exp] }
 commaSepExp : commaSepExp ',' exp   { $3 : $1 }
+            | exp                   { [$1] }
+
+-- REVERSE!!
+colonSepExp :: { [S.Exp] }
+colonSepExp : colonSepExp ':' exp   { $3 : $1 }
             | exp                   { [$1] }
 
 {

@@ -67,19 +67,20 @@ parseApplyChain expr = [expr]
 -- | Left -> contains the argument list without the application of the function 
 -- | Right -> contains the resulting expression after successful application
 reduceFunctionApplication :: Function -> [Exp] -> Either [Exp] [Exp]
-reduceFunctionApplication FPlus  = ((:[]) <$>) . reduceArithmeticApplication (+)
-reduceFunctionApplication FMinus = ((:[]) <$>) . reduceArithmeticApplication (-)
-reduceFunctionApplication FMult  = ((:[]) <$>) . reduceArithmeticApplication (*)
-reduceFunctionApplication FDiv   = ((:[]) <$>) . reduceArithmeticApplication div
-reduceFunctionApplication FAnd   = ((:[]) <$>) . reduceLogicApplication (&&)
-reduceFunctionApplication FOr    = ((:[]) <$>) . reduceLogicApplication (||)
-reduceFunctionApplication FNot   = ((:[]) <$>) . reduceNotApplication
-reduceFunctionApplication FIf    = reduceIfApplication
-reduceFunctionApplication FCons  = Left -- Cons is lazy, and mark Left so we don't continue evaluating
-reduceFunctionApplication FHead  = ((:[]) <$>) . reduceHeadApplication
-reduceFunctionApplication FTail  = ((:[]) <$>) . reduceTailApplication
-reduceFunctionApplication FY     = reduceYCombApplication
-reduceFunctionApplication FEq    = ((:[]) <$>) . reduceBinaryNumFuncApplication (==) 
+reduceFunctionApplication FPlus      = ((:[]) <$>) . reduceArithmeticApplication (+)
+reduceFunctionApplication FMinus     = ((:[]) <$>) . reduceArithmeticApplication (-)
+reduceFunctionApplication FMult      = ((:[]) <$>) . reduceArithmeticApplication (*)
+reduceFunctionApplication FDiv       = ((:[]) <$>) . reduceArithmeticApplication div
+reduceFunctionApplication FAnd       = ((:[]) <$>) . reduceLogicApplication (&&)
+reduceFunctionApplication FOr        = ((:[]) <$>) . reduceLogicApplication (||)
+reduceFunctionApplication FNot       = ((:[]) <$>) . reduceNotApplication
+reduceFunctionApplication FIf        = reduceIfApplication
+reduceFunctionApplication FCons      = Left -- Cons is lazy, and mark Left so we don't continue evaluating
+reduceFunctionApplication (FTuple _) = Left
+reduceFunctionApplication FHead      = ((:[]) <$>) . reduceHeadApplication
+reduceFunctionApplication FTail      = ((:[]) <$>) . reduceTailApplication
+reduceFunctionApplication FY         = reduceYCombApplication
+reduceFunctionApplication FEq        = ((:[]) <$>) . reduceBinaryNumFuncApplication (==) 
 
 reduceArithmeticApplication :: (Int -> Int -> Int) -> [Exp]  -> Either [Exp] Exp
 reduceArithmeticApplication = reduceBinaryNumFuncApplication

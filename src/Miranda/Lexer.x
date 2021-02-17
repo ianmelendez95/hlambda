@@ -22,8 +22,8 @@ $div           = \/
 @tail          = T(ail|AIL)
 
 -- constants
-@true          = T(rue|RUE)
-@false         = F(alse|ALSE)
+-- @true          = T(rue|RUE)
+-- @false         = F(alse|ALSE)
 @number        = [0-9]+
 @char          = \'[a-zA-Z]\'
 

@@ -127,8 +127,7 @@ genTypeVar : mult             { 1 }
 exp :: { S.Exp }
 exp : apply         { $1 }
     | infixApp      { $1 }
-    | listLit       { $1 }
-    | listColonLit  { $1 }
+    | specialLit    { $1 }
     | term          { $1 }
 
 apply :: { S.Exp }
@@ -157,7 +156,12 @@ constant :: { S.Exp }
 constant : const             { S.Constant $1 }
 
 -------------------------------------------------------------------------------
--- Special List Syntax
+-- Special Data Syntax (Lists, Tuples)
+
+specialLit :: { S.Exp }
+specialLit : listLit      { $1 }
+           | listColonLit { $1 }
+           | tupleLit     { $1 }
 
 listLit :: { S.Exp }
 listLit : '[' ']'             { S.ListLit [] }
@@ -165,6 +169,9 @@ listLit : '[' ']'             { S.ListLit [] }
 
 listColonLit :: { S.Exp }
 listColonLit : colonSepExp ':' exp    { S.ListColon (reverse ($3 : $1)) }
+
+tupleLit :: { S.Exp }
+tupleLit : '(' commaSepExp ')'      { S.Tuple (reverse $2) }
 
 -- REVERSE!!
 commaSepExp :: { [S.Exp] }

@@ -36,6 +36,7 @@ data Function = FPlus
               | FCons 
               | FHead 
               | FTail
+              | FTuple Int
               | FY   -- The Glorious Y Combinator
               | FEq
 
@@ -143,6 +144,10 @@ instance Show Function where
   show FTail  = "TAIL"
   show FEq    = "="
   show FY     = "Y"
+  show (FTuple 2) = "PAIR"
+  show (FTuple 3) = "TRIPLE"
+  show (FTuple 4) = "QUADRUPLE"
+  show (FTuple n) = "TUPLE-" ++ show n
 
 instance Show Constant where 
   show (CNat n)      = show n

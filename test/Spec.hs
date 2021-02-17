@@ -166,8 +166,14 @@ main = hspec $ do
 
     it "p53: translates list special syntax" $ do 
       showReducedMiranda "[]"      `ioShouldBe` "NIL"
-      showReducedMiranda "(x:xs)"  `ioShouldBe` "CONS x xs"
+      showReducedMiranda "(x:y:xs)"  `ioShouldBe` "CONS x (CONS y xs)"
       showReducedMiranda "[x,y,z]" `ioShouldBe` "CONS x (CONS y (CONS z NIL))"
+    
+    it "p54: translates tuple special syntax" $ do 
+      showReducedMiranda "(x, y)"    `ioShouldBe` "PAIR x y"
+      showReducedMiranda "(x, y, z)" `ioShouldBe` "TRIPLE x y z"
+      showReducedMiranda "(3, TRUE)" `ioShouldBe` "PAIR 3 TRUE"
+      showReducedMiranda "('a', (3, 2))" `ioShouldBe` "PAIR 'a' (PAIR 3 2)"
 
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()

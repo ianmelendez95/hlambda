@@ -158,6 +158,14 @@ main = hspec $ do
     it "p53: parses list definition" $ do
       parseDefIO "list * ::= NIL | CONS * (list *)"
         `ioShouldBe` "list * ::= NIL | CONS * (list *)"
+    
+    it "p53: translates list special syntax" $ do
+      parseMirandaExpIO "[]"
+        `ioShouldBe` "NIL"
+      -- parseMirandaExpIO "(x:xs)"
+      --   `ioShouldBe` "CONS x xs"
+      -- parseMirandaExpIO "[x,y,z]"
+      --   `ioShouldBe` "CONS x (CONS y (CONS z NIL))"
 
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()

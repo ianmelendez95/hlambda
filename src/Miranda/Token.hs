@@ -23,11 +23,20 @@ data Token = Constant Constant
            | TypeEq
            | VertBar
            | Dot 
+
+           -- (): [P]arens - https://www.cis.upenn.edu/~matuszek/General/JavaSyntax/parentheses.html#:~:text=Braces%20are%20used%20to%20group%20the%20statements%20in%20an%20if,loop%2C%20or%20other%20control%20structures.&text=Brackets%20are%20used%20to%20index%20into%20an%20array.&text=Parentheses%20are%20used%20for%20two,to%20a%20constructor%20or%20method.
            | LP
            | RP
+           -- []: [B]rackets
+           | LB
+           | RB
+           -- {}: [C]urly brace
            | LC
            | RC
+
            | Semi
+           | Colon
+           | Comma
            | Let 
            | Letrec
            | In

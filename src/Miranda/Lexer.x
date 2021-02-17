@@ -34,9 +34,6 @@ $div           = \/
 @infix_var     = \$@variable
 @gentypevar    = \*\*+   -- single asterisk consumed by $mult
 
--- layout
-$semi          = \;
-
 tokens :- 
   $white+ ;
 
@@ -58,9 +55,12 @@ tokens :-
 
   \(                  { located $ \_ -> T.LP         }
   \)                  { located $ \_ -> T.RP         }
+  \[                  { located $ \_ -> T.LB         }
+  \]                  { located $ \_ -> T.RB         }
   \|                  { located $ \_ -> T.VertBar    }
-
-  $semi               { located $ \_ -> T.Semi       }
+  \,                  { located $ \_ -> T.Comma      }
+  \;                  { located $ \_ -> T.Semi       }
+  \:                  { located $ \_ -> T.Colon      }
 
 {
 -- %wrapper "posn"  => { ... } :: AlexPosn -> String -> token

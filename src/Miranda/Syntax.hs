@@ -51,6 +51,8 @@ data Pattern = PVar String
              | PConstr Constr
 
 data Exp = Constant T.Constant 
+         | ListLit [Exp]    -- [], [x,y,z], [1,2]
+         | ListColon [Exp]  -- (x:y:[]), (x:y:zs)
          | BuiltinOp ()
          | Variable String 
          | Constructor String
@@ -158,6 +160,9 @@ sPrettyExp (Constant c)    = pure $ annStr AConstant (show c)
 sPrettyExp (BuiltinOp _)   = pure . pretty $ "I don't exist wtf"
 sPrettyExp (Variable v)    = pure $ pretty v
 sPrettyExp (Constructor c) = pure $ pretty c
+sPrettyExp (ListLit exp_list) = 
+  do pexp_list <- mapM sPrettyExp exp_list
+     return $ (lbracket <> hcat (intersperse comma pexp_list) <> rbracket)
 sPrettyExp (InfixApp infx e1 e2) = do wrapper <- getParenWrapper 10
                                       ep1 <- tempState (setPrec 6) (sPrettyExp e1)
                                       ep2 <- tempState (setPrec 11) (sPrettyExp e2)

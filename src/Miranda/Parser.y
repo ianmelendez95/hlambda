@@ -34,7 +34,11 @@ import Miranda.Lexer (alexScanTokens, scanTokens, scanTokensEither)
   '::='       { T.TypeEq            }
   '('         { T.LP                }
   ')'         { T.RP                }
+  '['         { T.LB                }
+  ']'         { T.RB                }
   ';'         { T.Semi              }
+  ','         { T.Comma             }
+  ':'         { T.Colon             }
   '{'         { T.LC                }
   '}'         { T.RC                }
   '|'         { T.VertBar           }
@@ -123,6 +127,7 @@ genTypeVar : mult             { 1 }
 exp :: { S.Exp }
 exp : apply         { $1 }
     | infixApp      { $1 }
+    | listLit       { $1 }
     | term          { $1 }
 
 apply :: { S.Exp }
@@ -149,6 +154,18 @@ variable : var               { S.Variable $1 }
 
 constant :: { S.Exp }
 constant : const             { S.Constant $1 }
+
+-------------------------------------------------------------------------------
+-- Special List Syntax
+
+listLit :: { S.Exp }
+listLit : '[' ']'             { S.ListLit [] }
+        | '[' commaSepExp ']' { S.ListLit (reverse $2) }
+
+-- REVERSE!!
+commaSepExp :: { [S.Exp] }
+commaSepExp : commaSepExp ',' exp   { $3 : $1 }
+            | exp                   { [$1] }
 
 {
 type ParseResult = Either String

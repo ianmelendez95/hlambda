@@ -11,7 +11,7 @@ module Miranda.Syntax
   ) where 
 
 import Prettyprinter
-import Data.List (intersperse)
+import Data.List (intersperse, foldl')
 
 import qualified Miranda.Token as T
 import Lambda.Pretty
@@ -51,13 +51,13 @@ data Pattern = PVar String
              | PConstr Constr
 
 data Exp = Constant T.Constant 
-         | ListLit [Exp]    -- [], [x,y,z], [1,2]
-         | ListColon [Exp]  -- (x:y:[]), (x:y:zs)
          | BuiltinOp ()
          | Variable String 
          | Constructor String
          | Apply Exp Exp 
          | InfixApp T.InfixOp Exp Exp
+         | ListLit [Exp]    -- [], [x,y,z], [1,2]
+         | ListColon [Exp]  -- (x:y:[]), (x:y:zs)
 
 ----------
 -- Show --
@@ -94,8 +94,20 @@ instance ToEnriched Exp where
   toEnriched (Constant c)        = toEnriched c
   toEnriched (BuiltinOp _)       = undefined
   toEnriched (Variable x)        = E.Pure (S.Variable (S.RawVar x))
+  -- toEnriched (Constructor c)     = E.Pure (S.Variable (S.RawVar c)) -- TODO: are constructors just vars in the LC?
   toEnriched (Apply e1 e2)       = E.Apply (toEnriched e1) (toEnriched e2)
   toEnriched (InfixApp op e1 e2) = E.Apply (E.Apply (toEnriched op) (toEnriched e1)) (toEnriched e2)
+  toEnriched (ListLit exps)      = enrichedListLit exps
+  toEnriched (ListColon exps)    = foldl' E.Apply enrCons (map toEnriched exps)
+
+enrichedListLit :: [Exp] -> E.Exp
+enrichedListLit [] = enrNil
+enrichedListLit exprs = foldr (E.Apply . E.Apply enrCons . toEnriched) enrNil exprs
+
+-- | 'enr'iched nil and cons
+enrNil, enrCons :: E.Exp
+enrNil  = E.Pure (S.Constant S.CNil)
+enrCons = E.Pure (S.Function S.FCons)
 
 ------------------
 -- Pretty Print --

@@ -42,6 +42,7 @@ data Function = FPlus
 data Constant = CNat Int
               | CChar Char
               | CBool Bool 
+              | CNil
 
 data Variable = RawVar String 
               | FreeVar String 
@@ -144,10 +145,11 @@ instance Show Function where
   show FY     = "Y"
 
 instance Show Constant where 
-  show (CNat n) = show n
-  show (CChar c) = "\'" ++ [c] ++ "\'"
-  show (CBool True) = "TRUE"
+  show (CNat n)      = show n
+  show (CChar c)     = "\'" ++ [c] ++ "\'"
+  show (CBool True)  = "TRUE"
   show (CBool False) = "FALSE"
+  show CNil          = "NIL"
 
 instance Show Variable where 
   show (RawVar var) = var

@@ -2,7 +2,7 @@ module Lambda.Reduce (Reducible (..)) where
 
 -- new reduction strategy that emulates laziness
 
-import Data.List (insert, union)
+import Data.List (insert, union, foldl1')
 import Data.Char (isLower)
 
 import Lambda.Syntax
@@ -51,15 +51,11 @@ varFreeInExp expr = (`elem` freeVariables [] expr)
 reduceApplyChain :: [Exp] -> Exp
 reduceApplyChain (Function func : rest) 
   = case reduceFunctionApplication func rest of 
-      Left args -> foldApply $ Function func : args
+      Left args -> foldl1' Apply $ Function func : args
       Right evaled -> reduceApplyChain evaled
 reduceApplyChain (Lambda var body : arg : rest) 
   = reduceApplyChain $ parseApplyChain (reduceLambda var body arg) ++ rest
-reduceApplyChain apply = foldApply apply
-
-foldApply :: [Exp] -> Exp
-foldApply [] = error "Cannot fold empty apply chain"
-foldApply (e:es) = foldl Apply e es
+reduceApplyChain apply = foldl1' Apply apply
 
 parseApplyChain :: Exp -> [Exp]
 parseApplyChain (Apply e1 e2) = parseApplyChain e1 ++ [e2]

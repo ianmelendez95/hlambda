@@ -22,6 +22,9 @@ parseMiranda = eitherError . parse
 parseMirandaDef :: String -> Def 
 parseMirandaDef = eitherError . parse
 
+parseMirandaExp :: String -> Exp
+parseMirandaExp = eitherError . parse
+
 lexMiranda :: String -> String
 lexMiranda = show . scanTokens
 

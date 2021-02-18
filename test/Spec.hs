@@ -175,12 +175,23 @@ main = hspec $ do
       showReducedMiranda "(3, TRUE)" `ioShouldBe` "PAIR 3 TRUE"
       showReducedMiranda "('a', (3, 2))" `ioShouldBe` "PAIR 'a' (PAIR 3 2)"
 
+    it "p55: parses no arg constructors" $ do 
+      parseDefIO "color ::= VERMILLION | PUCE | LAVENDER"
+        `ioShouldBe` "color ::= VERMILLION | PUCE | LAVENDER"
+      parseDefIO "bool ::= TRUE | FALSE"
+        `ioShouldBe` "bool ::= TRUE | FALSE"
+      parseProgIO "bool ::= TRUE | FALSE\nif TRUE e1 e2 = e1\nif FALSE e1 e2 = e2\nif TRUE 1 2"
+        `ioShouldBe` "bool ::= TRUE | FALSE\nif TRUE e1 e2 = e1\nif FALSE e1 e2 = e2\nif TRUE 1 2" 
+
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()
     ioShouldBe io val = (`shouldBe` val) =<< io
 
     showReducedMiranda :: String -> IO String
     showReducedMiranda input = pShow . reduce <$> (parseHunit input :: IO M.Prog)
+
+    parseProgIO :: String -> IO String
+    parseProgIO input = pShow <$> (parseHunit :: String -> IO M.Prog) input
 
     parseMirandaExpIO :: String -> IO String 
     parseMirandaExpIO input = pShow <$> (parseHunit :: String -> IO M.Prog) input

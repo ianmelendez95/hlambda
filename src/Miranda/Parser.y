@@ -3,6 +3,7 @@ module Miranda.Parser
   ( ParseResult, 
     parser, 
     parseDef,
+    parseExp,
     parseProgram
   ) where 
 
@@ -10,10 +11,13 @@ import Data.Char
 import qualified Miranda.Syntax as S
 import qualified Miranda.Token as T
 import Miranda.Lexer (alexScanTokens, scanTokens, scanTokensEither)
+
+import Debug.Trace
 }
 
 %name parser program
 %name defParser def
+%name expParser exp
 %monad { ParseResult } { >>= } { return }
 %tokentype { T.Token }
 %error { parseError }
@@ -57,8 +61,8 @@ defs : defs ';' def    { $3 : $1 }
      | def             { [$1] }
 
 def :: { S.Def }
-def : funcDef { $1 }
-    | varDef  { $1 }
+def : varDef  { $1 }
+    | funcDef { $1 }
     | typeDef { $1 }
 
 -------------------------------------------------------------------------------
@@ -144,7 +148,7 @@ infixOp : plus      { getInfixOp $1 }
         | infix_var { getInfixOp $1 }
 
 term :: { S.Exp }            
-term : variable         { $1 }
+term : variable         { trace ("variable: " ++ show $1) $1 }
      | constr           { S.Constructor $1 }
      | constant         { $1 }
      | '(' exp ')'      { $2 }
@@ -192,6 +196,9 @@ getInfixOp tok = error $ "Not an infix op: " ++ show tok
 
 parseError :: [T.Token] -> ParseResult a
 parseError tokens = Left $ "Parse Error, tokens left: " ++ show tokens
+
+parseExp :: String -> ParseResult S.Exp
+parseExp input = scanTokensEither input >>= expParser . tail . init
 
 parseDef :: String -> ParseResult S.Def
 parseDef input = scanTokensEither input >>= defParser . tail . init

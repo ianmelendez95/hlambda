@@ -71,37 +71,6 @@ def :: { S.Def }
 def : exp '::=' constructors { (checkTypeDef $1 (reverse $3)) }
     | exp '='  exp           { (checkFuncOrVarDef $1 $3)      }
 
---------------------------------------
--- Func Def
-
--- funcDef :: { S.Def }
--- funcDef : funcDefLhs '=' exp    { S.FuncDef (fst $1) (snd $1) $3 }
-
--- funcDefLhs :: { (String, [S.Pattern]) }
--- funcDefLhs : var funcParams         { ($1, reverse $2) }
-
--- REVERSE!!: funcParams have *at least one* variable (otherwise it would be a var definition)
--- funcParams :: { [S.Pattern] }
--- funcParams : funcParams patt     { $2 : $1 }
---            | patt                { [$1] }
-
--- patt :: { S.Pattern }
--- patt : var                 { S.PVar $1    }
---      | constr              { S.PConstr ($1, []) }
---      | '(' constructor ')' { S.PConstr $2 }
-
---------------------------------------
--- Var Def
-
--- varDef :: { S.Def }
--- varDef : var '=' exp            { S.VarDef $1 $3 }
-
---------------------------------------
--- Type Def
-
--- typeDef :: { S.Def }
--- typeDef : var genTypeVars '::=' constructors  { S.TypeDef $1 (reverse $2) (reverse $4) }
-
 -- REVERSE!!
 constructors :: { [S.Constr] }
 constructors : constructors '|' constructor { $3 : $1 }
@@ -124,11 +93,6 @@ constrArg : var                 { S.CAVar $1 }
 constrArgs :: { [S.ConstrArg] }
 constrArgs : constrArgs constrArg     { $2 : $1 }
            | {- empty -}              { [] }
-
--- REVERSE!!
-genTypeVars :: { [S.GenTypeVar] }
-genTypeVars : genTypeVars genTypeVar  { $2 : $1 }
-            | {- empty -}             { [] }
 
 genTypeVar :: { S.GenTypeVar } -- GenTypeVar = Int
 genTypeVar : mult             { 1 }

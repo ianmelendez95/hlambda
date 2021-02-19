@@ -60,7 +60,7 @@ tokens :-
   \|                  { located $ \_ -> T.VertBar    }
   \,                  { located $ \_ -> T.Comma      }
   \;                  { located $ \_ -> T.Semi       }
-  \:                  { located $ \_ -> T.Colon      }
+  \:                  { located $ \_ -> T.InfixOp T.ICons }
 
 {
 -- %wrapper "posn"  => { ... } :: AlexPosn -> String -> token

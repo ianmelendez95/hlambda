@@ -32,6 +32,7 @@ import Debug.Trace
   minus       { T.InfixOp T.IMinus      }
   mult        { T.InfixOp T.IMult       }
   div         { T.InfixOp T.IDiv        }
+  ':'         { T.InfixOp T.ICons       }
   infix_var   { T.InfixOp (T.IVar _)    } -- $<var-name>
 
   gtype_2plus { T.GenTypeVar $$     }   -- '2plus' because it's two or more '**', since '*' is mult
@@ -44,7 +45,6 @@ import Debug.Trace
   ']'         { T.RB                }
   ';'         { T.Semi              }
   ','         { T.Comma             }
-  ':'         { T.Colon             }
   '{'         { T.LC                }
   '}'         { T.RC                }
   '|'         { T.VertBar           }
@@ -114,10 +114,11 @@ infixApp :: { S.Exp }
 infixApp : exp infixOp exp  { S.InfixApp $2 $1 $3 }
 
 infixOp :: { T.InfixOp }
-infixOp : plus      { getInfixOp $1 }
-        | minus     { getInfixOp $1 }
-        | mult      { getInfixOp $1 }
-        | div       { getInfixOp $1 }
+infixOp : plus      { T.IPlus  }
+        | minus     { T.IMinus }
+        | mult      { T.IMult  }
+        | div       { T.IDiv   }
+        | ':'       { T.ICons  }
         | infix_var { getInfixOp $1 }
 
 term :: { S.Exp }            
@@ -138,15 +139,11 @@ constant : const             { S.Constant $1 }
 
 specialLit :: { S.Exp }
 specialLit : listLit      { $1 }
-           | listColonLit { $1 }
            | tupleLit     { $1 }
 
 listLit :: { S.Exp }
 listLit : '[' ']'             { S.ListLit [] }
         | '[' commaSepExp ']' { S.ListLit (reverse $2) }
-
-listColonLit :: { S.Exp }
-listColonLit : colonSepExp ':' exp    { S.ListColon (reverse ($3 : $1)) }
 
 tupleLit :: { S.Exp }
 tupleLit : '(' commaSepExp ')'      { S.Tuple (reverse $2) }
@@ -154,11 +151,6 @@ tupleLit : '(' commaSepExp ')'      { S.Tuple (reverse $2) }
 -- REVERSE!!
 commaSepExp :: { [S.Exp] }
 commaSepExp : commaSepExp ',' exp   { $3 : $1 }
-            | exp                   { [$1] }
-
--- REVERSE!!
-colonSepExp :: { [S.Exp] }
-colonSepExp : colonSepExp ':' exp   { $3 : $1 }
             | exp                   { [$1] }
 
 {

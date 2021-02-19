@@ -62,7 +62,6 @@ data Exp = Constant T.Constant
          | Apply Exp Exp 
          | InfixApp T.InfixOp Exp Exp
          | ListLit [Exp]    -- [], [x,y,z], [1,2]
-         | ListColon [Exp]  -- (x:y:[]), (x:y:zs)
          | Tuple [Exp]      -- (x,y,z), (1,'a',x)
          deriving Show
 
@@ -105,7 +104,6 @@ instance ToEnriched Exp where
   toEnriched (Apply e1 e2)       = E.Apply (toEnriched e1) (toEnriched e2)
   toEnriched (InfixApp op e1 e2) = E.Apply (E.Apply (toEnriched op) (toEnriched e1)) (toEnriched e2)
   toEnriched (ListLit exps)      = enrichedListLit exps
-  toEnriched (ListColon exps)    = enrichedColonList exps
   toEnriched (Tuple exps)        = enrichedTuple exps
 
 enrichedListLit, enrichedColonList :: [Exp] -> E.Exp
@@ -193,10 +191,6 @@ sPrettyExp (Constructor c) = pure $ pretty c
 sPrettyExp (ListLit exp_list) = 
   do pexp_list <- mapM sPrettyExp exp_list
      return (lbracket <> hcat (intersperse comma pexp_list) <> rbracket)
-sPrettyExp (ListColon exp_list) = 
-  do wrapper <- getParenWrapper 10
-     pexp_list <- mapM sPrettyExp exp_list
-     return $ wrapper (hcat (intersperse colon pexp_list))
 sPrettyExp (InfixApp infx e1 e2) = do wrapper <- getParenWrapper 10
                                       ep1 <- tempState (setPrec 6) (sPrettyExp e1)
                                       ep2 <- tempState (setPrec 11) (sPrettyExp e2)

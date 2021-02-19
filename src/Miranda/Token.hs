@@ -35,7 +35,6 @@ data Token = Constant Constant
            | RC
 
            | Semi
-           | Colon
            | Comma
            | Let 
            | Letrec
@@ -48,6 +47,7 @@ data InfixOp = IPlus
              | IMinus 
              | IMult
              | IDiv 
+             | ICons
              | IVar String
              deriving Show
 
@@ -60,6 +60,7 @@ instance PrettyLambda InfixOp where
   prettyDoc IMinus   = pretty "-"
   prettyDoc IMult    = pretty "*"
   prettyDoc IDiv     = pretty "/"
+  prettyDoc ICons    = pretty ":"
   prettyDoc (IVar v) = pretty "$" <> pretty v
 
 instance Show Constant where 
@@ -77,5 +78,6 @@ instance E.ToEnriched InfixOp where
   toEnriched IMinus   = E.Pure . S.Function $ S.FMinus
   toEnriched IMult    = E.Pure . S.Function $ S.FMult
   toEnriched IDiv     = E.Pure . S.Function $ S.FDiv
+  toEnriched ICons    = E.Pure . S.Function $ S.FCons
   toEnriched (IVar v) = E.Pure . S.Variable $ S.RawVar v
 

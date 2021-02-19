@@ -8,6 +8,8 @@ module Miranda.Parser
   ) where 
 
 import Data.Char
+import Data.Either (isRight, rights)
+
 import qualified Miranda.Syntax as S
 import qualified Miranda.Token as T
 import Miranda.Lexer (alexScanTokens, scanTokens, scanTokensEither)
@@ -50,48 +52,55 @@ import Debug.Trace
 %%
 
 program :: { S.Prog }
-program : '{' exp '}'          { S.Prog [] $2 }
-        | '{' defs ';' exp '}' { S.Prog (reverse $2) $4}
+program : '{' stmts '}'          { mkProg (reverse $2) }
+
+-- REVERSE!!
+stmts :: { [Stmt] }
+stmts : stmts ';' stmt   { $3 : $1 }
+      | stmt             { [$1] }
+
+stmt :: { Stmt }
+stmt : exp '::=' constructors { Right (checkTypeDef $1 (reverse $3)) }
+     | exp '='  exp           { Right (checkFuncOrVarDef $1 $3)      }
+     | exp                    { Left  $1 }
 
 -------------------------------------------------------------------------------
--- Defs
-
-defs :: { [S.Def] }
-defs : defs ';' def    { $3 : $1 }
-     | def             { [$1] }
+-- Def
 
 def :: { S.Def }
-def : varDef  { $1 }
-    | funcDef { $1 }
-    | typeDef { $1 }
+def : exp '::=' constructors { (checkTypeDef $1 (reverse $3)) }
+    | exp '='  exp           { (checkFuncOrVarDef $1 $3)      }
 
--------------------------------------------------------------------------------
+--------------------------------------
 -- Func Def
 
-funcDef :: { S.Def }
-funcDef : var funcParams '=' exp    { S.FuncDef $1 (reverse $2) $4 }
+-- funcDef :: { S.Def }
+-- funcDef : funcDefLhs '=' exp    { S.FuncDef (fst $1) (snd $1) $3 }
+
+-- funcDefLhs :: { (String, [S.Pattern]) }
+-- funcDefLhs : var funcParams         { ($1, reverse $2) }
 
 -- REVERSE!!: funcParams have *at least one* variable (otherwise it would be a var definition)
-funcParams :: { [S.Pattern] }
-funcParams : funcParams patt     { $2 : $1 }
-           | patt                { [$1] }
+-- funcParams :: { [S.Pattern] }
+-- funcParams : funcParams patt     { $2 : $1 }
+--            | patt                { [$1] }
 
-patt :: { S.Pattern }
-patt : var                 { S.PVar $1    }
-     | constr              { S.PConstr ($1, []) }
-     | '(' constructor ')' { S.PConstr $2 }
+-- patt :: { S.Pattern }
+-- patt : var                 { S.PVar $1    }
+--      | constr              { S.PConstr ($1, []) }
+--      | '(' constructor ')' { S.PConstr $2 }
 
--------------------------------------------------------------------------------
+--------------------------------------
 -- Var Def
 
-varDef :: { S.Def }
-varDef : var '=' exp            { S.VarDef $1 $3 }
+-- varDef :: { S.Def }
+-- varDef : var '=' exp            { S.VarDef $1 $3 }
 
--------------------------------------------------------------------------------
+--------------------------------------
 -- Type Def
 
-typeDef :: { S.Def }
-typeDef : var genTypeVars '::=' constructors  { S.TypeDef $1 (reverse $2) (reverse $4) }
+-- typeDef :: { S.Def }
+-- typeDef : var genTypeVars '::=' constructors  { S.TypeDef $1 (reverse $2) (reverse $4) }
 
 -- REVERSE!!
 constructors :: { [S.Constr] }
@@ -148,7 +157,8 @@ infixOp : plus      { getInfixOp $1 }
         | infix_var { getInfixOp $1 }
 
 term :: { S.Exp }            
-term : variable         { trace ("variable: " ++ show $1) $1 }
+term : variable         { $1 }
+     | genTypeVar       { S.EGenTypeVar $1 }
      | constr           { S.Constructor $1 }
      | constant         { $1 }
      | '(' exp ')'      { $2 }
@@ -190,9 +200,8 @@ colonSepExp : colonSepExp ':' exp   { $3 : $1 }
 {
 type ParseResult = Either String
 
-getInfixOp :: T.Token -> T.InfixOp
-getInfixOp (T.InfixOp i) = i
-getInfixOp tok = error $ "Not an infix op: " ++ show tok
+--------------------------------------------------------------------------------
+-- Parsers
 
 parseError :: [T.Token] -> ParseResult a
 parseError tokens = Left $ "Parse Error, tokens left: " ++ show tokens
@@ -205,4 +214,65 @@ parseDef input = scanTokensEither input >>= defParser . tail . init
 
 parseProgram :: String -> ParseResult S.Prog
 parseProgram input = scanTokensEither input >>= parser
+
+getInfixOp :: T.Token -> T.InfixOp
+getInfixOp (T.InfixOp i) = i
+getInfixOp tok = error $ "Not an infix op: " ++ show tok
+
+--------------------------------------------------------------------------------
+-- The Realm of Ambiguity
+
+type Stmt = Either S.Exp S.Def
+type ExpEqExpOrExp = Either S.Exp (S.Exp, S.Exp) -- <exp> OR <exp> = <exp>
+
+mkProg :: [Stmt] -> S.Prog
+mkProg stmts = case span isRight stmts of 
+                 (defs, [Left expr]) -> S.Prog (rights defs) expr
+                 (_, _)        -> error "Expecting a single expression at the end of the program"
+
+--------------------------------------------------------------------------------
+-- Coerce Exp -> a
+
+checkTypeDef :: S.Exp -> [S.Constr] -> S.Def
+checkTypeDef lhs constrs = 
+  case flattenApplyLHS lhs of 
+    (S.Variable type_name : rest) -> S.TypeDef type_name (map checkGenTypeVar rest) constrs
+    _ -> error $ "Invalid type declaration lhs: " ++ show lhs
+
+checkFuncOrVarDef :: S.Exp -> S.Exp -> S.Def
+checkFuncOrVarDef lhs rhs = case flattenApplyLHS lhs of 
+                              [S.Variable var_name] -> S.VarDef var_name rhs
+                              (S.Variable func_name : rest) -> S.FuncDef func_name (map checkPattern rest) rhs
+                              _ -> error $ "Invalid func def lhs: " ++ show lhs
+
+-- coerce an expression into a pattern
+checkPattern :: S.Exp -> S.Pattern
+checkPattern (S.Variable v) = S.PVar v
+checkPattern expr = S.PConstr $ checkConstr expr
+
+checkConstr :: S.Exp -> S.Constr
+checkConstr (S.Constructor c) = (c, [])
+checkConstr expr@(S.Apply _ _) = case flattenApplyLHS expr of 
+                                   (S.Constructor c : rest) -> (c, map checkConstrArg rest)
+                                   _ -> error $ "Not a valid constructor: " ++ show expr
+checkConstr expr = error $ "Not a valid constructor: " ++ show expr
+
+checkConstrArg :: S.Exp -> S.ConstrArg
+checkConstrArg (S.Variable v) = if all (== '*') v then S.CAGenTypeVar (length v)
+                                                  else S.CAVar v
+checkConstrArg app@(S.Apply _ _) = S.CAList $ map checkConstrArg (flattenApplyLHS app)
+checkConstrArg expr = error $ "Not a valid constructor arg: " ++ show expr
+
+checkGenTypeVar :: S.Exp -> S.GenTypeVar
+checkGenTypeVar e@(S.Variable v) = if not . all (== '*') $ v then error $ "Not a generalized type variable: " ++ show e
+                                                             else length v
+checkGenTypeVar (S.EGenTypeVar var) = var
+checkGenTypeVar expr = error $ "Not a generalized type variable: " ++ show expr
+
+-- flatten apply for left hand side expressions
+--   uniquely flattens infix applications to only recognize '*' infix (interpreted as a gtv)
+flattenApplyLHS :: S.Exp -> [S.Exp]
+flattenApplyLHS (S.Apply e1 e2) = flattenApplyLHS e1 ++ [e2]
+flattenApplyLHS (S.InfixApp T.IMult e1 e2) = flattenApplyLHS e1 ++ [S.EGenTypeVar 1] ++ flattenApplyLHS e2
+flattenApplyLHS expr = [expr]
 }

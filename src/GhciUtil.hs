@@ -9,6 +9,7 @@ import Lambda.ToLambda
 
 import Miranda.Lexer (scanTokens)
 import Miranda.Syntax (Prog, Def)
+import qualified Miranda.Syntax as M
 
 evalMiranda :: String -> IO () 
 evalMiranda = pPrint . reduce . either error id . (parse :: String -> Either String Prog)
@@ -22,7 +23,7 @@ parseMiranda = eitherError . parse
 parseMirandaDef :: String -> Def 
 parseMirandaDef = eitherError . parse
 
-parseMirandaExp :: String -> Exp
+parseMirandaExp :: String -> M.Exp
 parseMirandaExp = eitherError . parse
 
 lexMiranda :: String -> String

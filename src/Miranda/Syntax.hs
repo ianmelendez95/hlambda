@@ -34,11 +34,13 @@ import qualified Lambda.Syntax as S
 ----------------------
 
 data Prog = Prog [Def] Exp
+          deriving Show
 
 -- p48: Figure 3.3
 data Def = FuncDef String [Pattern] Exp
          | VarDef String Exp
          | TypeDef String [GenTypeVar] [Constr]
+         deriving Show
 
 type GenTypeVar = Int
 type Constr = (String, [ConstrArg])
@@ -46,11 +48,14 @@ type Constr = (String, [ConstrArg])
 data ConstrArg = CAVar String 
                | CAGenTypeVar GenTypeVar
                | CAList [ConstrArg]
+               deriving Show
 
 data Pattern = PVar String 
              | PConstr Constr
+             deriving Show
 
 data Exp = Constant T.Constant 
+         | EGenTypeVar GenTypeVar
          | BuiltinOp ()
          | Variable String 
          | Constructor String
@@ -59,19 +64,20 @@ data Exp = Constant T.Constant
          | ListLit [Exp]    -- [], [x,y,z], [1,2]
          | ListColon [Exp]  -- (x:y:[]), (x:y:zs)
          | Tuple [Exp]      -- (x,y,z), (1,'a',x)
+         deriving Show
 
 ----------
 -- Show --
 ----------
 
-instance Show Prog where 
-  show = pShow
+-- instance Show Prog where 
+--   show = pShow
 
-instance Show Def where 
-  show = pShow
+-- instance Show Def where 
+--   show = pShow
 
-instance Show Exp where 
-  show = pShow
+-- instance Show Exp where 
+--   show = pShow
 
 ---------------------------
 -- ToEnriched (ToLambda) --

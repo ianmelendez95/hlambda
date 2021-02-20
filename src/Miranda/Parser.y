@@ -82,7 +82,6 @@ constructors : constructors '|' exp         { checkConstr $3 : $1 }
 exp :: { S.Exp }
 exp : apply         { $1 }
     | infixApp      { $1 }
-    | specialLit    { $1 }
     | term          { $1 }
 
 infixApp :: { S.Exp }
@@ -101,6 +100,7 @@ infixOp : plus      { T.IPlus  }
 
 term :: { S.Exp }            
 term : variable         { $1 }
+     | specialLit       { $1 }
      | genTypeVar       { S.EGenTypeVar $1 }
      | constr           { S.Constructor $1 }
      | constant         { $1 }
@@ -192,6 +192,7 @@ checkFuncParam expr = S.FPConstr $ checkConstr expr
 checkConstr :: S.Exp -> S.Constr
 checkConstr expr = case flattenApplyLHS expr of 
                      (S.Constructor c : rest) -> (c, map checkConstrArg rest)
+
                      _ -> error $ "Not a valid constructor: " ++ show expr
 
 checkConstrArg :: S.Exp -> S.ConstrArg

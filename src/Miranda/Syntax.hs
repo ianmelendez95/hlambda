@@ -53,6 +53,7 @@ data ConstrArg = CAVar String
 data FuncParam = FPVar String 
                | FPConstr Constr
                | FPConstant T.Constant
+               | FPListLit [Exp]
                deriving Show
 
 data Exp = Constant T.Constant 

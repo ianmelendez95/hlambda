@@ -180,13 +180,14 @@ checkTypeDef lhs constrs =
 checkFuncOrVarDef :: S.Exp -> S.Exp -> S.Def
 checkFuncOrVarDef lhs rhs = case flattenApplyLHS lhs of 
                               [S.Variable var_name] -> S.VarDef var_name rhs
-                              (S.Variable func_name : rest) -> S.FuncDef func_name (map checkPattern rest) rhs
+                              (S.Variable func_name : rest) -> S.FuncDef func_name (map checkFuncParam rest) rhs
                               _ -> error $ "Invalid func def lhs: " ++ show lhs
 
 -- coerce an expression into a pattern
-checkPattern :: S.Exp -> S.FuncParam
-checkPattern (S.Variable v) = S.PVar v
-checkPattern expr = S.PConstr $ checkConstr expr
+checkFuncParam :: S.Exp -> S.FuncParam
+checkFuncParam (S.Variable v) = S.FPVar v
+checkFuncParam (S.Constant c) = S.FPConstant c
+checkFuncParam expr = S.FPConstr $ checkConstr expr
 
 checkConstr :: S.Exp -> S.Constr
 checkConstr expr = case flattenApplyLHS expr of 

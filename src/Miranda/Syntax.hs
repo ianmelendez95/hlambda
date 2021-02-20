@@ -50,9 +50,10 @@ data ConstrArg = CAVar String
                | CAList [ConstrArg]
                deriving Show
 
-data FuncParam = PVar String 
-             | PConstr Constr
-             deriving Show
+data FuncParam = FPVar String 
+               | FPConstr Constr
+               | FPConstant T.Constant
+               deriving Show
 
 data Exp = Constant T.Constant 
          | EGenTypeVar GenTypeVar
@@ -95,8 +96,9 @@ toBinding (FuncDef func_name var_names body) = (func_name, wrapLambda var_names 
   where 
     wrapLambda :: [FuncParam] -> E.Exp -> E.Exp
     wrapLambda [] expr = expr
-    wrapLambda ((PVar n):ns) expr = E.Lambda n (wrapLambda ns expr)
-    wrapLambda (c@(PConstr _):_) _ = error $ "Unsupported: constructor function definition arguments: " ++ show c
+    wrapLambda ((FPVar n):ns) expr = E.Lambda n (wrapLambda ns expr)
+    wrapLambda (c@(FPConstant _):_) _ = error $ "Unsupported: constant function definition arguments: " ++ show c
+    wrapLambda (c@(FPConstr _):_) _ = error $ "Unsupported: constructor function definition arguments: " ++ show c
 toBinding t@TypeDef{} = error $ "Type definitions unsupported: " ++ show t
 
 instance ToEnriched Exp where 
@@ -167,8 +169,9 @@ sPrettyDef (VarDef name value) =
      pure $ pname <+> pretty "=" <+> pvalue
 
 sPrettyPattern :: FuncParam -> PrettyParenS LambdaDoc
-sPrettyPattern (PVar v) = pure $ pretty v
-sPrettyPattern (PConstr c) = tempState (setPrec 11) (prettyConstructor c)
+sPrettyPattern (FPVar v) = pure $ pretty v
+sPrettyPattern (FPConstr c) = tempState (setPrec 11) (prettyConstructor c)
+sPrettyPattern (FPConstant c) = sPrettyExp (Constant c)
 
 prettyConstructor :: Constr -> PrettyParenS LambdaDoc
 prettyConstructor (name, vars) = do wrapper <- if null vars then pure id 

@@ -60,6 +60,7 @@ data Exp = Constant T.Constant
          | Variable String 
          | Constructor String
          | Apply Exp Exp 
+         | InfixOp T.InfixOp
          | InfixApp T.InfixOp Exp Exp
          | ListLit [Exp]    -- [], [x,y,z], [1,2]
          | Tuple [Exp]      -- (x,y,z), (1,'a',x)

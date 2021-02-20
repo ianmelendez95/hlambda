@@ -73,30 +73,8 @@ def : exp '::=' constructors { (checkTypeDef $1 (reverse $3)) }
 
 -- REVERSE!!
 constructors :: { [S.Constr] }
-constructors : constructors '|' constructor { $3 : $1 }
-             | constructor                  { [$1] }
-
-constructor :: { S.Constr } -- Constr = (String, [ConstrArg])
-constructor : constr constrTypes   { ($1, reverse $2) }
-
--- REVERSE!!
-constrTypes :: { [S.ConstrArg] }
-constrTypes : constrTypes constrArg { $2 : $1 }
-            | {- empty -}           { [] }
-
-constrArg :: { S.ConstrArg } -- ConstrArg = CAVar String | CAGenTypeVar GenTypeVar
-constrArg : var                 { S.CAVar $1 }
-          | genTypeVar          { S.CAGenTypeVar $1 }
-          | '(' constrArgs ')'  { S.CAList (reverse $2) }
-
--- REVERSE!!
-constrArgs :: { [S.ConstrArg] }
-constrArgs : constrArgs constrArg     { $2 : $1 }
-           | {- empty -}              { [] }
-
-genTypeVar :: { S.GenTypeVar } -- GenTypeVar = Int
-genTypeVar : mult             { 1 }
-           | gtype_2plus      { $1 }
+constructors : constructors '|' exp         { checkConstr $3 : $1 }
+             | exp                          { [checkConstr $1] }
 
 -------------------------------------------------------------------------------
 -- Expressions
@@ -107,11 +85,11 @@ exp : apply         { $1 }
     | specialLit    { $1 }
     | term          { $1 }
 
-apply :: { S.Exp }
-apply : exp term   { S.Apply $1 $2 }
-
 infixApp :: { S.Exp }
 infixApp : exp infixOp exp  { S.InfixApp $2 $1 $3 }
+
+apply :: { S.Exp }
+apply : exp term   { S.Apply $1 $2 }
 
 infixOp :: { T.InfixOp }
 infixOp : plus      { T.IPlus  }
@@ -127,12 +105,16 @@ term : variable         { $1 }
      | constr           { S.Constructor $1 }
      | constant         { $1 }
      | '(' exp ')'      { $2 }
+     | infixOp          { S.InfixOp $1 }
 
 variable :: { S.Exp }       
 variable : var               { S.Variable $1 }
 
 constant :: { S.Exp }
 constant : const             { S.Constant $1 }
+
+genTypeVar :: { S.GenTypeVar } -- GenTypeVar = Int
+genTypeVar : gtype_2plus      { $1 }
 
 -------------------------------------------------------------------------------
 -- Special Data Syntax (Lists, Tuples)
@@ -207,21 +189,22 @@ checkPattern (S.Variable v) = S.PVar v
 checkPattern expr = S.PConstr $ checkConstr expr
 
 checkConstr :: S.Exp -> S.Constr
-checkConstr (S.Constructor c) = (c, [])
-checkConstr expr@(S.Apply _ _) = case flattenApplyLHS expr of 
-                                   (S.Constructor c : rest) -> (c, map checkConstrArg rest)
-                                   _ -> error $ "Not a valid constructor: " ++ show expr
-checkConstr expr = error $ "Not a valid constructor: " ++ show expr
+checkConstr expr = case flattenApplyLHS expr of 
+                     (S.Constructor c : rest) -> (c, map checkConstrArg rest)
+                     _ -> error $ "Not a valid constructor: " ++ show expr
 
 checkConstrArg :: S.Exp -> S.ConstrArg
 checkConstrArg (S.Variable v) = if all (== '*') v then S.CAGenTypeVar (length v)
                                                   else S.CAVar v
 checkConstrArg app@(S.Apply _ _) = S.CAList $ map checkConstrArg (flattenApplyLHS app)
+checkConstrArg (S.EGenTypeVar v) = S.CAGenTypeVar v
+checkConstrArg (S.InfixOp T.IMult) = S.CAGenTypeVar 1
 checkConstrArg expr = error $ "Not a valid constructor arg: " ++ show expr
 
 checkGenTypeVar :: S.Exp -> S.GenTypeVar
 checkGenTypeVar e@(S.Variable v) = if not . all (== '*') $ v then error $ "Not a generalized type variable: " ++ show e
                                                              else length v
+checkGenTypeVar (S.InfixOp T.IMult) = 1
 checkGenTypeVar (S.EGenTypeVar var) = var
 checkGenTypeVar expr = error $ "Not a generalized type variable: " ++ show expr
 
@@ -229,6 +212,7 @@ checkGenTypeVar expr = error $ "Not a generalized type variable: " ++ show expr
 --   uniquely flattens infix applications to only recognize '*' infix (interpreted as a gtv)
 flattenApplyLHS :: S.Exp -> [S.Exp]
 flattenApplyLHS (S.Apply e1 e2) = flattenApplyLHS e1 ++ [e2]
-flattenApplyLHS (S.InfixApp T.IMult e1 e2) = flattenApplyLHS e1 ++ [S.EGenTypeVar 1] ++ flattenApplyLHS e2
+flattenApplyLHS (S.InfixApp T.IMult e1 e2) = flattenApplyLHS e1 ++ [S.EGenTypeVar 1] ++ [e2]
+flattenApplyLHS (S.InfixOp T.IMult) = [S.EGenTypeVar 1]
 flattenApplyLHS expr = [expr]
 }

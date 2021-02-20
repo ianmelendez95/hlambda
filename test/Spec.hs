@@ -156,8 +156,7 @@ main = hspec $ do
         `ioShouldBe` "BRANCH (LEAF 'a') (LEAF 'b')"
 
     it "p53: parses list definition" $ do
-      parseDefIO "list * ::= NIL | CONS * (list *)"
-        `ioShouldBe` "list * ::= NIL | CONS * (list *)"
+      parseMatchesDef "list * ::= NIL | CONS * (list *)"
     
     it "p53: parses list special syntax" $ do
       parseMirandaExpIO "[]"      `ioShouldBe` "[]"
@@ -200,6 +199,9 @@ main = hspec $ do
 
     parseMirandaExpIO :: String -> IO String 
     parseMirandaExpIO input = pShow <$> (parseHunit :: String -> IO M.Prog) input
+
+    -- parsesDefTo :: String -> String -> IO ()
+    -- parsesDefTo input res = parseDefIO input `ioShouldBe` res
 
     parseMatchesDef :: String -> IO ()
     parseMatchesDef input = parseDefIO input `ioShouldBe` input

@@ -38,7 +38,6 @@ data Prog = Prog [Def] Exp
 
 -- p48: Figure 3.3
 data Def = FuncDef String [FuncParam] Exp
-         | VarDef String Exp
          | TypeDef String [GenTypeVar] [Constr]
          deriving Show
 
@@ -92,7 +91,6 @@ instance ToEnriched Prog where
   toEnriched (Prog defs expr) = E.Let (map toBinding defs) (toEnriched expr)
 
 toBinding :: Def -> E.LetBinding
-toBinding (VarDef var_name var_value) = (var_name, toEnriched var_value)
 toBinding (FuncDef func_name var_names body) = (func_name, wrapLambda var_names (toEnriched body))
   where 
     wrapLambda :: [FuncParam] -> E.Exp -> E.Exp
@@ -150,9 +148,9 @@ instance PrettyLambda Exp where
 sPrettyDef :: Def -> PrettyParenS LambdaDoc 
 sPrettyDef (FuncDef func_name vars body) = 
   do let pname = pretty func_name
-         pvars = hsep . map prettyDoc $ vars
+         pvars = if null vars then (mempty <>) else ((hsep . map prettyDoc $ vars) <+>)
          pbody = prettyDoc body
-     pure $ pname <+> pvars <+> pretty "=" <+> pbody
+     pure $ pname <+> pvars (pretty "=" <+> pbody)
 sPrettyDef (TypeDef type_name type_vars constrs) = 
   do pConstrs <- tempState (setPrec 0) (mapM prettyConstructor constrs)
      pure $ prettyLHS type_name type_vars 
@@ -163,11 +161,6 @@ sPrettyDef (TypeDef type_name type_vars constrs) =
     prettyLHS name vars = 
       if null vars then pretty name 
                    else pretty name <+> hsep (map prettyTypeVar type_vars)
-
-sPrettyDef (VarDef name value) = 
-  do let pname = pretty name 
-         pvalue = prettyDoc value
-     pure $ pname <+> pretty "=" <+> pvalue
 
 sPrettyPattern :: FuncParam -> PrettyParenS LambdaDoc
 sPrettyPattern (FPVar v) = pure $ pretty v

@@ -61,7 +61,7 @@ stmts : stmts ';' stmt   { $3 : $1 }
 
 stmt :: { Stmt }
 stmt : exp '::=' constructors { Right (checkTypeDef $1 (reverse $3)) }
-     | exp '='  exp           { Right (checkFuncOrVarDef $1 $3)      }
+     | exp '='  exp           { Right (checkFuncDef $1 $3)      }
      | exp                    { Left  $1 }
 
 -------------------------------------------------------------------------------
@@ -69,7 +69,7 @@ stmt : exp '::=' constructors { Right (checkTypeDef $1 (reverse $3)) }
 
 def :: { S.Def }
 def : exp '::=' constructors { (checkTypeDef $1 (reverse $3)) }
-    | exp '='  exp           { (checkFuncOrVarDef $1 $3)      }
+    | exp '='  exp           { (checkFuncDef $1 $3)      }
 
 -- REVERSE!!
 constructors :: { [S.Constr] }
@@ -177,9 +177,8 @@ checkTypeDef lhs constrs =
     (S.Variable type_name : rest) -> S.TypeDef type_name (map checkGenTypeVar rest) constrs
     _ -> error $ "Invalid type declaration lhs: " ++ show lhs
 
-checkFuncOrVarDef :: S.Exp -> S.Exp -> S.Def
-checkFuncOrVarDef lhs rhs = case flattenApplyLHS lhs of 
-                              [S.Variable var_name] -> S.VarDef var_name rhs
+checkFuncDef :: S.Exp -> S.Exp -> S.Def
+checkFuncDef lhs rhs = case flattenApplyLHS lhs of 
                               (S.Variable func_name : rest) -> S.FuncDef func_name (map checkFuncParam rest) rhs
                               _ -> error $ "Invalid func def lhs: " ++ show lhs
 

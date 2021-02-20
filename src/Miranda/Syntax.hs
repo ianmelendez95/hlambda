@@ -201,11 +201,24 @@ sPrettyExp (Tuple exprs)   = do pexprs <- mapM sPrettyExp exprs
 sPrettyExp (ListLit exp_list) = 
   do pexp_list <- mapM sPrettyExp exp_list
      return (lbracket <> hcat (intersperse comma pexp_list) <> rbracket)
-sPrettyExp (InfixApp infx e1 e2) = do wrapper <- getParenWrapper 10
-                                      ep1 <- tempState (setPrec 6) (sPrettyExp e1)
-                                      ep2 <- tempState (setPrec 11) (sPrettyExp e2)
+sPrettyExp (InfixApp infx e1 e2) = do let infix_prec = infixPrec infx
+                                      wrapper <- getParenWrapper infix_prec
+                                      ep1 <- tempState (setPrec infix_prec) (sPrettyExp e1)
+                                      ep2 <- tempState (setPrec infix_prec) (sPrettyExp e2)
                                       pure $ wrapper $ ep1 <+> prettyDoc infx <+> ep2
-sPrettyExp (Apply e1 e2) = do wrapper <- getParenWrapper 10
-                              ep1 <- tempState (setPrec 6) (sPrettyExp e1)
-                              ep2 <- tempState (setPrec 11) (sPrettyExp e2)
+sPrettyExp (Apply e1 e2) = do wrapper <- getParenWrapper funcAppPrec
+                              ep1 <- tempState (setPrec (funcAppPrec - 1)) (sPrettyExp e1)
+                              ep2 <- tempState (setPrec (funcAppPrec + 1)) (sPrettyExp e2)
                               pure $ wrapper $ ep1 <+> ep2 
+
+-- function application precedence: https://wuciawe.github.io/functional%20programming/haskell/2016/07/03/infix-functions-in-haskell.html#:~:text=In%20Haskell%20the%20precedence%20of,the%20application%20in%20right%20order.
+funcAppPrec :: Int
+funcAppPrec = 10
+
+infixPrec :: T.InfixOp  -> Int 
+infixPrec T.IPlus    = 6
+infixPrec T.IMinus   = 6
+infixPrec T.IMult    = 7
+infixPrec T.IDiv     = 7
+infixPrec T.ICons    = 5
+infixPrec (T.IVar _) = 10

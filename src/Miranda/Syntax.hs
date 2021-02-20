@@ -11,11 +11,11 @@ module Miranda.Syntax
   ) where 
 
 import Prettyprinter
-import Data.List (intersperse, foldl', foldl1')
+import Data.List (intersperse, foldl1')
 
 import qualified Miranda.Token as T
 import Lambda.Pretty
-    ( PrettyLambda(prettyDoc, pShow),
+    ( PrettyLambda(prettyDoc),
       LambdaAnn(AConstant),
       annStr,
       PrettyParenS,
@@ -96,6 +96,8 @@ toBinding (FuncDef func_name var_names body) = (func_name, wrapLambda var_names 
     wrapLambda :: [Pattern] -> E.Exp -> E.Exp
     wrapLambda [] expr = expr
     wrapLambda ((PVar n):ns) expr = E.Lambda n (wrapLambda ns expr)
+    wrapLambda (c@(PConstr _):_) _ = error $ "Unsupported: constructor function definition arguments: " ++ show c
+toBinding t@TypeDef{} = error $ "Type definitions unsupported: " ++ show t
 
 instance ToEnriched Exp where 
   toEnriched (Constant c)        = toEnriched c
@@ -106,12 +108,12 @@ instance ToEnriched Exp where
   toEnriched (InfixApp op e1 e2) = E.Apply (E.Apply (toEnriched op) (toEnriched e1)) (toEnriched e2)
   toEnriched (ListLit exps)      = enrichedListLit exps
   toEnriched (Tuple exps)        = enrichedTuple exps
+  toEnriched (InfixOp op)        = toEnriched op
+  toEnriched (EGenTypeVar v)     = error $ "Can't enrich type variable: " ++ show v
 
-enrichedListLit, enrichedColonList :: [Exp] -> E.Exp
+enrichedListLit :: [Exp] -> E.Exp
 enrichedListLit [] = enrNil
 enrichedListLit exprs = consEnrichedExprs (map toEnriched exprs ++ [enrNil])
-
-enrichedColonList exprs = consEnrichedExprs (map toEnriched exprs)
 
 consEnrichedExprs :: [E.Exp] -> E.Exp
 consEnrichedExprs = foldr1 (E.Apply . E.Apply enrCons)
@@ -189,6 +191,10 @@ sPrettyExp (Constant c)    = pure $ annStr AConstant (show c)
 sPrettyExp (BuiltinOp _)   = pure . pretty $ "I don't exist wtf"
 sPrettyExp (Variable v)    = pure $ pretty v
 sPrettyExp (Constructor c) = pure $ pretty c
+sPrettyExp (InfixOp infx)  = pure $ prettyDoc infx
+sPrettyExp (EGenTypeVar v) = pure $ pretty $ replicate v '*'
+sPrettyExp (Tuple exprs)   = do pexprs <- mapM sPrettyExp exprs
+                                pure $ parens $ hcat $ intersperse comma pexprs 
 sPrettyExp (ListLit exp_list) = 
   do pexp_list <- mapM sPrettyExp exp_list
      return (lbracket <> hcat (intersperse comma pexp_list) <> rbracket)

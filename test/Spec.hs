@@ -142,10 +142,8 @@ main = hspec $ do
         `ioShouldBe` "tree1 = BRANCH (BRANCH (LEAF 1) (LEAF 2)) (LEAF 3)"
 
     it "p52: parses constructors as args" $ do
-      parseDefIO "reflect (LEAF n) = LEAF n" 
-        `ioShouldBe` "reflect (LEAF n) = LEAF n"
-      parseDefIO "reflect (BRANCH t1 t2) = BRANCH (reflect t2) (reflect t1)"
-        `ioShouldBe` "reflect (BRANCH t1 t2) = BRANCH (reflect t2) (reflect t1)"
+      parseMatchesDef "reflect (LEAF n) = LEAF n" 
+      parseMatchesDef "reflect (BRANCH t1 t2) = BRANCH (reflect t2) (reflect t1)"
 
     it "p53: parses constructor with type variables" $ do 
       parseDefIO "tree * ::= LEAF * | BRANCH (tree *) (tree *)"

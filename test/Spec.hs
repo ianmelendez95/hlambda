@@ -190,7 +190,8 @@ main = hspec $ do
       parseMatchesProg "factorial 0 = 1\nfactorial n = n * factorial (n - 1)\nfactorial 2"
 
     it "p58: parses string literals in patterns" $ do 
-      parseMatchesProg "lastElt (x:[]) = x\nlastElt (x:xs) = lastElt xs\nlastElt [1,2,3]"
+      parseProgIO "lastElt (x:[]) = x\nlastElt (x:xs) = lastElt xs\nlastElt [1,2,3]"
+        `ioShouldBe` "lastElt (x : []) = x\nlastElt (x : xs) = lastElt xs\nlastElt [1,2,3]"
 
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()

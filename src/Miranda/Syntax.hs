@@ -49,10 +49,14 @@ data ConstrArg = CAVar String
                | CAList [ConstrArg]
                deriving Show
 
-data FuncParam = FPVar String 
-               | FPConstr Constr
-               | FPConstant T.Constant
-               | FPListLit [Exp]
+-- subset of Exp that constitutes a valid func param
+data FuncParam = FPConstant T.Constant
+               | FPVariable String 
+               | FPConstructor String 
+               | FPApply FuncParam FuncParam
+               | FPCons FuncParam FuncParam  -- the only InfixApp that's valid as an fexp
+               | FPListLit [FuncParam]
+               | FPTuple [FuncParam]
                deriving Show
 
 data Exp = Constant T.Constant 
@@ -95,9 +99,8 @@ toBinding (FuncDef func_name var_names body) = (func_name, wrapLambda var_names 
   where 
     wrapLambda :: [FuncParam] -> E.Exp -> E.Exp
     wrapLambda [] expr = expr
-    wrapLambda ((FPVar n):ns) expr = E.Lambda n (wrapLambda ns expr)
-    wrapLambda (c@(FPConstant _):_) _ = error $ "Unsupported: constant function definition arguments: " ++ show c
-    wrapLambda (c@(FPConstr _):_) _ = error $ "Unsupported: constructor function definition arguments: " ++ show c
+    wrapLambda ((FPVariable n):ns) expr = E.Lambda n (wrapLambda ns expr)
+    wrapLambda p _ = error $ "Unsupported: only variable arguments supported: " ++ show p
 toBinding t@TypeDef{} = error $ "Type definitions unsupported: " ++ show t
 
 instance ToEnriched Exp where 
@@ -163,9 +166,18 @@ sPrettyDef (TypeDef type_name type_vars constrs) =
                    else pretty name <+> hsep (map prettyTypeVar type_vars)
 
 sPrettyPattern :: FuncParam -> PrettyParenS LambdaDoc
-sPrettyPattern (FPVar v) = pure $ pretty v
-sPrettyPattern (FPConstr c) = tempState (setPrec 11) (prettyConstructor c)
-sPrettyPattern (FPConstant c) = sPrettyExp (Constant c)
+sPrettyPattern param = do setPrec 11 
+                          sPrettyExp . funcParamToExp $ param
+
+funcParamToExp :: FuncParam -> Exp
+funcParamToExp (FPConstant c) = Constant c
+funcParamToExp (FPVariable v) = Variable v
+funcParamToExp (FPConstructor c) = Constructor c
+funcParamToExp (FPApply e1 e2) = Apply (funcParamToExp e1) (funcParamToExp e2)
+funcParamToExp (FPCons e1 e2) = InfixApp T.ICons (funcParamToExp e1) (funcParamToExp e2)
+funcParamToExp (FPListLit exprs) = ListLit (map funcParamToExp exprs)
+funcParamToExp (FPTuple exprs) = Tuple (map funcParamToExp exprs)
+
 
 prettyConstructor :: Constr -> PrettyParenS LambdaDoc
 prettyConstructor (name, vars) = do wrapper <- if null vars then pure id 

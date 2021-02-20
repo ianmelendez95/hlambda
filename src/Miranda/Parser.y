@@ -184,14 +184,17 @@ checkFuncDef lhs rhs = case flattenApplyLHS lhs of
 
 -- coerce an expression into a pattern
 checkFuncParam :: S.Exp -> S.FuncParam
-checkFuncParam (S.Variable v) = S.FPVar v
 checkFuncParam (S.Constant c) = S.FPConstant c
-checkFuncParam expr = S.FPConstr $ checkConstr expr
+checkFuncParam (S.Variable v) = S.FPVariable v
+checkFuncParam (S.Constructor c) = S.FPConstructor c
+checkFuncParam (S.Apply e1 e2) = S.FPApply (checkFuncParam e1) (checkFuncParam e2)
+checkFuncParam (S.InfixApp T.ICons e1 e2) = S.FPCons (checkFuncParam e1) (checkFuncParam e2)
+checkFuncParam (S.ListLit exprs) = S.FPListLit (map checkFuncParam exprs)
+checkFuncParam (S.Tuple exprs) = S.FPTuple (map checkFuncParam exprs)
 
 checkConstr :: S.Exp -> S.Constr
 checkConstr expr = case flattenApplyLHS expr of 
                      (S.Constructor c : rest) -> (c, map checkConstrArg rest)
-
                      _ -> error $ "Not a valid constructor: " ++ show expr
 
 checkConstrArg :: S.Exp -> S.ConstrArg

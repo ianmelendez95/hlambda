@@ -193,6 +193,9 @@ main = hspec $ do
       parseProgIO "lastElt (x:[]) = x\nlastElt (x:xs) = lastElt xs\nlastElt [1,2,3]"
         `ioShouldBe` "lastElt (x : []) = x\nlastElt (x : xs) = lastElt xs\nlastElt [1,2,3]"
 
+    it "p58: parses several arguments" $ do 
+      parseMatchesProg "xor False y = y\nxor True False = True\nxor True True = False\nxor True True"
+
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()
     ioShouldBe io val = (`shouldBe` val) =<< io

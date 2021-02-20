@@ -168,6 +168,11 @@ main = hspec $ do
       showReducedMiranda "[]"      `ioShouldBe` "NIL"
       showReducedMiranda "(x:y:xs)"  `ioShouldBe` "CONS x (CONS y xs)"
       showReducedMiranda "[x,y,z]" `ioShouldBe` "CONS x (CONS y (CONS z NIL))"
+
+    it "p54: translates tuple type sigs" $ do 
+      parseMatchesDef "pair * ** ::= PAIR * **"
+      parseMatchesDef "triple * ** ::= TRIPLE * **"
+      parseMatchesDef "quadruple * ** ::= QUADRUPLE * **"
     
     it "p54: translates tuple special syntax" $ do 
       showReducedMiranda "(x, y)"    `ioShouldBe` "PAIR x y"
@@ -195,6 +200,9 @@ main = hspec $ do
 
     parseMirandaExpIO :: String -> IO String 
     parseMirandaExpIO input = pShow <$> (parseHunit :: String -> IO M.Prog) input
+
+    parseMatchesDef :: String -> IO ()
+    parseMatchesDef input = parseDefIO input `ioShouldBe` input
 
     parseDefIO :: String -> IO String
     parseDefIO input = pShow <$> (parseHunit :: String -> IO M.Def) input 

@@ -184,7 +184,7 @@ checkFuncOrVarDef lhs rhs = case flattenApplyLHS lhs of
                               _ -> error $ "Invalid func def lhs: " ++ show lhs
 
 -- coerce an expression into a pattern
-checkPattern :: S.Exp -> S.Pattern
+checkPattern :: S.Exp -> S.FuncParam
 checkPattern (S.Variable v) = S.PVar v
 checkPattern expr = S.PConstr $ checkConstr expr
 

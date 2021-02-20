@@ -185,6 +185,9 @@ main = hspec $ do
       parseProgIO "bool ::= TRUE | FALSE\nif TRUE e1 e2 = e1\nif FALSE e1 e2 = e2\nif TRUE 1 2"
         `ioShouldBe` "bool ::= TRUE | FALSE\nif TRUE e1 e2 = e1\nif FALSE e1 e2 = e2\nif TRUE 1 2" 
 
+    it "p57: parses multiple function defs" $ do 
+      parseMatchesProg "factorial 0 = 1\nfactorial n = n * factorial (n - 1)\nfactorial 2"
+
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()
     ioShouldBe io val = (`shouldBe` val) =<< io
@@ -200,6 +203,9 @@ main = hspec $ do
 
     -- parsesDefTo :: String -> String -> IO ()
     -- parsesDefTo input res = parseDefIO input `ioShouldBe` res
+
+    parseMatchesProg :: String -> IO ()
+    parseMatchesProg input = parseProgIO input `ioShouldBe` input
 
     parseMatchesDef :: String -> IO ()
     parseMatchesDef input = parseDefIO input `ioShouldBe` input

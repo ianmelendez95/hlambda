@@ -4,7 +4,7 @@ module Miranda.Syntax
   , GenTypeVar
   , Constr
   , ConstrArg (..)
-  , Pattern (..)
+  , FuncParam (..)
   , Exp (..)
   -- , ToLambda (..)
   -- , showMarked
@@ -37,7 +37,7 @@ data Prog = Prog [Def] Exp
           deriving Show
 
 -- p48: Figure 3.3
-data Def = FuncDef String [Pattern] Exp
+data Def = FuncDef String [FuncParam] Exp
          | VarDef String Exp
          | TypeDef String [GenTypeVar] [Constr]
          deriving Show
@@ -50,7 +50,7 @@ data ConstrArg = CAVar String
                | CAList [ConstrArg]
                deriving Show
 
-data Pattern = PVar String 
+data FuncParam = PVar String 
              | PConstr Constr
              deriving Show
 
@@ -93,7 +93,7 @@ toBinding :: Def -> E.LetBinding
 toBinding (VarDef var_name var_value) = (var_name, toEnriched var_value)
 toBinding (FuncDef func_name var_names body) = (func_name, wrapLambda var_names (toEnriched body))
   where 
-    wrapLambda :: [Pattern] -> E.Exp -> E.Exp
+    wrapLambda :: [FuncParam] -> E.Exp -> E.Exp
     wrapLambda [] expr = expr
     wrapLambda ((PVar n):ns) expr = E.Lambda n (wrapLambda ns expr)
     wrapLambda (c@(PConstr _):_) _ = error $ "Unsupported: constructor function definition arguments: " ++ show c
@@ -138,7 +138,7 @@ instance PrettyLambda Prog where
 instance PrettyLambda Def where 
   prettyDoc = mkPrettyDocFromParenS sPrettyDef
 
-instance PrettyLambda Pattern where 
+instance PrettyLambda FuncParam where 
   prettyDoc = mkPrettyDocFromParenS sPrettyPattern
 
 instance PrettyLambda Exp where 
@@ -166,7 +166,7 @@ sPrettyDef (VarDef name value) =
          pvalue = prettyDoc value
      pure $ pname <+> pretty "=" <+> pvalue
 
-sPrettyPattern :: Pattern -> PrettyParenS LambdaDoc
+sPrettyPattern :: FuncParam -> PrettyParenS LambdaDoc
 sPrettyPattern (PVar v) = pure $ pretty v
 sPrettyPattern (PConstr c) = tempState (setPrec 11) (prettyConstructor c)
 

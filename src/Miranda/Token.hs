@@ -49,6 +49,7 @@ data InfixOp = IPlus
              | IDiv 
              | ICons
              | IEq
+             | ILt
              | IVar String
              deriving Show
 
@@ -63,6 +64,7 @@ instance PrettyLambda InfixOp where
   prettyDoc IDiv     = pretty "/"
   prettyDoc ICons    = pretty ":"
   prettyDoc IEq      = pretty "=="
+  prettyDoc ILt      = pretty "<"
   prettyDoc (IVar v) = pretty "$" <> pretty v
 
 instance Show Constant where 
@@ -82,5 +84,6 @@ instance E.ToEnriched InfixOp where
   toEnriched IDiv     = E.Pure . S.Function $ S.FDiv
   toEnriched ICons    = E.Pure . S.Function $ S.FCons
   toEnriched IEq      = E.Pure . S.Function $ S.FEq
+  toEnriched ILt      = E.Pure . S.Function $ S.FLt
   toEnriched (IVar v) = E.Pure . S.Variable $ S.RawVar v
 

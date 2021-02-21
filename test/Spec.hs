@@ -197,8 +197,10 @@ main = hspec $ do
       parseMatchesProg "xor False y = y\nxor True False = True\nxor True True = False\nxor True True"
 
     it "p58: parses conditional equations" $ do 
-      parseProgIO "factorial n = 1, n == 0\n            = n * factorial (n - 1)\nfactorial 5"
-        `ioShouldBe` "factorial n = 1, n == 0\n            = n * factorial (n - 1)\nfactorial 5" 
+      parseMatchesProg "factorial n = 1, n == 0\n            = n * factorial (n - 1)\nfactorial 5"
+
+    it "p58: parses funnyLastElt" $ do 
+      parseMatchesProg "funnyLastElt (x : xs) = x, x < 0\nfunnyLastElt (x : []) = x\nfunnyLastElt (x : xs) = funnyLastElt xs\nfunnyLastElt [1,2,3]"
 
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()

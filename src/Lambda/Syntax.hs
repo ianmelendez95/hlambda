@@ -39,6 +39,7 @@ data Function = FPlus
               | FTuple Int
               | FY   -- The Glorious Y Combinator
               | FEq
+              | FLt
 
 data Constant = CNat Int
               | CChar Char

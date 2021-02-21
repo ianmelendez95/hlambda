@@ -242,4 +242,5 @@ infixPrec T.IMult    = 7
 infixPrec T.IDiv     = 7
 infixPrec T.ICons    = 5
 infixPrec T.IEq      = 4
+infixPrec T.ILt      = 4
 infixPrec (T.IVar _) = 10

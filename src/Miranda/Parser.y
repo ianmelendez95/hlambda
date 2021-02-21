@@ -33,6 +33,7 @@ import Debug.Trace
   mult        { T.InfixOp T.IMult       }
   div         { T.InfixOp T.IDiv        }
   equal       { T.InfixOp T.IEq         }
+  lt          { T.InfixOp T.ILt         }
   ':'         { T.InfixOp T.ICons       }
   infix_var   { T.InfixOp (T.IVar _)    } -- $<var-name>
 
@@ -106,6 +107,7 @@ infixOp : plus      { T.IPlus  }
         | mult      { T.IMult  }
         | div       { T.IDiv   }
         | equal     { T.IEq    }
+        | lt        { T.ILt    }
         | ':'       { T.ICons  }
         | infix_var { getInfixOp $1 }
 

@@ -10,7 +10,6 @@ import Control.Exception (SomeException, catch)
 
 import Prettyprinter.Render.Terminal
 
-import Lambda.FreeBound
 import Lambda.Lexer (scanTokens)
 import Lambda.Syntax
 import Lambda.Parser (parser)
@@ -43,13 +42,11 @@ evalLambda input = do let tokens = scanTokens input
                         Left err -> error err
                         Right parsedEnriched -> 
                           do let parsed = toLambda parsedEnriched
-                                 marked = markBoundFree parsed
                                  reduced = reduce parsedEnriched
                                  evaled = eval parsedEnriched
                              putStr "enriched: "      >> catchAll (pPrint parsedEnriched)
                              putStr "parsed: "        >> catchAll (pPrint parsed)
                              putStr "raw: "           >> catchAll (pPrint parsed)
-                             putStr "marked: "        >> catchAll (pPrint marked)
                              putStr "beta reduced: "  >> catchAll (pPrint reduced)
                              putStr "evaled: "        >> catchAll (pPrint evaled)
 

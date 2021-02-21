@@ -14,6 +14,9 @@ data Exp = Let [LetBinding] Exp
         
 type LetBinding = (String, Exp)
 
+data Pattern = PConstant S.Constant
+             | PVariable S.Variable
+
 ----------------
 -- ToEnriched --
 ----------------

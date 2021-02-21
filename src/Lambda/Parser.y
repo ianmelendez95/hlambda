@@ -25,7 +25,7 @@ import Lambda.Lexer (alexScanTokens, scanTokens)
   '.'      { T.Dot    }
   '('      { T.LP     }
   ')'      { T.RP     }
-  ';'     { T.Semi   }
+  ';'      { T.Semi   }
   '{'      { T.LC     }
   '}'      { T.RC     }
 
@@ -67,7 +67,7 @@ function : func              { S.fromFunctionToken $1 }
          | '='               { S.Function S.FEq       }
 
 variable :: { S.Exp }       
-variable : var               { S.Variable (S.RawVar $1) }
+variable : var               { S.Variable $1 }
 
 constant :: { S.Exp }
 constant : const             { S.fromConstantToken $1 }

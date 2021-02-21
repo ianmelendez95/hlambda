@@ -116,8 +116,8 @@ instance ToEnriched RhsClause where
 instance ToEnriched Exp where 
   toEnriched (Constant c)        = toEnriched c
   toEnriched (BuiltinOp _)       = undefined
-  toEnriched (Variable x)        = E.Pure (S.Variable (S.RawVar x))
-  toEnriched (Constructor c)     = E.Pure (S.Variable (S.RawVar c)) -- TODO: are constructors just vars in the LC?
+  toEnriched (Variable x)        = E.Pure (S.Variable x)
+  toEnriched (Constructor c)     = E.Pure (S.Variable c) -- TODO: are constructors just vars in the LC?
   toEnriched (Apply e1 e2)       = E.Apply (toEnriched e1) (toEnriched e2)
   toEnriched (InfixApp op e1 e2) = E.Apply (E.Apply (toEnriched op) (toEnriched e1)) (toEnriched e2)
   toEnriched (ListLit exps)      = enrichedListLit exps

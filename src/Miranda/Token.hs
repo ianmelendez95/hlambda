@@ -85,5 +85,5 @@ instance E.ToEnriched InfixOp where
   toEnriched ICons    = E.Pure . S.Function $ S.FCons
   toEnriched IEq      = E.Pure . S.Function $ S.FEq
   toEnriched ILt      = E.Pure . S.Function $ S.FLt
-  toEnriched (IVar v) = E.Pure . S.Variable $ S.RawVar v
+  toEnriched (IVar v) = E.Pure . S.Variable $ v
 

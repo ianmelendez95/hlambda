@@ -8,7 +8,6 @@ import Data.Char (isLower)
 import Lambda.Syntax
 import qualified Lambda.Enriched as E
 import qualified Miranda.Syntax as M
-import Lambda.FreeBound
 
 class Reducible a where 
   reduce :: a -> Exp
@@ -20,7 +19,7 @@ instance Reducible E.Exp where
   reduce = reduce . toLambda
 
 instance Reducible Exp where 
-  reduce = reduceAfterMarked . markBoundFree
+  reduce = reduceAfterMarked
 
 -- TODO: reduce WHNF
 reduceAfterMarked :: Exp -> Exp 
@@ -81,6 +80,7 @@ reduceFunctionApplication FHead      = ((:[]) <$>) . reduceHeadApplication
 reduceFunctionApplication FTail      = ((:[]) <$>) . reduceTailApplication
 reduceFunctionApplication FY         = reduceYCombApplication
 reduceFunctionApplication FEq        = ((:[]) <$>) . reduceBinaryNumFuncApplication (==) 
+reduceFunctionApplication FLt        = ((:[]) <$>) . reduceBinaryNumFuncApplication (<) 
 
 reduceArithmeticApplication :: (Int -> Int -> Int) -> [Exp]  -> Either [Exp] Exp
 reduceArithmeticApplication = reduceBinaryNumFuncApplication

@@ -1,6 +1,6 @@
 module Lambda.Syntax 
   ( Exp (..)
-  , Variable (..)
+  , Variable
   , Function (..)
   , Constant (..)
   , ToLambda (..)
@@ -21,9 +21,11 @@ import Lambda.Pretty
 
 data Exp = Constant Constant 
          | Function Function
-         | Variable Variable 
+         | Variable String 
          | Apply Exp Exp 
          | Lambda String Exp
+
+type Variable = String
 
 data Function = FPlus
               | FMinus 
@@ -45,11 +47,6 @@ data Constant = CNat Int
               | CChar Char
               | CBool Bool 
               | CNil
-
-data Variable = RawVar String 
-              | FreeVar String 
-              | BoundVar String
-              -- deriving Show
 
 --------------
 -- ToLambda --
@@ -99,15 +96,11 @@ fromFunctionToken T.FY     = Function FY
 -- Ops --
 ---------
 
-varName :: Variable -> String 
-varName (RawVar n) = n
-varName (FreeVar n) = n
-varName (BoundVar n) = n
+varName :: String -> String 
+varName n = n
 
 mapVarName :: (String -> String) -> Variable -> Variable 
-mapVarName f (RawVar n) = RawVar (f n)
-mapVarName f (FreeVar n) = FreeVar (f n)
-mapVarName f (BoundVar n) = BoundVar (f n)
+mapVarName = id
 
 --------------
 -- Showing --
@@ -144,6 +137,7 @@ instance Show Function where
   show FHead  = "HEAD"
   show FTail  = "TAIL"
   show FEq    = "="
+  show FLt    = "<"
   show FY     = "Y"
   show (FTuple 2) = "PAIR"
   show (FTuple 3) = "TRIPLE"
@@ -156,11 +150,6 @@ instance Show Constant where
   show (CBool True)  = "TRUE"
   show (CBool False) = "FALSE"
   show CNil          = "NIL"
-
-instance Show Variable where 
-  show (RawVar var) = var
-  show (FreeVar var) = var
-  show (BoundVar var) = var
 
 ------------------
 -- Pretty Print --
@@ -185,6 +174,4 @@ sPretty (Apply e e') = do wrapper <- getParenWrapper 10
                           pure $ wrapper $ ePretty <+> ePretty'
 
 prettyVar :: Variable -> Doc LambdaAnn
-prettyVar (FreeVar name)  = annStr AFreeVar name
-prettyVar (BoundVar name) = annStr ABoundVar name
-prettyVar (RawVar name)   = annStr ARawVar name
+prettyVar  = annStr AFreeVar

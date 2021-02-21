@@ -162,8 +162,8 @@ sPrettyDef :: Def -> PrettyParenS LambdaDoc
 sPrettyDef (FuncDef func_name vars body) = 
   do let pname = pretty func_name
          pvars = if null vars then (mempty <>) else ((hsep . map prettyDoc $ vars) <+>)
-         pbody = hsep $ intersperse (pretty "=") (map sPrettyClause body)
-     pure $ pname <+> pvars (pretty "=" <+> pbody)
+         pbody = align . vsep $ map ((pretty "=" <+>) . sPrettyClause) body
+     pure $ pname <+> pvars pbody
 sPrettyDef (TypeDef type_name type_vars constrs) = 
   do pConstrs <- tempState (setPrec 0) (mapM prettyConstructor constrs)
      pure $ prettyLHS type_name type_vars 

@@ -6,6 +6,7 @@ import Test.HUnit.Base (assertFailure)
 import Parse
 import Lambda.Pretty (PrettyLambda (..))
 import Lambda.Reduce (reduce)
+import Lambda.Enriched (ToEnriched (..))
 import qualified Miranda.Syntax as M (Prog (..), Def)
 
 main :: IO ()
@@ -95,9 +96,9 @@ main = hspec $ do
     it "p59: parses noDups" $ do 
       parseMatchesProg "noDups [] = []\nnoDups [x] = [x]\nnoDups (x : x : xs) = noDups (x : xs)\nnoDups (x : y : ys) = x : noDups (y : ys)\nnoDups [1,2,2,3]"
 
-    -- it "p60: reduces pattern arg definition" $ do 
-    --   showReducedMiranda "fst (x,y) = x"
-    --     `ioShouldBe` "\\(PAIR x y). x"
+    it "p60: reduces pattern arg definition" $ do 
+      showEnrichedMiranda "fst (x,y) = x\nfst (1,2)"
+        `ioShouldBe` "let fst = \\PAIR x y. x  in fst (PAIR 1 2)"
 
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()
@@ -105,6 +106,10 @@ main = hspec $ do
 
     showReducedMiranda :: String -> IO String
     showReducedMiranda input = pShow . reduce <$> (parseHunit input :: IO M.Prog)
+
+    showEnrichedMiranda :: String -> IO String 
+    showEnrichedMiranda input = do parsed_prog <- parseHunit input :: IO M.Prog
+                                   return $ pShow (toEnriched parsed_prog)
 
     parseProgIO :: String -> IO String
     parseProgIO input = pShow <$> (parseHunit :: String -> IO M.Prog) input

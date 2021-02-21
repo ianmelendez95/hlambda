@@ -12,7 +12,7 @@ module Miranda.Syntax
   ) where 
 
 import Prettyprinter
-import Data.List (intersperse, foldl1')
+import Data.List (intersperse, foldl1', foldl')
 
 import qualified Miranda.Token as T
 import Lambda.Pretty
@@ -99,18 +99,55 @@ instance ToLambda Prog where
 instance ToEnriched Prog where 
   toEnriched (Prog defs expr) = E.Let (map toBinding defs) (toEnriched expr)
 
+--------------------------------------------------------------------------------
+-- Enriching Function Defs
+
 toBinding :: Def -> E.LetBinding
-toBinding (FuncDef func_name var_names [BaseClause body]) = (E.PVariable func_name, wrapLambda var_names (toEnriched body))
-  where 
-    wrapLambda :: [FuncParam] -> E.Exp -> E.Exp
-    wrapLambda [] expr = expr
-    wrapLambda ((FPVariable n):ns) expr = E.Lambda (E.PVariable n) (wrapLambda ns expr)
-    -- wrapLambda (())
-    wrapLambda p _ = error $ "Unsupported: only variable arguments supported: " ++ show p
+toBinding (FuncDef func_name func_params [clause]) = (E.PVariable func_name, wrapLambda func_params (toEnriched clause))
 toBinding (FuncDef _ _ expr) = error $ "Can't translate function body: " ++ show expr
 toBinding t@TypeDef{} = error $ "Type definitions unsupported: " ++ show t
 
+wrapLambda :: [FuncParam] -> E.Exp -> E.Exp
+wrapLambda ps expr = foldr (E.Lambda . funcParamToPattern) expr ps
 
+funcParamToPattern :: FuncParam -> E.Pattern
+funcParamToPattern param = 
+  case flattenFuncParam param of 
+    [FPConstant c]    -> E.PConstant (T.constantToLambda c)
+    [FPVariable v]    -> E.PVariable v
+    [FPConstructor c] -> E.PConstructor c []
+    [FPCons p1 p2]    -> E.PConstructor "CONS" (map funcParamToPattern [p1, p2])
+    [FPListLit ps]    -> funcListLitToPattern ps
+    [FPTuple tuple]   -> tupleToPattern tuple
+    (FPConstructor c : rest) -> E.PConstructor c (map funcParamToPattern rest)
+    apply@[FPApply _ _] -> error $ "Apply should have been flattened: " ++ show apply
+    p -> error $ "Invalid function parameter: " ++ show p
+
+flattenFuncParam :: FuncParam -> [FuncParam]
+flattenFuncParam (FPApply p1 p2) = flattenFuncParam p1 ++ [p2]
+flattenFuncParam param = [param]
+
+funcListLitToPattern :: [FuncParam] -> E.Pattern
+funcListLitToPattern = foldl' (\cons p -> enrConsPattern (funcParamToPattern p) cons) enrNilPattern
+  where
+    enrConsPattern :: E.Pattern -> E.Pattern -> E.Pattern
+    enrConsPattern p1 p2 = E.PConstructor "CONS" [p1, p2]
+
+    enrNilPattern :: E.Pattern 
+    enrNilPattern = E.PConstructor "NIL" []
+
+tupleToPattern :: [FuncParam] -> E.Pattern
+tupleToPattern ps = E.PConstructor (tupleToConstructor ps) (map funcParamToPattern ps)
+  where 
+    tupleToConstructor :: [FuncParam] -> E.Constructor
+    tupleToConstructor ps' = 
+      case length ps' of 
+        0 -> error "0 length tuple"
+        1 -> error "1 length tuple"
+        2 -> "PAIR"
+        3 -> "TRIPLE"
+        4 -> "QUADRUPLE"
+        n -> "TUPLE-" ++ show n
 
 instance ToEnriched RhsClause where 
   toEnriched (BaseClause expr) = toEnriched expr

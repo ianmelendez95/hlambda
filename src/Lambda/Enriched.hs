@@ -13,11 +13,13 @@ data Exp = Let [LetBinding] Exp
          | Pure S.Exp
          | Apply Exp Exp 
          | Lambda Pattern Exp
+         | FatBar Exp Exp
         
 type LetBinding = (Pattern, Exp)
 type Constructor = String
 
-data Pattern = PVariable S.Variable
+data Pattern = PConstant S.Constant
+             | PVariable S.Variable
              | PConstructor Constructor [Pattern]
              deriving Show
 
@@ -38,9 +40,11 @@ instance ToLambda Exp where
   toLambda (Apply e1 e2) = S.Apply (toLambda e1) (toLambda e2)
   toLambda (Lambda pat body) = toLambdaLambda pat body
   toLambda (Pure expr) = expr
+  toLambda expr@(FatBar _ _) = error $ "FatBar unsupported: " ++ show expr
 
 toLambdaLambda :: Pattern -> Exp -> S.Exp
 toLambdaLambda (PVariable v) body = S.Lambda v (toLambda body)
+toLambdaLambda c@(PConstant _) _ = error $ "No support for constants in patterns: " ++ show c
 toLambdaLambda c@(PConstructor _ _) _ = error $ "No support for constructors to lambda yet: " ++ show c
 
 -- | (letrec v = B in E) = (let v = Y (\v. B) in E) - p42
@@ -80,14 +84,16 @@ sPretty :: Exp -> PrettyParenS LambdaDoc
 sPretty (Pure expr) = pure $ prettyDoc expr
 sPretty (Letrec bindings body) = prettyLet "letrec" bindings body
 sPretty (Let bindings body)    = prettyLet "let" bindings body
-sPretty (Lambda (PVariable var) e) = 
+sPretty (FatBar e1 e2) = do p1 <- sPretty e1
+                            p2 <- sPretty e2
+                            return $ p1 <+> pipe <+> p2
+sPretty (Lambda patt e) = 
   do wrapper <- getParenWrapper 5 
-     ePretty <- tempState (setPrec 0) (sPretty e)
+     e_pretty <- tempState (setPrec 0) (sPretty e)
      pure $ wrapper $ backslash
-                   <> annStr ABoundVar var 
+                   <> prettyDoc patt
                    <> dot 
-                   <+> ePretty
-sPretty (Lambda pat _) = error $ "enriched sPretty: no support for pattern: " ++ show pat
+                   <+> e_pretty
 sPretty (Apply e e') = do wrapper <- getParenWrapper 10
                           ePretty <- tempState (setPrec 6) (sPretty e)
                           ePretty' <- tempState (setPrec 11) (sPretty e')
@@ -101,3 +107,13 @@ prettyBindings :: [LetBinding] -> LambdaDoc
 prettyBindings [] = mempty
 prettyBindings ((PVariable var, val):bs) = pretty var <+> pretty "=" <+> prettyDoc val <+> prettyBindings bs
 prettyBindings ((pat, _):_) = error $ "prettyBindings: no support for pattern: " ++ show pat 
+
+instance PrettyLambda Pattern where 
+  prettyDoc = mkPrettyDocFromParenS sPrettyPattern
+
+sPrettyPattern :: Pattern -> PrettyParenS LambdaDoc
+sPrettyPattern (PConstant c) = pure . prettyDoc $ S.Constant c
+sPrettyPattern (PVariable v) = pure . pretty $ v
+sPrettyPattern (PConstructor c ps) = do setPrec 11
+                                        pretty_args <- mapM sPrettyPattern ps
+                                        return $ hsep (pretty c : pretty_args)

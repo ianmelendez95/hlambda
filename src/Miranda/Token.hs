@@ -3,6 +3,7 @@ module Miranda.Token
   , Token (..)
   , InfixOp (..)
   , Constant (..)
+  , constantToLambda
   ) where 
 
 import Lambda.Pretty
@@ -76,6 +77,12 @@ instance E.ToEnriched Constant where
   toEnriched (CNat x)  = E.Pure . S.Constant . S.CNat  $ x
   toEnriched (CChar c) = E.Pure . S.Constant . S.CChar $ c
   toEnriched (CBool b) = E.Pure . S.Constant . S.CBool $ b
+
+constantToLambda :: Constant -> S.Constant 
+constantToLambda (CNat x)  = S.CNat x
+constantToLambda (CChar c) = S.CChar c
+constantToLambda (CBool b) = S.CBool b
+
 
 instance E.ToEnriched InfixOp where 
   toEnriched IPlus    = E.Pure . S.Function $ S.FPlus

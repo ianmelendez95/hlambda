@@ -1,6 +1,7 @@
 module Miranda.Syntax 
   ( Prog (..) 
   , Def (..)
+  , RhsClause (..)
   , GenTypeVar
   , Constr
   , ConstrArg (..)
@@ -37,12 +38,16 @@ data Prog = Prog [Def] Exp
           deriving Show
 
 -- p48: Figure 3.3
-data Def = FuncDef String [FuncParam] Exp
+data Def = FuncDef String [FuncParam] [RhsClause]
          | TypeDef String [GenTypeVar] [Constr]
          deriving Show
 
 type GenTypeVar = Int
 type Constr = (String, [ConstrArg])
+
+data RhsClause = BaseClause Exp
+               | CondClause Exp Exp -- expr, conditional exp  
+               deriving Show
 
 data ConstrArg = CAVar String 
                | CAGenTypeVar GenTypeVar
@@ -95,13 +100,18 @@ instance ToEnriched Prog where
   toEnriched (Prog defs expr) = E.Let (map toBinding defs) (toEnriched expr)
 
 toBinding :: Def -> E.LetBinding
-toBinding (FuncDef func_name var_names body) = (func_name, wrapLambda var_names (toEnriched body))
+toBinding (FuncDef func_name var_names [BaseClause body]) = (func_name, wrapLambda var_names (toEnriched body))
   where 
     wrapLambda :: [FuncParam] -> E.Exp -> E.Exp
     wrapLambda [] expr = expr
     wrapLambda ((FPVariable n):ns) expr = E.Lambda n (wrapLambda ns expr)
     wrapLambda p _ = error $ "Unsupported: only variable arguments supported: " ++ show p
+toBinding (FuncDef _ _ expr) = error $ "Can't translate function body: " ++ show expr
 toBinding t@TypeDef{} = error $ "Type definitions unsupported: " ++ show t
+
+instance ToEnriched RhsClause where 
+  toEnriched (BaseClause expr) = toEnriched expr
+  toEnriched clause@(CondClause _ _) = error $ "Can't translate conditional def: " ++ show clause
 
 instance ToEnriched Exp where 
   toEnriched (Constant c)        = toEnriched c
@@ -152,7 +162,7 @@ sPrettyDef :: Def -> PrettyParenS LambdaDoc
 sPrettyDef (FuncDef func_name vars body) = 
   do let pname = pretty func_name
          pvars = if null vars then (mempty <>) else ((hsep . map prettyDoc $ vars) <+>)
-         pbody = prettyDoc body
+         pbody = hsep $ intersperse (pretty "=") (map sPrettyClause body)
      pure $ pname <+> pvars (pretty "=" <+> pbody)
 sPrettyDef (TypeDef type_name type_vars constrs) = 
   do pConstrs <- tempState (setPrec 0) (mapM prettyConstructor constrs)
@@ -164,6 +174,10 @@ sPrettyDef (TypeDef type_name type_vars constrs) =
     prettyLHS name vars = 
       if null vars then pretty name 
                    else pretty name <+> hsep (map prettyTypeVar type_vars)
+
+sPrettyClause :: RhsClause -> LambdaDoc
+sPrettyClause (BaseClause expr) = prettyDoc expr
+sPrettyClause (CondClause expr cond_expr) = prettyDoc expr <> comma <+> prettyDoc cond_expr
 
 sPrettyPattern :: FuncParam -> PrettyParenS LambdaDoc
 sPrettyPattern param = do setPrec 11 
@@ -227,4 +241,5 @@ infixPrec T.IMinus   = 6
 infixPrec T.IMult    = 7
 infixPrec T.IDiv     = 7
 infixPrec T.ICons    = 5
+infixPrec T.IEq      = 4
 infixPrec (T.IVar _) = 10

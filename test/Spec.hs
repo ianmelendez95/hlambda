@@ -196,6 +196,10 @@ main = hspec $ do
     it "p58: parses several arguments" $ do 
       parseMatchesProg "xor False y = y\nxor True False = True\nxor True True = False\nxor True True"
 
+    it "p58: parses conditional equations" $ do 
+      parseProgIO "factorial n = 1, n == 0\n            = n * factorial (n - 1)\nfactorial 5"
+        `ioShouldBe` "factorial n = 1, n == 0\n            = n * factorial (n - 1)\nfactorial 5" 
+
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()
     ioShouldBe io val = (`shouldBe` val) =<< io

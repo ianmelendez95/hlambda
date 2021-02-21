@@ -32,6 +32,7 @@ import Debug.Trace
   minus       { T.InfixOp T.IMinus      }
   mult        { T.InfixOp T.IMult       }
   div         { T.InfixOp T.IDiv        }
+  equal       { T.InfixOp T.IEq         }
   ':'         { T.InfixOp T.ICons       }
   infix_var   { T.InfixOp (T.IVar _)    } -- $<var-name>
 
@@ -61,15 +62,24 @@ stmts : stmts ';' stmt   { $3 : $1 }
 
 stmt :: { Stmt }
 stmt : exp '::=' constructors { Right (checkTypeDef $1 (reverse $3)) }
-     | exp '='  exp           { Right (checkFuncDef $1 $3)      }
+     | exp '='   frhs         { Right (checkFuncDef $1 (reverse $3))      }
      | exp                    { Left  $1 }
+
+-- REVERSE!!
+frhs :: { [S.RhsClause] }
+frhs : frhs '=' clause      { $3 : $1 }
+     | clause               { [$1] }
+
+clause :: { S.RhsClause }
+clause : exp                    { S.BaseClause $1 }
+       | exp ',' exp            { S.CondClause $1 $3 }          
 
 -------------------------------------------------------------------------------
 -- Def
 
 def :: { S.Def }
 def : exp '::=' constructors { (checkTypeDef $1 (reverse $3)) }
-    | exp '='  exp           { (checkFuncDef $1 $3)      }
+    | exp '='   frhs         { (checkFuncDef $1 (reverse $3))      }
 
 -- REVERSE!!
 constructors :: { [S.Constr] }
@@ -95,6 +105,7 @@ infixOp : plus      { T.IPlus  }
         | minus     { T.IMinus }
         | mult      { T.IMult  }
         | div       { T.IDiv   }
+        | equal     { T.IEq    }
         | ':'       { T.ICons  }
         | infix_var { getInfixOp $1 }
 
@@ -177,10 +188,16 @@ checkTypeDef lhs constrs =
     (S.Variable type_name : rest) -> S.TypeDef type_name (map checkGenTypeVar rest) constrs
     _ -> error $ "Invalid type declaration lhs: " ++ show lhs
 
-checkFuncDef :: S.Exp -> S.Exp -> S.Def
+checkFuncDef :: S.Exp -> [S.RhsClause] -> S.Def
 checkFuncDef lhs rhs = case flattenApplyLHS lhs of 
                               (S.Variable func_name : rest) -> S.FuncDef func_name (map checkFuncParam rest) rhs
                               _ -> error $ "Invalid func def lhs: " ++ show lhs
+
+checkFuncClauses :: [S.RhsClause] -> [S.RhsClause]
+checkFuncClauses [] = error "Expecting at least one clause"
+checkFuncClauses clause@[_] = clause
+checkFuncClauses (clause@(S.CondClause _ _) : rest) = clause : checkFuncClauses rest
+checkFuncClauses (clause@(S.BaseClause _) : _) = error "expecting base clause to be last"
 
 -- coerce an expression into a pattern
 checkFuncParam :: S.Exp -> S.FuncParam

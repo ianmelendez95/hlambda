@@ -11,6 +11,7 @@ $plus          = \+
 $minus         = \-
 $mult          = \*
 $div           = \/
+@equal         = \=\=
 
 -- logical functions
 @and           = A(nd|ND)
@@ -44,6 +45,7 @@ tokens :-
   $minus              { located $ \_ -> T.InfixOp T.IMinus }
   $mult               { located $ \_ -> T.InfixOp T.IMult }
   $div                { located $ \_ -> T.InfixOp T.IDiv }
+  @equal              { located $ \_ -> T.InfixOp T.IEq }
 
   @number             { located $ \n -> T.Constant $ T.CNat (read n) }
   @char               { located $ \c -> T.Constant $ T.CChar (c !! 1) }

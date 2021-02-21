@@ -19,6 +19,8 @@ import Data.Text (Text, unpack, pack)
 import qualified Lambda.Token as T
 import Lambda.Pretty
 
+-- p13: Figure 2.1 - Syntax of a Lambda Expression
+
 data Exp = Constant Constant 
          | Function Function
          | Variable String 

@@ -1,7 +1,5 @@
 module Parse where 
 
-import qualified Lambda.Enriched as E (Exp (..))
-import qualified Lambda.Parser as EP (parseExpression)
 import Miranda.Syntax (Prog (..), Exp, Def)
 import Miranda.Parser (parseProgram, parseDef, parseExp)
 
@@ -16,6 +14,3 @@ instance Parse Exp where
 
 instance Parse Def where 
   parse = parseDef
-
-instance Parse E.Exp where 
-  parse = EP.parseExpression

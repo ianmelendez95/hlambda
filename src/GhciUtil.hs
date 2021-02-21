@@ -4,7 +4,6 @@ module GhciUtil where
 import Parse
 import Lambda.Reduce (Reducible (..))
 import Lambda.Pretty (PrettyLambda (..))
-import Lambda.Enriched (Exp (..))
 import Lambda.ToLambda
 
 import Miranda.Lexer (scanTokens)
@@ -28,9 +27,6 @@ parseMirandaExp = eitherError . parse
 
 lexMiranda :: String -> String
 lexMiranda = show . scanTokens
-
-evalEnriched :: String -> IO ()
-evalEnriched = pPrint . reduce . either error id . (parse :: String -> Either String Exp)
 
 pPrint :: PrettyLambda a => a -> IO ()
 pPrint = putStrLn . pShow

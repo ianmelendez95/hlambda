@@ -100,14 +100,17 @@ instance ToEnriched Prog where
   toEnriched (Prog defs expr) = E.Let (map toBinding defs) (toEnriched expr)
 
 toBinding :: Def -> E.LetBinding
-toBinding (FuncDef func_name var_names [BaseClause body]) = (func_name, wrapLambda var_names (toEnriched body))
+toBinding (FuncDef func_name var_names [BaseClause body]) = (E.PVariable func_name, wrapLambda var_names (toEnriched body))
   where 
     wrapLambda :: [FuncParam] -> E.Exp -> E.Exp
     wrapLambda [] expr = expr
-    wrapLambda ((FPVariable n):ns) expr = E.Lambda n (wrapLambda ns expr)
+    wrapLambda ((FPVariable n):ns) expr = E.Lambda (E.PVariable n) (wrapLambda ns expr)
+    -- wrapLambda (())
     wrapLambda p _ = error $ "Unsupported: only variable arguments supported: " ++ show p
 toBinding (FuncDef _ _ expr) = error $ "Can't translate function body: " ++ show expr
 toBinding t@TypeDef{} = error $ "Type definitions unsupported: " ++ show t
+
+
 
 instance ToEnriched RhsClause where 
   toEnriched (BaseClause expr) = toEnriched expr

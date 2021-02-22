@@ -10,6 +10,8 @@ module Lambda.Syntax
   , mapVarName
   , fromConstantToken
   , fromFunctionToken
+  , freeVariables
+  , freeVariables'
   ) where 
 
 import Prettyprinter ( (<+>), backslash, dot )
@@ -18,6 +20,7 @@ import Data.Text (Text, unpack, pack)
 
 import qualified Lambda.Token as T
 import Lambda.Pretty
+import Data.List (insert)
 
 -- p13: Figure 2.1 - Syntax of a Lambda Expression
 
@@ -49,6 +52,7 @@ data Constant = CNat Int
               | CChar Char
               | CBool Bool 
               | CNil
+              | CError
 
 --------------
 -- ToLambda --
@@ -152,6 +156,7 @@ instance Show Constant where
   show (CBool True)  = "TRUE"
   show (CBool False) = "FALSE"
   show CNil          = "NIL"
+  show CError        = "ERROR"
 
 ------------------
 -- Pretty Print --
@@ -177,3 +182,16 @@ sPretty (Apply e e') = do wrapper <- getParenWrapper 10
 
 prettyVar :: Variable -> Doc LambdaAnn
 prettyVar  = annStr AFreeVar
+
+--------------------------------------------------------------------------------
+-- Free Variables
+
+freeVariables :: Exp -> [String]
+freeVariables = freeVariables' []
+
+freeVariables' :: [String] -> Exp -> [String]
+freeVariables' _ (Constant _) = []
+freeVariables' _ (Function _) = []
+freeVariables' bound (Variable var) = [varName var | varName var `notElem` bound]
+freeVariables' bound (Apply e1 e2)  = freeVariables' bound e1 ++ freeVariables' bound e2
+freeVariables' bound (Lambda v e) = freeVariables' (insert v bound) e

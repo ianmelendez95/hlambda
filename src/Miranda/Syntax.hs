@@ -13,6 +13,7 @@ module Miranda.Syntax
 
 import Prettyprinter
 import Data.List (intersperse, foldl1', foldl')
+import qualified Data.Map as Map
 
 import qualified Miranda.Token as T
 import Lambda.Pretty
@@ -27,8 +28,11 @@ import Lambda.Pretty
       mkPrettyDocFromParenS )
 import Lambda.Enriched (ToEnriched (..))
 import Lambda.Syntax (ToLambda (..))
+import Lambda.Reduce (Reducible (..), newName)
 import qualified Lambda.Enriched as E
 import qualified Lambda.Syntax as S
+
+import Debug.Trace
 
 ----------------------
 -- Lambda Expressions --
@@ -89,6 +93,12 @@ data Exp = Constant T.Constant
 -- instance Show Exp where 
 --   show = pShow
 
+--------------------------------------------------------------------------------
+-- Reducible 
+
+instance Reducible Prog where 
+  reduce = reduce . toLambda
+
 ---------------------------
 -- ToEnriched (ToLambda) --
 ---------------------------
@@ -97,18 +107,59 @@ instance ToLambda Prog where
   toLambda = toLambda . toEnriched
 
 instance ToEnriched Prog where 
-  toEnriched (Prog defs expr) = E.Let (map toBinding defs) (toEnriched expr)
+  toEnriched (Prog defs expr) = E.Let (toBindings defs) (toEnriched expr)
 
 --------------------------------------------------------------------------------
 -- Enriching Function Defs
 
-toBinding :: Def -> E.LetBinding
-toBinding (FuncDef func_name func_params [clause]) = (E.PVariable func_name, wrapLambda func_params (toEnriched clause))
-toBinding (FuncDef _ _ expr) = error $ "Can't translate function body: " ++ show expr
-toBinding t@TypeDef{} = error $ "Type definitions unsupported: " ++ show t
+toBindings :: [Def] -> [E.LetBinding]
+toBindings defs = 
+  let grouped_defs = Map.toList . groupFuncDefs $ defs
+   in map (uncurry toBinding) grouped_defs
 
-wrapLambda :: [FuncParam] -> E.Exp -> E.Exp
-wrapLambda ps expr = foldr (E.Lambda . funcParamToPattern) expr ps
+toBinding :: String -> [FuncSpec] -> E.LetBinding
+toBinding fname specs
+  | not . allEqual . map (length . fst) $ specs = error $ "Functions have differing number of arguments: " ++ fname
+  | otherwise = 
+    let binding_exprs = map (uncurry toBindingExp) specs
+        free_vars = concatMap E.freeVariables binding_exprs
+        arg_name = if "a" `elem` free_vars then newName free_vars "a"
+                                           else "a"
+        arg_var = E.Pure . S.Variable $ arg_name
+        error_const = E.Pure . S.Constant $ S.CError
+
+        lambda_var = E.PVariable arg_name
+        lambda_body = foldr (\e fb_expr -> E.FatBar (E.Apply e arg_var) fb_expr) 
+                            error_const 
+                            binding_exprs
+        lambda = E.Lambda lambda_var lambda_body
+     in (E.PVariable fname, lambda)
+  where 
+    allEqual :: Eq a => [a] -> Bool
+    allEqual [] = True
+    allEqual (x:xs) = all (== x) xs 
+
+toBindingExp :: [FuncParam] -> [RhsClause] -> E.Exp
+toBindingExp [param] [BaseClause expr] = E.Lambda (funcParamToPattern param) (toEnriched expr)
+toBindingExp params clauses = error $ "Currently only support single argument, single rhs expression functions: " ++ show params ++ ", " ++ show clauses
+
+type FuncSpec = ([FuncParam], [RhsClause]) -- a 'specification' for a function (everything but the name)
+type FuncDefMap = Map.Map String [FuncSpec]
+
+groupFuncDefs :: [Def] -> FuncDefMap
+groupFuncDefs = foldl' insertDef Map.empty
+  where 
+    insertDef :: FuncDefMap -> Def -> FuncDefMap
+    insertDef m (FuncDef name pars rhs) = Map.insertWith (flip (++)) name [(pars, rhs)] m
+    insertDef m _ = m
+
+-- toBinding :: Def -> E.LetBinding
+-- toBinding (FuncDef func_name func_params [clause]) = (E.PVariable func_name, wrapLambda func_params (toEnriched clause))
+-- toBinding (FuncDef _ _ expr) = error $ "Can't translate function body: " ++ show expr
+-- toBinding t@TypeDef{} = error $ "Type definitions unsupported: " ++ show t
+
+-- wrapLambda :: [FuncParam] -> E.Exp -> E.Exp
+-- wrapLambda ps expr = foldr (E.Lambda . funcParamToPattern) expr ps
 
 funcParamToPattern :: FuncParam -> E.Pattern
 funcParamToPattern param = 

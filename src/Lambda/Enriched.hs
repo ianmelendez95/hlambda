@@ -1,6 +1,7 @@
 module Lambda.Enriched where 
 
 import Prettyprinter
+import Data.List (foldl', insert, nub)
 
 import Lambda.Pretty
 import Lambda.Syntax (ToLambda (..))
@@ -117,3 +118,31 @@ sPrettyPattern (PVariable v) = pure . pretty $ v
 sPrettyPattern (PConstructor c ps) = do setPrec 11
                                         pretty_args <- mapM sPrettyPattern ps
                                         return $ hsep (pretty c : pretty_args)
+
+--------------------------------------------------------------------------------
+-- Free Variables 
+
+freeVariables :: Exp -> [String]
+freeVariables = nub . freeVariables' []
+
+freeVariables' :: [String] -> Exp -> [String]
+freeVariables' bound (Let binds expr) = freeVarsInLet bound binds expr
+freeVariables' bound (Letrec binds expr) = freeVarsInLet bound binds expr
+freeVariables' bound (Pure expr) = S.freeVariables' bound expr
+freeVariables' bound (Apply e1 e2) = concatMap (freeVariables' bound) [e1, e2]
+freeVariables' bound (FatBar e1 e2) = concatMap (freeVariables' bound) [e1, e2]
+freeVariables' bound (Lambda patt expr) = 
+  freeVariables' (insertAll (boundVarsInPattern patt) bound) expr
+  where 
+    insertAll :: [String] -> [String] -> [String]
+    insertAll ls set = foldl' (flip insert) set ls
+
+boundVarsInPattern :: Pattern -> [String]
+boundVarsInPattern (PConstant _) = []
+boundVarsInPattern (PVariable v) = [v]
+boundVarsInPattern (PConstructor _ args) = concatMap boundVarsInPattern args
+
+freeVarsInLet :: [String] -> [LetBinding] -> Exp -> [String]
+freeVarsInLet bound binds expr = 
+  let binds_free = foldr (\(_, e) vars -> freeVariables' bound e ++ vars) [] binds
+   in freeVariables' bound expr ++ binds_free

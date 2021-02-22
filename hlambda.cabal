@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: d893de67ba5bd1e270d851f450783514ffd1d936675c5b67d50e7fa985ecafd0
+-- hash: eec98b1b3386dc99878531ce4821cc9add994561f7eabeeaaefa6e05dbadf50f
 
 name:           hlambda
 version:        0.1.0.0
@@ -47,6 +47,7 @@ library
   build-depends:
       array
     , base >=4.7 && <5
+    , containers
     , mtl
     , prettyprinter
     , prettyprinter-ansi-terminal

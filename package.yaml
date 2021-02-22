@@ -30,6 +30,7 @@ library:
   - text
   - prettyprinter-ansi-terminal
   - mtl
+  - containers
 
 executables:
   hl:

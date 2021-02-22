@@ -1,19 +1,15 @@
-module Lambda.Reduce (Reducible (..)) where 
+module Lambda.Reduce (Reducible (..), newName) where 
 
 -- new reduction strategy that emulates laziness
 
-import Data.List (insert, union, foldl1')
+import Data.List (union, foldl1')
 import Data.Char (isLower)
 
 import Lambda.Syntax
 import qualified Lambda.Enriched as E
-import qualified Miranda.Syntax as M
 
 class Reducible a where 
   reduce :: a -> Exp
-
-instance Reducible M.Prog where 
-  reduce = reduce . toLambda
 
 instance Reducible E.Exp where 
   reduce = reduce . toLambda
@@ -41,7 +37,7 @@ etaReduceLambda var_name (Apply func_exp (Variable var_arg))
 etaReduceLambda _ _ = Nothing
 
 varFreeInExp :: Exp -> String -> Bool
-varFreeInExp expr = (`elem` freeVariables [] expr)
+varFreeInExp expr = (`elem` freeVariables expr)
 
 -----------
 -- Apply --
@@ -156,8 +152,8 @@ replaceVarWithValInBody name newExp (Apply e1 e2) = Apply (replaceVarWithValInBo
                                                           (replaceVarWithValInBody name newExp e2)
 replaceVarWithValInBody name new_exp l@(Lambda v e)
   | v == name = l
-  | (name `elem` freeVariables [] e) && (v `elem` freeVariables [] new_exp)
-      = let (new_v, new_e) = alphaConvertRestricted (freeVariables [] new_exp `union` freeVariables [v] e) v e
+  | (name `elem` freeVariables e) && (v `elem` freeVariables new_exp)
+      = let (new_v, new_e) = alphaConvertRestricted (freeVariables new_exp `union` freeVariables' [v] e) v e
          in Lambda new_v (replaceVarWithValInBody name new_exp new_e)
   | otherwise = Lambda v (replaceVarWithValInBody name new_exp e)
 
@@ -199,10 +195,10 @@ succName [c]
   | otherwise       = [succ c]
 succName name = name ++ "'"
 
-freeVariables :: [String] -> Exp -> [String]
-freeVariables _ (Constant _) = []
-freeVariables _ (Function _) = []
-freeVariables bound (Variable var) = [varName var | varName var `notElem` bound]
-freeVariables bound (Apply e1 e2)  = freeVariables bound e1 ++ freeVariables bound e2
-freeVariables bound (Lambda v e) = freeVariables (insert v bound) e
+-- freeVariables :: [String] -> Exp -> [String]
+-- freeVariables _ (Constant _) = []
+-- freeVariables _ (Function _) = []
+-- freeVariables bound (Variable var) = [varName var | varName var `notElem` bound]
+-- freeVariables bound (Apply e1 e2)  = freeVariables bound e1 ++ freeVariables bound e2
+-- freeVariables bound (Lambda v e) = freeVariables (insert v bound) e
  

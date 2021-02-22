@@ -103,6 +103,10 @@ main = hspec $ do
     it "p62: reduces multiple pattern matching" $ do 
       showEnrichedMiranda "reflect (LEAF n) = LEAF n\nreflect (BRANCH t1 t2) = BRANCH (reflect t2) (reflect t1)\nreflect (LEAF 1)"
         `ioShouldBe` "let reflect = \\a. (\\LEAF n. LEAF n) a | (\\BRANCH t1 t2. BRANCH (reflect t2) (reflect t1)) a | ERROR  in reflect (LEAF 1)" 
+    
+    it "p62: reduces incomplete pattern matching" $ do
+      showEnrichedMiranda "hd (x:xs) = x\nhd [1,2,3]"
+        `ioShouldBe` "let hd = \\a. (\\CONS x xs. x) a | ERROR  in hd (CONS 1 (CONS 2 (CONS 3 NIL)))"
 
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()

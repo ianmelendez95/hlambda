@@ -77,6 +77,7 @@ main = hspec $ do
       parseProgIO "bool ::= TRUE | FALSE\nif TRUE e1 e2 = e1\nif FALSE e1 e2 = e2\nif TRUE 1 2"
         `ioShouldBe` "bool ::= TRUE | FALSE\nif TRUE e1 e2 = e1\nif FALSE e1 e2 = e2\nif TRUE 1 2" 
 
+  describe "4.2 Translating Miranda into the Enriched Lambda Calculus" $ do
     it "p57: parses multiple function defs" $ do 
       parseMatchesProg "factorial 0 = 1\nfactorial n = n * factorial (n - 1)\nfactorial 2"
 
@@ -96,15 +97,15 @@ main = hspec $ do
     it "p59: parses noDups" $ do 
       parseMatchesProg "noDups [] = []\nnoDups [x] = [x]\nnoDups (x : x : xs) = noDups (x : xs)\nnoDups (x : y : ys) = x : noDups (y : ys)\nnoDups [1,2,2,3]"
 
-    xit "p60: reduces pattern arg definition" $ do 
+    it "p60: enriches pattern arg definition" $ do 
       showEnrichedMiranda "fst (x,y) = x\nfst (1,2)"
-        `ioShouldBe` "let fst = \\PAIR x y. x  in fst (PAIR 1 2)"
+        `ioShouldBe` "let fst = \\a. (\\PAIR x y. x) a | ERROR  in fst (PAIR 1 2)"
 
-    it "p62: reduces multiple pattern matching" $ do 
+    it "p62: enriches multiple pattern matching" $ do 
       showEnrichedMiranda "reflect (LEAF n) = LEAF n\nreflect (BRANCH t1 t2) = BRANCH (reflect t2) (reflect t1)\nreflect (LEAF 1)"
         `ioShouldBe` "let reflect = \\a. (\\LEAF n. LEAF n) a | (\\BRANCH t1 t2. BRANCH (reflect t2) (reflect t1)) a | ERROR  in reflect (LEAF 1)" 
     
-    it "p62: reduces incomplete pattern matching" $ do
+    it "p62: enriches incomplete pattern matching" $ do
       showEnrichedMiranda "hd (x:xs) = x\nhd [1,2,3]"
         `ioShouldBe` "let hd = \\a. (\\CONS x xs. x) a | ERROR  in hd (CONS 1 (CONS 2 (CONS 3 NIL)))"
 

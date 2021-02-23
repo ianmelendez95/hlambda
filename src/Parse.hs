@@ -1,7 +1,7 @@
 module Parse where 
 
-import Miranda.Syntax (Prog (..), Exp, Def)
-import Miranda.Parser (parseProgram, parseDef, parseExp)
+import Miranda.Syntax (Prog (..), Exp, Decl)
+import Miranda.Parser (parseProgram, parseDecl, parseExp)
 
 class Parse a where 
   parse :: String -> Either String a
@@ -12,5 +12,5 @@ instance Parse Prog where
 instance Parse Exp where 
   parse = parseExp
 
-instance Parse Def where 
-  parse = parseDef
+instance Parse Decl where 
+  parse = parseDecl

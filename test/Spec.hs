@@ -7,7 +7,7 @@ import Parse
 import Lambda.Pretty (PrettyLambda (..))
 import Lambda.Reduce (reduce)
 import Lambda.Enriched (ToEnriched (..))
-import qualified Miranda.Syntax as M (Prog (..), Def)
+import qualified Miranda.Syntax as M (Prog (..), Decl)
 
 main :: IO ()
 main = hspec $ do 
@@ -25,11 +25,11 @@ main = hspec $ do
     
   describe "4.1 Introduction to Structured Types" $ do 
     it "p52: parses simple tree type" $ do 
-      parseDefIO "tree ::= LEAF num | BRANCH tree tree" 
+      parseDeclIO "tree ::= LEAF num | BRANCH tree tree" 
         `ioShouldBe` "tree ::= LEAF num | BRANCH tree tree"
 
     it "p52: parses constructors as functions" $ do
-      parseDefIO "tree1 = BRANCH (BRANCH (LEAF 1) (LEAF 2)) (LEAF 3)"
+      parseDeclIO "tree1 = BRANCH (BRANCH (LEAF 1) (LEAF 2)) (LEAF 3)"
         `ioShouldBe` "tree1 = BRANCH (BRANCH (LEAF 1) (LEAF 2)) (LEAF 3)"
 
     it "p52: parses constructors as args" $ do
@@ -37,7 +37,7 @@ main = hspec $ do
       parseMatchesDef "reflect (BRANCH t1 t2) = BRANCH (reflect t2) (reflect t1)"
 
     it "p53: parses constructor with type variables" $ do 
-      parseDefIO "tree * ::= LEAF * | BRANCH (tree *) (tree *)"
+      parseDeclIO "tree * ::= LEAF * | BRANCH (tree *) (tree *)"
         `ioShouldBe` "tree * ::= LEAF * | BRANCH (tree *) (tree *)"
 
     it "p53: parses constructor in expressions" $ do 
@@ -70,9 +70,9 @@ main = hspec $ do
       showReducedMiranda "('a', (3, 2))" `ioShouldBe` "PAIR 'a' (PAIR 3 2)"
 
     it "p55: parses no arg constructors" $ do 
-      parseDefIO "color ::= VERMILLION | PUCE | LAVENDER"
+      parseDeclIO "color ::= VERMILLION | PUCE | LAVENDER"
         `ioShouldBe` "color ::= VERMILLION | PUCE | LAVENDER"
-      parseDefIO "bool ::= TRUE | FALSE"
+      parseDeclIO "bool ::= TRUE | FALSE"
         `ioShouldBe` "bool ::= TRUE | FALSE"
       parseProgIO "bool ::= TRUE | FALSE\nif TRUE e1 e2 = e1\nif FALSE e1 e2 = e2\nif TRUE 1 2"
         `ioShouldBe` "bool ::= TRUE | FALSE\nif TRUE e1 e2 = e1\nif FALSE e1 e2 = e2\nif TRUE 1 2" 
@@ -145,16 +145,16 @@ main = hspec $ do
     parseMirandaExpIO input = pShow <$> (parseHunit :: String -> IO M.Prog) input
 
     -- parsesDefTo :: String -> String -> IO ()
-    -- parsesDefTo input res = parseDefIO input `ioShouldBe` res
+    -- parsesDefTo input res = parseDeclIO input `ioShouldBe` res
 
     parseMatchesProg :: String -> IO ()
     parseMatchesProg input = parseProgIO input `ioShouldBe` input
 
     parseMatchesDef :: String -> IO ()
-    parseMatchesDef input = parseDefIO input `ioShouldBe` input
+    parseMatchesDef input = parseDeclIO input `ioShouldBe` input
 
-    parseDefIO :: String -> IO String
-    parseDefIO input = pShow <$> (parseHunit :: String -> IO M.Def) input 
+    parseDeclIO :: String -> IO String
+    parseDeclIO input = pShow <$> (parseHunit :: String -> IO M.Decl) input 
 
     parseHunit :: Parse a => String -> IO a
     parseHunit = eitherHUnit . parse

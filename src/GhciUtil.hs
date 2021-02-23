@@ -7,7 +7,7 @@ import Lambda.Pretty (PrettyLambda (..))
 import Lambda.ToLambda
 
 import Miranda.Lexer (scanTokens)
-import Miranda.Syntax (Prog, Def)
+import Miranda.Syntax (Prog, Decl)
 import qualified Miranda.Syntax as M
 
 evalMiranda :: String -> IO () 
@@ -19,8 +19,8 @@ toLambdaMiranda = pPrint . toLambda . parseMiranda
 parseMiranda :: String -> Prog
 parseMiranda = eitherError . parse
 
-parseMirandaDef :: String -> Def 
-parseMirandaDef = eitherError . parse
+parseMirandaDecl :: String -> Decl 
+parseMirandaDecl = eitherError . parse
 
 parseMirandaExp :: String -> M.Exp
 parseMirandaExp = eitherError . parse

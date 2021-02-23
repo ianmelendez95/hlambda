@@ -2,7 +2,7 @@
 module Miranda.Parser 
   ( ParseResult, 
     parser, 
-    parseDef,
+    parseDecl,
     parseExp,
     parseProgram
   ) where 
@@ -20,7 +20,7 @@ import Debug.Trace
 }
 
 %name parser program
-%name defParser def
+%name declParser decl
 %name expParser exp
 %monad { ParseResult } { >>= } { return }
 %tokentype { T.Token }
@@ -67,18 +67,18 @@ stmts : stmts ';' stmt   { $3 : $1 }
       | stmt             { [$1] }
 
 stmt :: { Stmt }
-stmt : exp '::=' constructors    { Right (checkTypeDef $1 (reverse $3)) }
-     | funcDef                   { Right $1 }
+stmt : exp '::=' constructors    { Right . S.TypeDef $ (checkTypeDef $1 (reverse $3)) }
+     | funcDef                   { Right . S.FuncDef $ $1 }
      | exp                       { Left  $1 }
 
 --------------------------------------------------------------------------------
 -- Func Rhs
 
-funcDef :: { S.Def }
+funcDef :: { S.FuncDef }
 funcDef : exp '=' frhs maybeWhere { checkFuncDef $1 (reverse $3) (fromMaybe [] $4) }
 
 -- REVERSE!!!
-funcDefs :: { [S.Def] }
+funcDefs :: { [S.FuncDef] }
 funcDefs : funcDefs ';' funcDef   { $3 : $1 }
          | funcDef                { [$1] }
 
@@ -91,19 +91,19 @@ clause :: { S.RhsClause }
 clause : exp                    { S.BaseClause $1 }
        | exp ',' exp            { S.CondClause $1 $3 }          
 
-maybeWhere :: { Maybe [S.Def] }
+maybeWhere :: { Maybe [S.FuncDef] }
 maybeWhere : 'where' whereDefs   { Just $2 }
            | {- empty -}         { Nothing }
 
-whereDefs :: { [S.Def] }
+whereDefs :: { [S.FuncDef] }
 whereDefs : '{' funcDefs '}'     { reverse $2 }
 
 -------------------------------------------------------------------------------
 -- Def
 
-def :: { S.Def }
-def : exp '::=' constructors { (checkTypeDef $1 (reverse $3)) }
-    | funcDef                { $1 }
+decl :: { S.Decl }
+decl : exp '::=' constructors { S.TypeDef (checkTypeDef $1 (reverse $3)) }
+     | funcDef                { S.FuncDef $1 }
 
 -- REVERSE!!
 constructors :: { [S.Constr] }
@@ -184,8 +184,8 @@ parseError tokens = Left $ "Parse Error, tokens left: " ++ show tokens
 parseExp :: String -> ParseResult S.Exp
 parseExp input = scanTokensEither input >>= expParser . tail . init
 
-parseDef :: String -> ParseResult S.Def
-parseDef input = scanTokensEither input >>= defParser . tail . init
+parseDecl :: String -> ParseResult S.Decl
+parseDecl input = scanTokensEither input >>= declParser . tail . init
 
 parseProgram :: String -> ParseResult S.Prog
 parseProgram input = scanTokensEither input >>= parser
@@ -197,7 +197,7 @@ getInfixOp tok = error $ "Not an infix op: " ++ show tok
 --------------------------------------------------------------------------------
 -- The Realm of Ambiguity
 
-type Stmt = Either S.Exp S.Def
+type Stmt = Either S.Exp S.Decl
 
 mkProg :: [Stmt] -> S.Prog
 mkProg stmts = case span isRight stmts of 
@@ -207,13 +207,13 @@ mkProg stmts = case span isRight stmts of
 --------------------------------------------------------------------------------
 -- Coerce Exp -> a
 
-checkTypeDef :: S.Exp -> [S.Constr] -> S.Def
+checkTypeDef :: S.Exp -> [S.Constr] -> S.TypeDef
 checkTypeDef lhs constrs = 
   case flattenApplyLHS lhs of 
-    (S.Variable type_name : rest) -> S.TypeDef type_name (map checkGenTypeVar rest) constrs
+    (S.Variable type_name : rest) -> S.TDef type_name (map checkGenTypeVar rest) constrs
     _ -> error $ "Invalid type declaration lhs: " ++ show lhs
 
-checkFuncDef :: S.Exp -> [S.RhsClause] -> [S.Def] -> S.Def
+checkFuncDef :: S.Exp -> [S.RhsClause] -> [S.FuncDef] -> S.FuncDef
 checkFuncDef lhs rhs wdefs = case flattenApplyLHS lhs of 
                               (S.Variable func_name : rest) -> 
                                 -- want to check there aren't repeated variable names
@@ -221,7 +221,7 @@ checkFuncDef lhs rhs wdefs = case flattenApplyLHS lhs of
                                     dupes xs = not $ length xs == length (nub xs)
                                  in if dupes . concatMap S.funcParamVars $ params
                                       then error $ "Repeated variable names in lhs: " ++ show lhs ++ ", " ++ show rhs
-                                      else S.FuncDef func_name params rhs wdefs
+                                      else S.FDef func_name params rhs wdefs
                               _ -> error $ "Invalid func def lhs: " ++ show lhs
 
 checkFuncClauses :: [S.RhsClause] -> [S.RhsClause]

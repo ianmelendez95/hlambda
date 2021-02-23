@@ -1,6 +1,8 @@
 module Miranda.Syntax 
   ( Prog (..) 
-  , Def (..)
+  , Decl (..)
+  , FuncDef (..)
+  , TypeDef (..)
   , RhsClause (..)
   , GenTypeVar
   , Constr
@@ -38,13 +40,19 @@ import qualified Lambda.Syntax as S
 -- Lambda Expressions --
 ----------------------
 
-data Prog = Prog [Def] Exp
+data Prog = Prog [Decl] Exp
           deriving Show
 
 -- p48: Figure 3.3
-data Def = FuncDef String [FuncParam] [RhsClause] [Def] -- name, params, clauses, where defs
-         | TypeDef String [GenTypeVar] [Constr]
-         deriving Show
+data Decl = FuncDef FuncDef
+          | TypeDef TypeDef
+          deriving Show
+
+data FuncDef = FDef String [FuncParam] [RhsClause] [FuncDef] -- params, clauses, where defs
+             deriving Show
+
+data TypeDef = TDef String [GenTypeVar] [Constr]
+             deriving Show
 
 type GenTypeVar = Int
 type Constr = (String, [ConstrArg])
@@ -97,7 +105,7 @@ data Exp = Constant T.Constant
 -- instance Show Prog where 
 --   show = pShow
 
--- instance Show Def where 
+-- instance Show Decl where 
 --   show = pShow
 
 -- instance Show Exp where 
@@ -122,7 +130,7 @@ instance ToEnriched Prog where
 --------------------------------------------------------------------------------
 -- Enriching Function Defs
 
-toBindings :: [Def] -> [E.LetBinding]
+toBindings :: [Decl] -> [E.LetBinding]
 toBindings defs = 
   let grouped_defs = Map.toList . groupFuncDefs $ defs
    in map (uncurry toBinding) grouped_defs
@@ -166,7 +174,7 @@ toBinding fname specs
 -- | takes the function def components and creates a binding expression
 -- | where the def components are 
 -- | params -> rhs clauses -> 'where' definitions -> binding expression
-toBindingExp :: [FuncParam] -> [RhsClause] -> [Def] -> E.Exp
+toBindingExp :: [FuncParam] -> [RhsClause] -> [FuncDef] -> E.Exp
 toBindingExp params clauses _ =  -- TODO: handle where definitions
   wrapLambda params (clausesToExpression clauses)
   where 
@@ -183,17 +191,17 @@ toBindingExp params clauses _ =  -- TODO: handle where definitions
       in if_cond_then_body_else_rest
 
 
-type FuncSpec = ([FuncParam], [RhsClause], [Def]) -- a 'specification' for a function (everything but the name)
+type FuncSpec = ([FuncParam], [RhsClause], [FuncDef]) -- a 'specification' for a function (everything but the name)
 type FuncDefMap = Map.Map String [FuncSpec]
 
-groupFuncDefs :: [Def] -> FuncDefMap
+groupFuncDefs :: [Decl] -> FuncDefMap
 groupFuncDefs = foldl' insertDef Map.empty
   where 
-    insertDef :: FuncDefMap -> Def -> FuncDefMap
-    insertDef m (FuncDef name pars rhs wdefs) = Map.insertWith (flip (++)) name [(pars, rhs, wdefs)] m
+    insertDef :: FuncDefMap -> Decl -> FuncDefMap
+    insertDef m (FuncDef (FDef name pars rhs wdefs)) = Map.insertWith (flip (++)) name [(pars, rhs, wdefs)] m
     insertDef m _ = m
 
--- toBinding :: Def -> E.LetBinding
+-- toBinding :: Decl -> E.LetBinding
 -- toBinding (FuncDef func_name func_params [clause]) = (E.PVariable func_name, wrapLambda func_params (toEnriched clause))
 -- toBinding (FuncDef _ _ expr) = error $ "Can't translate function body: " ++ show expr
 -- toBinding t@TypeDef{} = error $ "Type definitions unsupported: " ++ show t
@@ -290,7 +298,7 @@ enrCons = E.Pure (S.Function S.FCons)
 instance PrettyLambda Prog where 
   prettyDoc (Prog defs expr) = vsep (map prettyDoc defs ++ [prettyDoc expr])
 
-instance PrettyLambda Def where 
+instance PrettyLambda Decl where 
   prettyDoc = mkPrettyDocFromParenS sPrettyDef
 
 instance PrettyLambda FuncParam where 
@@ -299,20 +307,26 @@ instance PrettyLambda FuncParam where
 instance PrettyLambda Exp where 
   prettyDoc = mkPrettyDocFromParenS sPrettyExp
 
-sPrettyDef :: Def -> PrettyParenS LambdaDoc 
-sPrettyDef (FuncDef func_name vars body wdefs) = 
+sPrettyDef :: Decl -> PrettyParenS LambdaDoc 
+sPrettyDef (FuncDef fdef) = sPrettyFuncDef fdef
+sPrettyDef (TypeDef tdef) = sPrettyTypeDef tdef
+
+sPrettyFuncDef :: FuncDef -> PrettyParenS LambdaDoc
+sPrettyFuncDef (FDef func_name vars body wdefs) = 
   do let pname = pretty func_name
          prepend_pvars = if null vars then (mempty <>) else ((hsep . map prettyDoc $ vars) <+>)
          pbody = align . vsep $ map ((pretty "=" <+>) . sPrettyClause) body
 
-     pwdefs <- mapM sPrettyDef wdefs -- pretty where defs
+     pwdefs <- mapM sPrettyFuncDef wdefs -- pretty where defs
 
      let pwsection = hang 2 . vsep $ [pretty "where", align . vsep $ pwdefs]
 
      if null wdefs 
        then pure (pname <+> prepend_pvars pbody)
        else pure (hang 2 . vsep $ [pname <+> prepend_pvars pbody, pwsection])
-sPrettyDef (TypeDef type_name type_vars constrs) = 
+
+sPrettyTypeDef :: TypeDef -> PrettyParenS LambdaDoc
+sPrettyTypeDef (TDef type_name type_vars constrs) = 
   do pConstrs <- tempState (setPrec 0) (mapM prettyConstructor constrs)
      pure $ prettyLHS type_name type_vars 
               <+> pretty "::=" 

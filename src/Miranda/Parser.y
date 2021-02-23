@@ -10,6 +10,7 @@ module Miranda.Parser
 import Data.Char
 import Data.Either (isRight, rights)
 import Data.List (nub)
+import Data.Maybe (fromMaybe)
 
 import qualified Miranda.Syntax as S
 import qualified Miranda.Token as T
@@ -26,20 +27,6 @@ import Debug.Trace
 %error { parseError }
 
 %token 
-  const       { T.Constant $$       }
-  constr      { T.Constructor $$    }
-  var         { T.Variable $$       }
-  plus        { T.InfixOp T.IPlus       }
-  minus       { T.InfixOp T.IMinus      }
-  mult        { T.InfixOp T.IMult       }
-  div         { T.InfixOp T.IDiv        }
-  equal       { T.InfixOp T.IEq         }
-  lt          { T.InfixOp T.ILt         }
-  gt          { T.InfixOp T.IGt         }
-  ':'         { T.InfixOp T.ICons       }
-  infix_var   { T.InfixOp (T.IVar _)    } -- $<var-name>
-
-  gtype_2plus { T.GenTypeVar $$     }   -- '2plus' because it's two or more '**', since '*' is mult
 
   '='         { T.Equal             }
   '::='       { T.TypeEq            }
@@ -53,6 +40,22 @@ import Debug.Trace
   '}'         { T.RC                }
   '|'         { T.VertBar           }
 
+  'where'     { T.Where             }
+  plus        { T.InfixOp T.IPlus       }
+  minus       { T.InfixOp T.IMinus      }
+  mult        { T.InfixOp T.IMult       }
+  div         { T.InfixOp T.IDiv        }
+  equal       { T.InfixOp T.IEq         }
+  lt          { T.InfixOp T.ILt         }
+  gt          { T.InfixOp T.IGt         }
+  ':'         { T.InfixOp T.ICons       }
+  infix_var   { T.InfixOp (T.IVar _)    } -- $<var-name>
+  const       { T.Constant $$       }
+  constr      { T.Constructor $$    }
+  var         { T.Variable $$       }
+
+  gtype_2plus { T.GenTypeVar $$     }   -- '2plus' because it's two or more '**', since '*' is mult
+
 %%
 
 program :: { S.Prog }
@@ -64,9 +67,20 @@ stmts : stmts ';' stmt   { $3 : $1 }
       | stmt             { [$1] }
 
 stmt :: { Stmt }
-stmt : exp '::=' constructors { Right (checkTypeDef $1 (reverse $3)) }
-     | exp '='   frhs         { Right (checkFuncDef $1 (reverse $3))      }
-     | exp                    { Left  $1 }
+stmt : exp '::=' constructors    { Right (checkTypeDef $1 (reverse $3)) }
+     | funcDef                   { Right $1 }
+     | exp                       { Left  $1 }
+
+--------------------------------------------------------------------------------
+-- Func Rhs
+
+funcDef :: { S.Def }
+funcDef : exp '=' frhs maybeWhere { checkFuncDef $1 (reverse $3) (fromMaybe [] $4) }
+
+-- REVERSE!!!
+funcDefs :: { [S.Def] }
+funcDefs : funcDefs ';' funcDef   { $3 : $1 }
+         | funcDef                { [$1] }
 
 -- REVERSE!!
 frhs :: { [S.RhsClause] }
@@ -77,12 +91,19 @@ clause :: { S.RhsClause }
 clause : exp                    { S.BaseClause $1 }
        | exp ',' exp            { S.CondClause $1 $3 }          
 
+maybeWhere :: { Maybe [S.Def] }
+maybeWhere : 'where' whereDefs   { Just $2 }
+           | {- empty -}         { Nothing }
+
+whereDefs :: { [S.Def] }
+whereDefs : '{' funcDefs '}'     { reverse $2 }
+
 -------------------------------------------------------------------------------
 -- Def
 
 def :: { S.Def }
 def : exp '::=' constructors { (checkTypeDef $1 (reverse $3)) }
-    | exp '='   frhs         { (checkFuncDef $1 (reverse $3))      }
+    | funcDef                { $1 }
 
 -- REVERSE!!
 constructors :: { [S.Constr] }
@@ -192,15 +213,15 @@ checkTypeDef lhs constrs =
     (S.Variable type_name : rest) -> S.TypeDef type_name (map checkGenTypeVar rest) constrs
     _ -> error $ "Invalid type declaration lhs: " ++ show lhs
 
-checkFuncDef :: S.Exp -> [S.RhsClause] -> S.Def
-checkFuncDef lhs rhs = case flattenApplyLHS lhs of 
+checkFuncDef :: S.Exp -> [S.RhsClause] -> [S.Def] -> S.Def
+checkFuncDef lhs rhs wdefs = case flattenApplyLHS lhs of 
                               (S.Variable func_name : rest) -> 
                                 -- want to check there aren't repeated variable names
                                 let params = map checkFuncParam rest
                                     dupes xs = not $ length xs == length (nub xs)
                                  in if dupes . concatMap S.funcParamVars $ params
                                       then error $ "Repeated variable names in lhs: " ++ show lhs ++ ", " ++ show rhs
-                                      else S.FuncDef func_name params rhs
+                                      else S.FuncDef func_name params rhs wdefs
                               _ -> error $ "Invalid func def lhs: " ++ show lhs
 
 checkFuncClauses :: [S.RhsClause] -> [S.RhsClause]

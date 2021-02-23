@@ -94,7 +94,7 @@ main = hspec $ do
     it "p58: parses funnyLastElt" $ do 
       parseMatchesProg "funnyLastElt (x : xs) = x, x < 0\nfunnyLastElt (x : []) = x\nfunnyLastElt (x : xs) = funnyLastElt xs\nfunnyLastElt [1,2,3]"
 
-    it "p59: parses noDups" $ do 
+    xit "p59: parses noDups" $ do 
       parseMatchesProg "noDups [] = []\nnoDups [x] = [x]\nnoDups (x : x : xs) = noDups (x : xs)\nnoDups (x : y : ys) = x : noDups (y : ys)\nnoDups [1,2,2,3]"
 
     it "p60: enriches pattern arg definition" $ do 
@@ -125,7 +125,7 @@ main = hspec $ do
         `ioShouldBe` "let factorial = \\a. (\\n. IF (= n 0) 1 (* n (factorial (- n 1)))) a | ERROR  in factorial 4"
 
     it "p66: parses where clauses" $ do 
-      parseMatchesProg "sumsq x y = xsq + ysq\n            where\n                xsq = x*x\n                ysq = y*y\nsumsq 2 3"
+      parseMatchesProg "sumsq x y = xsq + ysq\n  where\n    xsq = x * x\n    ysq = y * y\nsumsq 2 3"
 
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()

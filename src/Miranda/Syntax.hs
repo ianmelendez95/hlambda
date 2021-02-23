@@ -42,7 +42,7 @@ data Prog = Prog [Def] Exp
           deriving Show
 
 -- p48: Figure 3.3
-data Def = FuncDef String [FuncParam] [RhsClause]
+data Def = FuncDef String [FuncParam] [RhsClause] [Def] -- name, params, clauses, where defs
          | TypeDef String [GenTypeVar] [Constr]
          deriving Show
 
@@ -129,14 +129,14 @@ toBindings defs =
 
 toBinding :: String -> [FuncSpec] -> E.LetBinding
 toBinding fname specs
-  | not . allEqual . map (length . fst) $ specs = error $ "Functions have differing number of arguments: " ++ fname
+  | not . allEqual . map (length . fst3) $ specs = error $ "Functions have differing number of arguments: " ++ fname
   | otherwise = 
-    let binding_exprs = map (uncurry toBindingExp) specs
+    let binding_exprs = map (uncurry3 toBindingExp) specs
 
         free_vars = concatMap E.freeVariables binding_exprs
         first_arg_name = if "a" `elem` free_vars then newName free_vars "a"
                                            else "a"
-        arg_names = take (length . fst . head $ specs) $ iterate (newName free_vars) first_arg_name
+        arg_names = take (length . fst3 . head $ specs) $ iterate (newName free_vars) first_arg_name
 
         lambda_body = foldr (E.FatBar . applyArgsToPatternExpr arg_names)
                             (E.Pure . S.Constant $ S.CError) 
@@ -156,8 +156,19 @@ toBinding fname specs
     wrapLambdaArgs :: [String] -> E.Exp -> E.Exp
     wrapLambdaArgs args body = foldr (E.Lambda . E.PVariable) body args
 
-toBindingExp :: [FuncParam] -> [RhsClause] -> E.Exp
-toBindingExp params clauses = wrapLambda params (clausesToExpression clauses)
+    fst3 :: (a,b,c) -> a
+    fst3 (x,_,_) = x
+
+    uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
+    uncurry3 f (x,y,z) = f x y z
+
+
+-- | takes the function def components and creates a binding expression
+-- | where the def components are 
+-- | params -> rhs clauses -> 'where' definitions -> binding expression
+toBindingExp :: [FuncParam] -> [RhsClause] -> [Def] -> E.Exp
+toBindingExp params clauses _ =  -- TODO: handle where definitions
+  wrapLambda params (clausesToExpression clauses)
   where 
     clausesToExpression :: [RhsClause]  -> E.Exp
     clausesToExpression [] = E.Pure . S.Constant $ S.CFail
@@ -172,14 +183,14 @@ toBindingExp params clauses = wrapLambda params (clausesToExpression clauses)
       in if_cond_then_body_else_rest
 
 
-type FuncSpec = ([FuncParam], [RhsClause]) -- a 'specification' for a function (everything but the name)
+type FuncSpec = ([FuncParam], [RhsClause], [Def]) -- a 'specification' for a function (everything but the name)
 type FuncDefMap = Map.Map String [FuncSpec]
 
 groupFuncDefs :: [Def] -> FuncDefMap
 groupFuncDefs = foldl' insertDef Map.empty
   where 
     insertDef :: FuncDefMap -> Def -> FuncDefMap
-    insertDef m (FuncDef name pars rhs) = Map.insertWith (flip (++)) name [(pars, rhs)] m
+    insertDef m (FuncDef name pars rhs wdefs) = Map.insertWith (flip (++)) name [(pars, rhs, wdefs)] m
     insertDef m _ = m
 
 -- toBinding :: Def -> E.LetBinding
@@ -289,11 +300,18 @@ instance PrettyLambda Exp where
   prettyDoc = mkPrettyDocFromParenS sPrettyExp
 
 sPrettyDef :: Def -> PrettyParenS LambdaDoc 
-sPrettyDef (FuncDef func_name vars body) = 
+sPrettyDef (FuncDef func_name vars body wdefs) = 
   do let pname = pretty func_name
-         pvars = if null vars then (mempty <>) else ((hsep . map prettyDoc $ vars) <+>)
+         prepend_pvars = if null vars then (mempty <>) else ((hsep . map prettyDoc $ vars) <+>)
          pbody = align . vsep $ map ((pretty "=" <+>) . sPrettyClause) body
-     pure $ pname <+> pvars pbody
+
+     pwdefs <- mapM sPrettyDef wdefs -- pretty where defs
+
+     let pwsection = hang 2 . vsep $ [pretty "where", align . vsep $ pwdefs]
+
+     if null wdefs 
+       then pure (pname <+> prepend_pvars pbody)
+       else pure (hang 2 . vsep $ [pname <+> prepend_pvars pbody, pwsection])
 sPrettyDef (TypeDef type_name type_vars constrs) = 
   do pConstrs <- tempState (setPrec 0) (mapM prettyConstructor constrs)
      pure $ prettyLHS type_name type_vars 

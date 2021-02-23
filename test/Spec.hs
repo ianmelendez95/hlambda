@@ -109,6 +109,10 @@ main = hspec $ do
       showEnrichedMiranda "hd (x:xs) = x\nhd [1,2,3]"
         `ioShouldBe` "let hd = \\a. (\\CONS x xs. x) a | ERROR  in hd (CONS 1 (CONS 2 (CONS 3 NIL)))"
 
+    it "p63: translates multiple arguments" $ do 
+      showEnrichedMiranda "xor False y = y\nxor True False = True\nxor True True = False\nxor True True"
+        `ioShouldBe` "let xor = \\a. \\b. (\\FALSE. \\y. y) a b | (\\TRUE. \\FALSE. TRUE) a b | (\\TRUE. \\TRUE. FALSE) a b | ERROR  in xor TRUE TRUE"
+
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()
     ioShouldBe io val = (`shouldBe` val) =<< io

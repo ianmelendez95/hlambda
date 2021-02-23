@@ -32,7 +32,6 @@ import Lambda.Reduce (Reducible (..), newName)
 import qualified Lambda.Enriched as E
 import qualified Lambda.Syntax as S
 
-import Debug.Trace
 
 ----------------------
 -- Lambda Expressions --
@@ -122,26 +121,34 @@ toBinding fname specs
   | not . allEqual . map (length . fst) $ specs = error $ "Functions have differing number of arguments: " ++ fname
   | otherwise = 
     let binding_exprs = map (uncurry toBindingExp) specs
-        free_vars = concatMap E.freeVariables binding_exprs
-        arg_name = if "a" `elem` free_vars then newName free_vars "a"
-                                           else "a"
-        arg_var = E.Pure . S.Variable $ arg_name
-        error_const = E.Pure . S.Constant $ S.CError
 
-        lambda_var = E.PVariable arg_name
-        lambda_body = foldr (\e fb_expr -> E.FatBar (E.Apply e arg_var) fb_expr) 
-                            error_const 
+        free_vars = concatMap E.freeVariables binding_exprs
+        first_arg_name = if "a" `elem` free_vars then newName free_vars "a"
+                                           else "a"
+        arg_names = take (length . fst . head $ specs) $ iterate (newName free_vars) first_arg_name
+
+        lambda_body = foldr (E.FatBar . applyArgsToPatternExpr arg_names)
+                            (E.Pure . S.Constant $ S.CError) 
                             binding_exprs
-        lambda = E.Lambda lambda_var lambda_body
+        lambda = wrapLambdaArgs arg_names lambda_body
+
      in (E.PVariable fname, lambda)
   where 
     allEqual :: Eq a => [a] -> Bool
     allEqual [] = True
     allEqual (x:xs) = all (== x) xs 
 
+    applyArgsToPatternExpr :: [String] -> E.Exp -> E.Exp
+    applyArgsToPatternExpr args expr = 
+      foldl' (\apply arg -> E.Apply apply (E.Pure . S.Variable $ arg)) expr args
+
+    wrapLambdaArgs :: [String] -> E.Exp -> E.Exp
+    wrapLambdaArgs args body = foldr (E.Lambda . E.PVariable) body args
+
 toBindingExp :: [FuncParam] -> [RhsClause] -> E.Exp
 toBindingExp [param] [BaseClause expr] = E.Lambda (funcParamToPattern param) (toEnriched expr)
-toBindingExp params clauses = error $ "Currently only support single argument, single rhs expression functions: " ++ show params ++ ", " ++ show clauses
+toBindingExp params [BaseClause expr] = wrapLambda params (toEnriched expr)
+toBindingExp params clauses = error $ "Currently only support single base clauses: " ++ show params ++ ", " ++ show clauses
 
 type FuncSpec = ([FuncParam], [RhsClause]) -- a 'specification' for a function (everything but the name)
 type FuncDefMap = Map.Map String [FuncSpec]
@@ -158,21 +165,26 @@ groupFuncDefs = foldl' insertDef Map.empty
 -- toBinding (FuncDef _ _ expr) = error $ "Can't translate function body: " ++ show expr
 -- toBinding t@TypeDef{} = error $ "Type definitions unsupported: " ++ show t
 
--- wrapLambda :: [FuncParam] -> E.Exp -> E.Exp
--- wrapLambda ps expr = foldr (E.Lambda . funcParamToPattern) expr ps
+wrapLambda :: [FuncParam] -> E.Exp -> E.Exp
+wrapLambda ps expr = foldr (E.Lambda . funcParamToPattern) expr ps
 
 funcParamToPattern :: FuncParam -> E.Pattern
 funcParamToPattern param = 
   case flattenFuncParam param of 
     [FPConstant c]    -> E.PConstant (T.constantToLambda c)
     [FPVariable v]    -> E.PVariable v
-    [FPConstructor c] -> E.PConstructor c []
+    [FPConstructor c] -> constructorToPattern c
     [FPCons p1 p2]    -> E.PConstructor "CONS" (map funcParamToPattern [p1, p2])
     [FPListLit ps]    -> funcListLitToPattern ps
     [FPTuple tuple]   -> tupleToPattern tuple
     (FPConstructor c : rest) -> E.PConstructor c (map funcParamToPattern rest)
     apply@[FPApply _ _] -> error $ "Apply should have been flattened: " ++ show apply
     p -> error $ "Invalid function parameter: " ++ show p
+
+constructorToPattern :: String -> E.Pattern
+constructorToPattern "True" = E.PConstant . S.CBool $ True
+constructorToPattern "False" = E.PConstant . S.CBool $ False
+constructorToPattern constr = E.PConstructor constr []
 
 flattenFuncParam :: FuncParam -> [FuncParam]
 flattenFuncParam (FPApply p1 p2) = flattenFuncParam p1 ++ [p2]
@@ -205,16 +217,21 @@ instance ToEnriched RhsClause where
   toEnriched clause@(CondClause _ _) = error $ "Can't translate conditional def: " ++ show clause
 
 instance ToEnriched Exp where 
-  toEnriched (Constant c)        = toEnriched c
-  toEnriched (BuiltinOp _)       = undefined
-  toEnriched (Variable x)        = E.Pure (S.Variable x)
-  toEnriched (Constructor c)     = E.Pure (S.Variable c) -- TODO: are constructors just vars in the LC?
-  toEnriched (Apply e1 e2)       = E.Apply (toEnriched e1) (toEnriched e2)
-  toEnriched (InfixApp op e1 e2) = E.Apply (E.Apply (toEnriched op) (toEnriched e1)) (toEnriched e2)
-  toEnriched (ListLit exps)      = enrichedListLit exps
-  toEnriched (Tuple exps)        = enrichedTuple exps
-  toEnriched (InfixOp op)        = toEnriched op
-  toEnriched (EGenTypeVar v)     = error $ "Can't enrich type variable: " ++ show v
+  toEnriched (Constant c)          = toEnriched c
+  toEnriched (BuiltinOp _)         = undefined
+  toEnriched (Variable x)          = E.Pure (S.Variable x)
+  toEnriched (Constructor c)       = constructorToEnriched c
+  toEnriched (Apply e1 e2)         = E.Apply (toEnriched e1) (toEnriched e2)
+  toEnriched (InfixApp op e1 e2)   = E.Apply (E.Apply (toEnriched op) (toEnriched e1)) (toEnriched e2)
+  toEnriched (ListLit exps)        = enrichedListLit exps
+  toEnriched (Tuple exps)          = enrichedTuple exps
+  toEnriched (InfixOp op)          = toEnriched op
+  toEnriched (EGenTypeVar v)       = error $ "Can't enrich type variable: " ++ show v
+
+constructorToEnriched :: String -> E.Exp
+constructorToEnriched "True" = E.Pure . S.Constant . S.CBool $ True
+constructorToEnriched "False" = E.Pure . S.Constant . S.CBool $ False
+constructorToEnriched constr = E.Pure . S.Variable $ constr
 
 enrichedListLit :: [Exp] -> E.Exp
 enrichedListLit [] = enrNil

@@ -6,6 +6,9 @@ import qualified Miranda.Token as T
 
 %wrapper "monadUserState"
 
+-- keywords
+@where         = where
+
 -- arithmetic functions
 $plus          = \+
 $minus         = \-
@@ -39,6 +42,8 @@ $gt            = \>
 
 tokens :- 
   $white+ ;
+
+  @where              { located $ \_ -> T.Where }
 
   \=                  { located $ \_ -> T.Equal }
   @typeeq             { located $ \_ -> T.TypeEq }
@@ -83,12 +88,12 @@ tokens :-
 
 -- runAlex    :: String -> Alex a -> Either String a
 
-type AlexUserState = LayoutState
+type AlexUserState = [LayoutState] -- layout state is now a stack of layout states
 
-data LayoutState = LNone 
+data LayoutState = LStart          -- starting a layout context, waiting for first token
                  | LActive Int Int -- line, col
 
-alexInitUserState = LNone
+alexInitUserState = [LStart]
 
 alexEOF :: Alex T.LocToken
 alexEOF = return (T.LToken 0 0 T.EOF)
@@ -97,31 +102,54 @@ located :: (String -> T.Token) -> AlexAction T.LocToken
 located f = token (\((AlexPn _ line col), _, _, input) len -> T.LToken line col $ f (take len input))
 
 getLayoutState :: Alex LayoutState
-getLayoutState = Alex $ \s@AlexState{alex_ust=layout_state} -> 
-  Right (s, layout_state)
+getLayoutState = Alex $ \s@AlexState{alex_ust=layout_states} -> 
+  if null layout_states 
+    then Left "Empty layout_states" 
+    else return $ (s, head layout_states) 
 
 putLayoutState :: LayoutState -> Alex ()
-putLayoutState new_layout_state = Alex $ \s -> Right (s{alex_ust=new_layout_state}, ())
+putLayoutState new_layout_state = Alex $ \s@AlexState{alex_ust=layout_states} -> 
+  Right (s{alex_ust=(setHead new_layout_state layout_states)}, ())
+
+pushLayoutState :: LayoutState -> Alex ()
+pushLayoutState new_layout_state = Alex $ \s@AlexState{alex_ust=layout_states} -> 
+  Right (s{alex_ust=(new_layout_state : layout_states)}, ())
+
+popLayoutState :: Alex ()
+popLayoutState = Alex $ \s@AlexState{alex_ust=layout_states} -> 
+  if null layout_states 
+    then Left "Layout error, cannot pop layout state"
+    else return (s{alex_ust=(tail layout_states)}, ())
+
+setHead :: a -> [a] -> [a]
+setHead x [] = [x]
+setHead x (_:xs) = (x:xs)
 
 alexMonadScanAll :: Alex [T.LocToken]
 alexMonadScanAll = 
   do lt@(T.LToken l c tok) <- alexMonadScan
      layout <- getLayoutState
+     let mkTok = T.LToken l c
      case tok of 
        T.EOF -> 
          case layout of 
-           LNone       -> return []
+           LStart      -> alexError "Layout error, expecting token but EOF"
            LActive _ _ -> return [T.LToken l c T.RC]
-       _  -> let mkTok = T.LToken l c in
+       T.Where -> -- upon where, push a new LStart onto the layout stack
+         do pushLayoutState LStart
+            (lt :) <$> alexMonadScanAll
+       _  ->
          case layout of 
            LActive lay_line lay_col
              | l <  lay_line -> alexError "Illegal state: current line before layout line"
              | l == lay_line -> (lt :) <$> alexMonadScanAll
-             | c <  lay_col  -> alexError "Layout: token left of layout"
+             | c <  lay_col  -> -- end of current layout
+               do popLayoutState
+                  ([mkTok T.RC, lt] ++) <$> alexMonadScanAll
              | c == lay_col  -> ([mkTok T.Semi, lt] ++) <$> alexMonadScanAll
              | otherwise     -> (lt :) <$> alexMonadScanAll
-           LNone -> do putLayoutState (LActive l c)
-                       ([mkTok T.LC, lt] ++) <$> alexMonadScanAll
+           LStart -> do putLayoutState (LActive l c)
+                        ([mkTok T.LC, lt] ++) <$> alexMonadScanAll
 
 alexScanTokens :: String -> [T.LocToken]
 alexScanTokens input = case runAlex input alexMonadScanAll of 

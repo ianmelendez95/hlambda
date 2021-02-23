@@ -124,6 +124,9 @@ main = hspec $ do
       showEnrichedMiranda "factorial n = 1, n==0\n            = n * factorial (n-1)\nfactorial 4"
         `ioShouldBe` "let factorial = \\a. (\\n. IF (= n 0) 1 (* n (factorial (- n 1)))) a | ERROR  in factorial 4"
 
+    it "p66: parses where clauses" $ do 
+      parseMatchesProg "sumsq x y = xsq + ysq\n            where\n                xsq = x*x\n                ysq = y*y\nsumsq 2 3"
+
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()
     ioShouldBe io val = (`shouldBe` val) =<< io

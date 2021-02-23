@@ -21,6 +21,7 @@ data Token = Constant Constant
            | Variable String 
            | InfixOp InfixOp
            | GenTypeVar Int -- generic type variable: *, **, ***, ...
+           | Where
            | TypeEq
            | VertBar
            | Dot 

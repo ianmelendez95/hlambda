@@ -47,11 +47,13 @@ data Function = FPlus
               | FY   -- The Glorious Y Combinator
               | FEq
               | FLt
+              | FGt
 
 data Constant = CNat Int
               | CChar Char
               | CBool Bool 
               | CNil
+              | CFail
               | CError
 
 --------------
@@ -144,6 +146,7 @@ instance Show Function where
   show FTail  = "TAIL"
   show FEq    = "="
   show FLt    = "<"
+  show FGt    = ">"
   show FY     = "Y"
   show (FTuple 2) = "PAIR"
   show (FTuple 3) = "TRIPLE"
@@ -157,6 +160,7 @@ instance Show Constant where
   show (CBool False) = "FALSE"
   show CNil          = "NIL"
   show CError        = "ERROR"
+  show CFail         = "FAIL"
 
 ------------------
 -- Pretty Print --

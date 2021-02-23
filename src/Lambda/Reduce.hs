@@ -77,6 +77,7 @@ reduceFunctionApplication FTail      = ((:[]) <$>) . reduceTailApplication
 reduceFunctionApplication FY         = reduceYCombApplication
 reduceFunctionApplication FEq        = ((:[]) <$>) . reduceBinaryNumFuncApplication (==) 
 reduceFunctionApplication FLt        = ((:[]) <$>) . reduceBinaryNumFuncApplication (<) 
+reduceFunctionApplication FGt        = ((:[]) <$>) . reduceBinaryNumFuncApplication (>) 
 
 reduceArithmeticApplication :: (Int -> Int -> Int) -> [Exp]  -> Either [Exp] Exp
 reduceArithmeticApplication = reduceBinaryNumFuncApplication

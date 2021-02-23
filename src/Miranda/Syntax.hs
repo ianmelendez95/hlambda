@@ -146,9 +146,20 @@ toBinding fname specs
     wrapLambdaArgs args body = foldr (E.Lambda . E.PVariable) body args
 
 toBindingExp :: [FuncParam] -> [RhsClause] -> E.Exp
-toBindingExp [param] [BaseClause expr] = E.Lambda (funcParamToPattern param) (toEnriched expr)
-toBindingExp params [BaseClause expr] = wrapLambda params (toEnriched expr)
-toBindingExp params clauses = error $ "Currently only support single base clauses: " ++ show params ++ ", " ++ show clauses
+toBindingExp params clauses = wrapLambda params (clausesToExpression clauses)
+  where 
+    clausesToExpression :: [RhsClause]  -> E.Exp
+    clausesToExpression [] = E.Pure . S.Constant $ S.CFail
+    clausesToExpression cs@(BaseClause expr : rest) = 
+      case rest of 
+        [] -> toEnriched expr
+        _  -> error $ "Base clause expected at end: " ++ show cs
+    clausesToExpression (CondClause body cond : rest) = 
+      let if_cond = E.Apply (E.Pure . S.Function $ S.FIf) (toEnriched cond)
+          if_cond_then_body = E.Apply if_cond (toEnriched body)
+          if_cond_then_body_else_rest = E.Apply if_cond_then_body (clausesToExpression rest)
+      in if_cond_then_body_else_rest
+
 
 type FuncSpec = ([FuncParam], [RhsClause]) -- a 'specification' for a function (everything but the name)
 type FuncDefMap = Map.Map String [FuncSpec]
@@ -351,4 +362,5 @@ infixPrec T.IDiv     = 7
 infixPrec T.ICons    = 5
 infixPrec T.IEq      = 4
 infixPrec T.ILt      = 4
+infixPrec T.IGt      = 4
 infixPrec (T.IVar _) = 10

@@ -112,6 +112,10 @@ main = hspec $ do
     it "p63: translates multiple arguments" $ do 
       showEnrichedMiranda "xor False y = y\nxor True False = True\nxor True True = False\nxor True True"
         `ioShouldBe` "let xor = \\a. \\b. (\\FALSE. \\y. y) a b | (\\TRUE. \\FALSE. TRUE) a b | (\\TRUE. \\TRUE. FALSE) a b | ERROR  in xor TRUE TRUE"
+    
+    it "p63: translates conditional equation" $ do 
+      showEnrichedMiranda "gcd a b = gcd (a-b) b, a>b\n        = gcd a (b-a), a<b\n        = a, a==b\ngcd 6 9"
+        `ioShouldBe` "let gcd = \\a. \\b. (\\a. \\b. IF (> a b) (gcd (- a b) b) (IF (< a b) (gcd a (- b a)) (IF (= a b) a FAIL))) a b | ERROR  in gcd 6 9"
 
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()

@@ -9,6 +9,7 @@ module Miranda.Parser
 
 import Data.Char
 import Data.Either (isRight, rights)
+import Data.List (nub)
 
 import qualified Miranda.Syntax as S
 import qualified Miranda.Token as T
@@ -176,7 +177,6 @@ getInfixOp tok = error $ "Not an infix op: " ++ show tok
 -- The Realm of Ambiguity
 
 type Stmt = Either S.Exp S.Def
-type ExpEqExpOrExp = Either S.Exp (S.Exp, S.Exp) -- <exp> OR <exp> = <exp>
 
 mkProg :: [Stmt] -> S.Prog
 mkProg stmts = case span isRight stmts of 
@@ -194,7 +194,13 @@ checkTypeDef lhs constrs =
 
 checkFuncDef :: S.Exp -> [S.RhsClause] -> S.Def
 checkFuncDef lhs rhs = case flattenApplyLHS lhs of 
-                              (S.Variable func_name : rest) -> S.FuncDef func_name (map checkFuncParam rest) rhs
+                              (S.Variable func_name : rest) -> 
+                                -- want to check there aren't repeated variable names
+                                let params = map checkFuncParam rest
+                                    dupes xs = not $ length xs == length (nub xs)
+                                 in if dupes . concatMap S.funcParamVars $ params
+                                      then error $ "Repeated variable names in lhs: " ++ show lhs ++ ", " ++ show rhs
+                                      else S.FuncDef func_name params rhs
                               _ -> error $ "Invalid func def lhs: " ++ show lhs
 
 checkFuncClauses :: [S.RhsClause] -> [S.RhsClause]

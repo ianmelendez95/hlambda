@@ -7,6 +7,7 @@ module Miranda.Syntax
   , ConstrArg (..)
   , FuncParam (..)
   , Exp (..)
+  , funcParamVars
   -- , ToLambda (..)
   -- , showMarked
   ) where 
@@ -66,6 +67,16 @@ data FuncParam = FPConstant T.Constant
                | FPListLit [FuncParam]
                | FPTuple [FuncParam]
                deriving Show
+              
+funcParamVars :: FuncParam -> [String]
+funcParamVars (FPConstant _) = []
+funcParamVars (FPVariable v) = [v]
+funcParamVars (FPConstructor _) = []
+funcParamVars (FPApply p1 p2) = concatMap funcParamVars [p1, p2]
+funcParamVars (FPCons p1 p2) = concatMap funcParamVars [p1, p2]
+funcParamVars (FPListLit ps) = concatMap funcParamVars ps
+funcParamVars (FPTuple ps) = concatMap funcParamVars ps
+
 
 data Exp = Constant T.Constant 
          | EGenTypeVar GenTypeVar

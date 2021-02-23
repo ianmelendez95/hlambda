@@ -120,6 +120,10 @@ main = hspec $ do
       showEnrichedMiranda "funnyLastElt (x:xs) = x, x<0\nfunnyLastElt (x:[]) = x\nfunnyLastElt (x:xs) = funnyLastElt xs\nfunnyLastElt [1,2,3]"
         `ioShouldBe` "let funnyLastElt = \\a. (\\CONS x xs. IF (< x 0) x FAIL) a | (\\CONS x NIL. x) a | (\\CONS x xs. funnyLastElt xs) a | ERROR  in funnyLastElt (CONS 1 (CONS 2 (CONS 3 NIL)))"
 
+    it "p64: translates conditional with base clause equation" $ do
+      showEnrichedMiranda "factorial n = 1, n==0\n            = n * factorial (n-1)\nfactorial 4"
+        `ioShouldBe` "let factorial = \\a. (\\n. IF (= n 0) 1 (* n (factorial (- n 1)))) a | ERROR  in factorial 4"
+
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()
     ioShouldBe io val = (`shouldBe` val) =<< io

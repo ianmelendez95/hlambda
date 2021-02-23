@@ -126,9 +126,11 @@ setHead x [] = [x]
 setHead x (_:xs) = (x:xs)
 
 alexMonadScanAll :: Alex [T.LocToken]
-alexMonadScanAll = 
-  do lt@(T.LToken l c tok) <- alexMonadScan
-     layout <- getLayoutState
+alexMonadScanAll = handleLayout =<< alexMonadScan
+
+handleLayout :: T.LocToken -> Alex [T.LocToken]
+handleLayout lt@(T.LToken l c tok) = 
+  do layout <- getLayoutState
      let mkTok = T.LToken l c
      case tok of 
        T.EOF -> 
@@ -145,7 +147,7 @@ alexMonadScanAll =
              | l == lay_line -> (lt :) <$> alexMonadScanAll
              | c <  lay_col  -> -- end of current layout
                do popLayoutState
-                  ([mkTok T.RC, lt] ++) <$> alexMonadScanAll
+                  (mkTok T.RC :) <$> handleLayout lt
              | c == lay_col  -> ([mkTok T.Semi, lt] ++) <$> alexMonadScanAll
              | otherwise     -> (lt :) <$> alexMonadScanAll
            LStart -> do putLayoutState (LActive l c)

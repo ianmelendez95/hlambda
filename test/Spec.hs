@@ -116,6 +116,9 @@ main = hspec $ do
     it "p63: translates conditional equation" $ do 
       showEnrichedMiranda "gcd a b = gcd (a-b) b, a>b\n        = gcd a (b-a), a<b\n        = a, a==b\ngcd 6 9"
         `ioShouldBe` "let gcd = \\a. \\b. (\\a. \\b. IF (> a b) (gcd (- a b) b) (IF (< a b) (gcd a (- b a)) (IF (= a b) a FAIL))) a b | ERROR  in gcd 6 9"
+      
+      showEnrichedMiranda "funnyLastElt (x:xs) = x, x<0\nfunnyLastElt (x:[]) = x\nfunnyLastElt (x:xs) = funnyLastElt xs\nfunnyLastElt [1,2,3]"
+        `ioShouldBe` "let funnyLastElt = \\a. (\\CONS x xs. IF (< x 0) x FAIL) a | (\\CONS x NIL. x) a | (\\CONS x xs. funnyLastElt xs) a | ERROR  in funnyLastElt (CONS 1 (CONS 2 (CONS 3 NIL)))"
 
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()

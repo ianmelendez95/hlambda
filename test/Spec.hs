@@ -129,6 +129,11 @@ main = hspec $ do
       elcontent <- readFile "test-ref/sumsq.el"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
 
+    it "p66: enriches gcd, which has a little bit of everything" $ do 
+      mcontent <- readFile "test-ref/gcd.m"
+      elcontent <- readFile "test-ref/gcd.el"
+      showEnrichedMiranda mcontent `ioShouldBe` elcontent
+
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()
     ioShouldBe io val = (`shouldBe` val) =<< io

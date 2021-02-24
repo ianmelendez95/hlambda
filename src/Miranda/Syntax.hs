@@ -16,6 +16,7 @@ module Miranda.Syntax
 
 import Prettyprinter
 import Data.List (intersperse, foldl1', foldl')
+import Data.Maybe (mapMaybe)
 import qualified Data.Map as Map
 
 import qualified Miranda.Token as T
@@ -125,38 +126,56 @@ instance ToLambda Prog where
   toLambda = toLambda . toEnriched
 
 instance ToEnriched Prog where 
-  toEnriched (Prog defs expr) = E.Let (toBindings defs) (toEnriched expr)
+  toEnriched (Prog defs expr) = 
+    E.Let (toBindings $ mapMaybe maybeFuncDef defs) (toEnriched expr)
+
+maybeFuncDef :: Decl -> Maybe FuncDef
+maybeFuncDef (FuncDef fdef) = Just fdef
+maybeFuncDef _ = Nothing
 
 --------------------------------------------------------------------------------
 -- Enriching Function Defs
 
-toBindings :: [Decl] -> [E.LetBinding]
+toBindings :: [FuncDef] -> [E.LetBinding]
 toBindings defs = 
   let grouped_defs = Map.toList . groupFuncDefs $ defs
    in map (uncurry toBinding) grouped_defs
 
 toBinding :: String -> [FuncSpec] -> E.LetBinding
+toBinding fname [spec] = 
+  if all isVarArg $ fst3 spec
+    then (E.PVariable fname, uncurry3 toBindingExp spec)
+    else toBinding' fname [spec]
+  where 
+    isVarArg :: FuncParam -> Bool
+    isVarArg (FPVariable _) = True
+    isVarArg _ = False
+
 toBinding fname specs
   | not . allEqual . map (length . fst3) $ specs = error $ "Functions have differing number of arguments: " ++ fname
-  | otherwise = 
-    let binding_exprs = map (uncurry3 toBindingExp) specs
-
-        free_vars = concatMap E.freeVariables binding_exprs
-        first_arg_name = if "a" `elem` free_vars then newName free_vars "a"
-                                           else "a"
-        arg_names = take (length . fst3 . head $ specs) $ iterate (newName free_vars) first_arg_name
-
-        lambda_body = foldr (E.FatBar . applyArgsToPatternExpr arg_names)
-                            (E.Pure . S.Constant $ S.CError) 
-                            binding_exprs
-        lambda = wrapLambdaArgs arg_names lambda_body
-
-     in (E.PVariable fname, lambda)
+  | otherwise = toBinding' fname specs
   where 
     allEqual :: Eq a => [a] -> Bool
     allEqual [] = True
     allEqual (x:xs) = all (== x) xs 
 
+-- | like toBinding, but does not perform preliminary checks, always performs case wrapping
+toBinding' :: String -> [FuncSpec] -> E.LetBinding
+toBinding' fname specs = 
+  let binding_exprs = map (uncurry3 toBindingExp) specs
+
+      free_vars = concatMap E.freeVariables binding_exprs
+      first_arg_name = if "a" `elem` free_vars then newName free_vars "a"
+                                         else "a"
+      arg_names = take (length . fst3 . head $ specs) $ iterate (newName free_vars) first_arg_name
+
+      lambda_body = foldr (E.FatBar . applyArgsToPatternExpr arg_names)
+                          (E.Pure . S.Constant $ S.CError) 
+                          binding_exprs
+      lambda = wrapLambdaArgs arg_names lambda_body
+
+   in (E.PVariable fname, lambda)
+  where 
     applyArgsToPatternExpr :: [String] -> E.Exp -> E.Exp
     applyArgsToPatternExpr args expr = 
       foldl' (\apply arg -> E.Apply apply (E.Pure . S.Variable $ arg)) expr args
@@ -164,42 +183,42 @@ toBinding fname specs
     wrapLambdaArgs :: [String] -> E.Exp -> E.Exp
     wrapLambdaArgs args body = foldr (E.Lambda . E.PVariable) body args
 
-    fst3 :: (a,b,c) -> a
-    fst3 (x,_,_) = x
+fst3 :: (a,b,c) -> a
+fst3 (x,_,_) = x
 
-    uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
-    uncurry3 f (x,y,z) = f x y z
+uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
+uncurry3 f (x,y,z) = f x y z
 
 
 -- | takes the function def components and creates a binding expression
 -- | where the def components are 
 -- | params -> rhs clauses -> 'where' definitions -> binding expression
 toBindingExp :: [FuncParam] -> [RhsClause] -> [FuncDef] -> E.Exp
-toBindingExp params clauses _ =  -- TODO: handle where definitions
-  wrapLambda params (clausesToExpression clauses)
-  where 
-    clausesToExpression :: [RhsClause]  -> E.Exp
-    clausesToExpression [] = E.Pure . S.Constant $ S.CFail
-    clausesToExpression cs@(BaseClause expr : rest) = 
-      case rest of 
-        [] -> toEnriched expr
-        _  -> error $ "Base clause expected at end: " ++ show cs
-    clausesToExpression (CondClause body cond : rest) = 
-      let if_cond = E.Apply (E.Pure . S.Function $ S.FIf) (toEnriched cond)
-          if_cond_then_body = E.Apply if_cond (toEnriched body)
-          if_cond_then_body_else_rest = E.Apply if_cond_then_body (clausesToExpression rest)
-      in if_cond_then_body_else_rest
+toBindingExp params clauses [] = wrapLambda params (clausesToExpression clauses)
+toBindingExp params clauses wdefs = 
+  let wbindings = toBindings wdefs
+   in wrapLambda params (E.Let wbindings (clausesToExpression clauses))
 
+clausesToExpression :: [RhsClause]  -> E.Exp
+clausesToExpression [] = E.Pure . S.Constant $ S.CFail
+clausesToExpression cs@(BaseClause expr : rest) = 
+  case rest of 
+    [] -> toEnriched expr
+    _  -> error $ "Base clause expected at end: " ++ show cs
+clausesToExpression (CondClause body cond : rest) = 
+  let if_cond = E.Apply (E.Pure . S.Function $ S.FIf) (toEnriched cond)
+      if_cond_then_body = E.Apply if_cond (toEnriched body)
+      if_cond_then_body_else_rest = E.Apply if_cond_then_body (clausesToExpression rest)
+  in if_cond_then_body_else_rest
 
 type FuncSpec = ([FuncParam], [RhsClause], [FuncDef]) -- a 'specification' for a function (everything but the name)
 type FuncDefMap = Map.Map String [FuncSpec]
 
-groupFuncDefs :: [Decl] -> FuncDefMap
+groupFuncDefs :: [FuncDef] -> FuncDefMap
 groupFuncDefs = foldl' insertDef Map.empty
   where 
-    insertDef :: FuncDefMap -> Decl -> FuncDefMap
-    insertDef m (FuncDef (FDef name pars rhs wdefs)) = Map.insertWith (flip (++)) name [(pars, rhs, wdefs)] m
-    insertDef m _ = m
+    insertDef :: FuncDefMap -> FuncDef -> FuncDefMap
+    insertDef m (FDef name pars rhs wdefs) = Map.insertWith (flip (++)) name [(pars, rhs, wdefs)] m
 
 -- toBinding :: Decl -> E.LetBinding
 -- toBinding (FuncDef func_name func_params [clause]) = (E.PVariable func_name, wrapLambda func_params (toEnriched clause))

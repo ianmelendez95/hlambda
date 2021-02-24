@@ -5,6 +5,7 @@ import Parse
 import Lambda.Reduce (Reducible (..))
 import Lambda.Pretty (PrettyLambda (..))
 import Lambda.ToLambda
+import Lambda.Enriched (ToEnriched (..))
 
 import Miranda.Lexer (scanTokens)
 import Miranda.Syntax (Prog, Decl)
@@ -15,6 +16,9 @@ evalMiranda = pPrint . reduce . either error id . (parse :: String -> Either Str
 
 toLambdaMiranda :: String -> IO () 
 toLambdaMiranda = pPrint . toLambda . parseMiranda
+
+enrichMiranda :: String -> IO ()
+enrichMiranda = pPrint . toEnriched . parseMiranda
 
 parseMiranda :: String -> Prog
 parseMiranda = eitherError . parse

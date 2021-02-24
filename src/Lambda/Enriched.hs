@@ -102,12 +102,11 @@ sPretty (Apply e e') = do wrapper <- getParenWrapper 10
 
 prettyLet :: String -> [LetBinding] -> Exp -> PrettyParenS LambdaDoc
 prettyLet let_kw bindings body = pure $ 
-  pretty let_kw <+> prettyBindings bindings <+> pretty "in" <+> prettyDoc body
+  align . vsep $ [pretty let_kw <+> (align . vsep $ map prettyBinding bindings), pretty "in" <+> prettyDoc body]
 
-prettyBindings :: [LetBinding] -> LambdaDoc
-prettyBindings [] = mempty
-prettyBindings ((PVariable var, val):bs) = pretty var <+> pretty "=" <+> prettyDoc val <+> prettyBindings bs
-prettyBindings ((pat, _):_) = error $ "prettyBindings: no support for pattern: " ++ show pat 
+prettyBinding :: LetBinding -> LambdaDoc
+prettyBinding (PVariable var, val) = pretty var <+> pretty "=" <+> prettyDoc val
+prettyBinding (pat, _) = error $ "prettyBinding: no support for pattern: " ++ show pat 
 
 instance PrettyLambda Pattern where 
   prettyDoc = mkPrettyDocFromParenS sPrettyPattern

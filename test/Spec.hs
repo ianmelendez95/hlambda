@@ -94,38 +94,40 @@ main = hspec $ do
     it "p58: parses funnyLastElt" $ do 
       parseMatchesProg "funnyLastElt (x : xs) = x, x < 0\nfunnyLastElt (x : []) = x\nfunnyLastElt (x : xs) = funnyLastElt xs\nfunnyLastElt [1,2,3]"
 
-    xit "p59: parses noDups" $ do 
-      parseMatchesProg "noDups [] = []\nnoDups [x] = [x]\nnoDups (x : x : xs) = noDups (x : xs)\nnoDups (x : y : ys) = x : noDups (y : ys)\nnoDups [1,2,2,3]"
-
     it "p60: enriches pattern arg definition" $ do 
       showEnrichedMiranda "fst (x,y) = x\nfst (1,2)"
-        `ioShouldBe` "let fst = \\a. (\\PAIR x y. x) a | ERROR  in fst (PAIR 1 2)"
+        `ioShouldBe` "let fst = \\a. (\\PAIR x y. x) a | ERROR\nin fst (PAIR 1 2)"
 
     it "p62: enriches multiple pattern matching" $ do 
       showEnrichedMiranda "reflect (LEAF n) = LEAF n\nreflect (BRANCH t1 t2) = BRANCH (reflect t2) (reflect t1)\nreflect (LEAF 1)"
-        `ioShouldBe` "let reflect = \\a. (\\LEAF n. LEAF n) a | (\\BRANCH t1 t2. BRANCH (reflect t2) (reflect t1)) a | ERROR  in reflect (LEAF 1)" 
+        `ioShouldBe` "let reflect = \\a. (\\LEAF n. LEAF n) a | (\\BRANCH t1 t2. BRANCH (reflect t2) (reflect t1)) a | ERROR\nin reflect (LEAF 1)" 
     
     it "p62: enriches incomplete pattern matching" $ do
       showEnrichedMiranda "hd (x:xs) = x\nhd [1,2,3]"
-        `ioShouldBe` "let hd = \\a. (\\CONS x xs. x) a | ERROR  in hd (CONS 1 (CONS 2 (CONS 3 NIL)))"
+        `ioShouldBe` "let hd = \\a. (\\CONS x xs. x) a | ERROR\nin hd (CONS 1 (CONS 2 (CONS 3 NIL)))"
 
     it "p63: translates multiple arguments" $ do 
       showEnrichedMiranda "xor False y = y\nxor True False = True\nxor True True = False\nxor True True"
-        `ioShouldBe` "let xor = \\a. \\b. (\\FALSE. \\y. y) a b | (\\TRUE. \\FALSE. TRUE) a b | (\\TRUE. \\TRUE. FALSE) a b | ERROR  in xor TRUE TRUE"
+        `ioShouldBe` "let xor = \\a. \\b. (\\FALSE. \\y. y) a b | (\\TRUE. \\FALSE. TRUE) a b | (\\TRUE. \\TRUE. FALSE) a b | ERROR\nin xor TRUE TRUE"
     
     it "p63: translates conditional equation" $ do 
       showEnrichedMiranda "gcd a b = gcd (a-b) b, a>b\n        = gcd a (b-a), a<b\n        = a, a==b\ngcd 6 9"
-        `ioShouldBe` "let gcd = \\a. \\b. (\\a. \\b. IF (> a b) (gcd (- a b) b) (IF (< a b) (gcd a (- b a)) (IF (= a b) a FAIL))) a b | ERROR  in gcd 6 9"
+        `ioShouldBe` "let gcd = \\a. \\b. IF (> a b) (gcd (- a b) b) (IF (< a b) (gcd a (- b a)) (IF (= a b) a FAIL))\nin gcd 6 9"
       
       showEnrichedMiranda "funnyLastElt (x:xs) = x, x<0\nfunnyLastElt (x:[]) = x\nfunnyLastElt (x:xs) = funnyLastElt xs\nfunnyLastElt [1,2,3]"
-        `ioShouldBe` "let funnyLastElt = \\a. (\\CONS x xs. IF (< x 0) x FAIL) a | (\\CONS x NIL. x) a | (\\CONS x xs. funnyLastElt xs) a | ERROR  in funnyLastElt (CONS 1 (CONS 2 (CONS 3 NIL)))"
+        `ioShouldBe` "let funnyLastElt = \\a. (\\CONS x xs. IF (< x 0) x FAIL) a | (\\CONS x NIL. x) a | (\\CONS x xs. funnyLastElt xs) a | ERROR\nin funnyLastElt (CONS 1 (CONS 2 (CONS 3 NIL)))"
 
     it "p64: translates conditional with base clause equation" $ do
       showEnrichedMiranda "factorial n = 1, n==0\n            = n * factorial (n-1)\nfactorial 4"
-        `ioShouldBe` "let factorial = \\a. (\\n. IF (= n 0) 1 (* n (factorial (- n 1)))) a | ERROR  in factorial 4"
+        `ioShouldBe` "let factorial = \\n. IF (= n 0) 1 (* n (factorial (- n 1)))\nin factorial 4"
 
     it "p66: parses where clauses" $ do 
       parseMatchesProg "sumsq x y = xsq + ysq\n  where\n    xsq = x * x\n    ysq = y * y\nsumsq 2 3"
+
+    it "p66: enriches where clauses" $ do
+      mcontent <- readFile "test-ref/sumsq.m"
+      elcontent <- readFile "test-ref/sumsq.el"
+      showEnrichedMiranda mcontent `ioShouldBe` elcontent
 
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()

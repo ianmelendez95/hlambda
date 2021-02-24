@@ -105,8 +105,7 @@ prettyLet let_kw bindings body = pure $
   align . vsep $ [pretty let_kw <+> (align . vsep $ map prettyBinding bindings), pretty "in" <+> prettyDoc body]
 
 prettyBinding :: LetBinding -> LambdaDoc
-prettyBinding (PVariable var, val) = pretty var <+> pretty "=" <+> prettyDoc val
-prettyBinding (pat, _) = error $ "prettyBinding: no support for pattern: " ++ show pat 
+prettyBinding (pat, val) = prettyDoc pat <+> pretty "=" <+> prettyDoc val
 
 instance PrettyLambda Pattern where 
   prettyDoc = mkPrettyDocFromParenS sPrettyPattern

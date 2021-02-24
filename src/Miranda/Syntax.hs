@@ -146,35 +146,47 @@ maybeFuncDef :: AssignDef -> Maybe FuncDef
 maybeFuncDef (FuncDef fdef) = Just fdef
 maybeFuncDef _ = Nothing
 
+maybePattDef :: AssignDef -> Maybe PattDef
+maybePattDef (PattDef pdef) = Just pdef
+maybePattDef _ = Nothing
+
 --------------------------------------------------------------------------------
 -- Enriching Function Defs
 
 toBindings :: [AssignDef] -> [E.LetBinding]
 toBindings defs = 
-  let grouped_defs = groupFuncDefs (mapMaybe maybeFuncDef defs)
-   in map (uncurry toBinding) grouped_defs
+  let grouped_func_defs = groupFuncDefs (mapMaybe maybeFuncDef defs)
+      patt_defs = mapMaybe maybePattDef defs
+   in map (uncurry funcToBinding) grouped_func_defs 
+        ++ map pattToBinding patt_defs 
+      
 
-toBinding :: String -> [FuncSpec] -> E.LetBinding
-toBinding fname [spec] = 
+pattToBinding :: PattDef -> E.LetBinding
+pattToBinding (PDef param clauses wdefs) = 
+  let binding_exp = toBindingExp [] clauses wdefs
+   in (funcParamToPattern param, binding_exp)
+
+funcToBinding :: String -> [FuncSpec] -> E.LetBinding
+funcToBinding fname [spec] = 
   if all isVarArg $ fst3 spec
     then (E.PVariable fname, uncurry3 toBindingExp spec)
-    else toBinding' fname [spec]
+    else funcToBinding' fname [spec]
   where 
     isVarArg :: FuncParam -> Bool
     isVarArg (FPVariable _) = True
     isVarArg _ = False
 
-toBinding fname specs
+funcToBinding fname specs
   | not . allEqual . map (length . fst3) $ specs = error $ "Functions have differing number of arguments: " ++ fname
-  | otherwise = toBinding' fname specs
+  | otherwise = funcToBinding' fname specs
   where 
     allEqual :: Eq a => [a] -> Bool
     allEqual [] = True
     allEqual (x:xs) = all (== x) xs 
 
--- | like toBinding, but does not perform preliminary checks, always performs case wrapping
-toBinding' :: String -> [FuncSpec] -> E.LetBinding
-toBinding' fname specs = 
+-- | like funcToBinding, but does not perform preliminary checks, always performs case wrapping
+funcToBinding' :: String -> [FuncSpec] -> E.LetBinding
+funcToBinding' fname specs = 
   let binding_exprs = map (uncurry3 toBindingExp) specs
 
       free_vars = concatMap E.freeVariables binding_exprs

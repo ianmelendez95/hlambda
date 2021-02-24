@@ -134,6 +134,16 @@ main = hspec $ do
       elcontent <- readFile "test-ref/gcd.el"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
 
+    it "p66: doesn't if against FAIL if no last guard" $ do
+      mcontent <- readFile "test-ref/no-last-guard.m"
+      elcontent <- readFile "test-ref/no-last-guard.el"
+      showEnrichedMiranda mcontent `ioShouldBe` elcontent
+    
+    it "p66: doesn't if against FAIL if last guard is True" $ do
+      mcontent <- readFile "test-ref/true-last-guard.m"
+      elcontent <- readFile "test-ref/true-last-guard.el"
+      showEnrichedMiranda mcontent `ioShouldBe` elcontent
+
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()
     ioShouldBe io val = (`shouldBe` val) =<< io

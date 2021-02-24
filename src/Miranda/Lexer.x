@@ -32,6 +32,8 @@ $gt            = \>
 -- @false         = F(alse|ALSE)
 @number        = [0-9]+
 @char          = \'[a-zA-Z]\'
+@true          = True
+@false         = False
 
 -- identifiers
 @variable      = [a-z][a-zA-Z0-9']*
@@ -56,8 +58,10 @@ tokens :-
   $lt                 { located $ \_ -> T.InfixOp T.ILt }
   $gt                 { located $ \_ -> T.InfixOp T.IGt }
 
-  @number             { located $ \n -> T.Constant $ T.CNat (read n) }
+  @number             { located $ \n -> T.Constant $ T.CNat (read n)  }
   @char               { located $ \c -> T.Constant $ T.CChar (c !! 1) }
+  @true               { located $ \_ -> T.Constant $ T.CBool True     }
+  @false              { located $ \_ -> T.Constant $ T.CBool False    }
 
   @variable           { located $ \v -> T.Variable v    }
   @constructor        { located $ \c -> T.Constructor c }

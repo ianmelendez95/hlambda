@@ -205,6 +205,7 @@ clausesToExpression cs@(BaseClause expr : rest) =
   case rest of 
     [] -> toEnriched expr
     _  -> error $ "Base clause expected at end: " ++ show cs
+clausesToExpression [CondClause body (Constant (T.CBool True))] = toEnriched body
 clausesToExpression (CondClause body cond : rest) = 
   let if_cond = E.Apply (E.Pure . S.Function $ S.FIf) (toEnriched cond)
       if_cond_then_body = E.Apply if_cond (toEnriched body)

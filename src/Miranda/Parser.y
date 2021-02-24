@@ -8,7 +8,7 @@ module Miranda.Parser
   ) where 
 
 import Data.Char
-import Data.Either (isRight, rights)
+import Data.Either (either, isRight, rights)
 import Data.List (nub)
 import Data.Maybe (fromMaybe)
 
@@ -67,20 +67,23 @@ stmts : stmts ';' stmt   { $3 : $1 }
       | stmt             { [$1] }
 
 stmt :: { Stmt }
-stmt : exp '::=' constructors    { Right . S.TypeDef $ (checkTypeDef $1 (reverse $3)) }
-     | funcDef                   { Right . S.FuncDef $ $1 }
+stmt : exp '::=' constructors    { Right $ checkTypeDef $1 (reverse $3) }
+     | assignDef                 { Right $ S.AssignDef $1 }
      | exp                       { Left  $1 }
 
 --------------------------------------------------------------------------------
--- Func Rhs
+-- Assignment Def
 
-funcDef :: { S.FuncDef }
-funcDef : exp '=' frhs maybeWhere { checkFuncDef $1 (reverse $3) (fromMaybe [] $4) }
+assignDef :: { S.AssignDef }
+assignDef : exp '=' frhs maybeWhere { checkAssignDef $1 (reverse $3) (fromMaybe [] $4) }
 
 -- REVERSE!!!
-funcDefs :: { [S.FuncDef] }
-funcDefs : funcDefs ';' funcDef   { $3 : $1 }
-         | funcDef                { [$1] }
+assignDefs :: { [S.AssignDef] }
+assignDefs : assignDefs ';' assignDef   { $3 : $1 }
+           | assignDef                  { [$1] }
+
+--------------------------------------------------------------------------------
+-- Func Def
 
 -- REVERSE!!
 frhs :: { [S.RhsClause] }
@@ -91,19 +94,19 @@ clause :: { S.RhsClause }
 clause : exp                    { S.BaseClause $1 }
        | exp ',' exp            { S.CondClause $1 $3 }          
 
-maybeWhere :: { Maybe [S.FuncDef] }
+maybeWhere :: { Maybe [S.AssignDef] }
 maybeWhere : 'where' whereDefs   { Just $2 }
            | {- empty -}         { Nothing }
 
-whereDefs :: { [S.FuncDef] }
-whereDefs : '{' funcDefs '}'     { reverse $2 }
+whereDefs :: { [S.AssignDef] }
+whereDefs : '{' assignDefs '}'     { reverse $2 }
 
 -------------------------------------------------------------------------------
 -- Def
 
 decl :: { S.Decl }
-decl : exp '::=' constructors { S.TypeDef (checkTypeDef $1 (reverse $3)) }
-     | funcDef                { S.FuncDef $1 }
+decl : exp '::=' constructors { (checkTypeDef $1 (reverse $3)) }
+     | assignDef              { S.AssignDef $1 }
 
 -- REVERSE!!
 constructors :: { [S.Constr] }
@@ -207,22 +210,23 @@ mkProg stmts = case span isRight stmts of
 --------------------------------------------------------------------------------
 -- Coerce Exp -> a
 
-checkTypeDef :: S.Exp -> [S.Constr] -> S.TypeDef
+checkAssignDef :: S.Exp -> [S.RhsClause] -> [S.AssignDef] -> S.AssignDef
+checkAssignDef lhs rhs wdefs = 
+  case flattenApplyLHS lhs of 
+    (S.Variable func_name : rest) -> 
+      -- want to check there aren't repeated variable names
+      let params = map checkFuncParam rest
+          dupes xs = not $ length xs == length (nub xs)
+       in if dupes . concatMap S.funcParamVars $ params
+            then error $ "Repeated variable names in lhs: " ++ show lhs ++ ", " ++ show rhs
+            else S.FuncDef $ S.FDef func_name params rhs wdefs
+    _ -> S.PattDef $ S.PDef (checkFuncParam lhs) rhs wdefs
+
+checkTypeDef :: S.Exp -> [S.Constr] -> S.Decl
 checkTypeDef lhs constrs = 
   case flattenApplyLHS lhs of 
-    (S.Variable type_name : rest) -> S.TDef type_name (map checkGenTypeVar rest) constrs
+    (S.Variable type_name : rest) -> S.TypeDef $ S.TDef type_name (map checkGenTypeVar rest) constrs
     _ -> error $ "Invalid type declaration lhs: " ++ show lhs
-
-checkFuncDef :: S.Exp -> [S.RhsClause] -> [S.FuncDef] -> S.FuncDef
-checkFuncDef lhs rhs wdefs = case flattenApplyLHS lhs of 
-                              (S.Variable func_name : rest) -> 
-                                -- want to check there aren't repeated variable names
-                                let params = map checkFuncParam rest
-                                    dupes xs = not $ length xs == length (nub xs)
-                                 in if dupes . concatMap S.funcParamVars $ params
-                                      then error $ "Repeated variable names in lhs: " ++ show lhs ++ ", " ++ show rhs
-                                      else S.FDef func_name params rhs wdefs
-                              _ -> error $ "Invalid func def lhs: " ++ show lhs
 
 checkFuncClauses :: [S.RhsClause] -> [S.RhsClause]
 checkFuncClauses [] = error "Expecting at least one clause"

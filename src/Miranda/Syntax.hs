@@ -1,8 +1,10 @@
 module Miranda.Syntax 
   ( Prog (..) 
   , Decl (..)
-  , FuncDef (..)
+  , AssignDef (..)
   , TypeDef (..)
+  , FuncDef (..)
+  , PattDef (..)
   , RhsClause (..)
   , GenTypeVar
   , Constr
@@ -45,14 +47,21 @@ data Prog = Prog [Decl] Exp
           deriving Show
 
 -- p48: Figure 3.3
-data Decl = FuncDef FuncDef
+data Decl = AssignDef AssignDef
           | TypeDef TypeDef
           deriving Show
 
-data FuncDef = FDef String [FuncParam] [RhsClause] [FuncDef] -- params, clauses, where defs
-             deriving Show
+data AssignDef = FuncDef FuncDef 
+               | PattDef PattDef 
+               deriving Show
 
 data TypeDef = TDef String [GenTypeVar] [Constr]
+             deriving Show
+
+data FuncDef = FDef String [FuncParam] [RhsClause] [AssignDef] -- params, clauses, where defs
+             deriving Show
+
+data PattDef = PDef FuncParam [RhsClause] [AssignDef] 
              deriving Show
 
 type GenTypeVar = Int
@@ -127,18 +136,22 @@ instance ToLambda Prog where
 
 instance ToEnriched Prog where 
   toEnriched (Prog defs expr) = 
-    E.Let (toBindings $ mapMaybe maybeFuncDef defs) (toEnriched expr)
+    E.Let (toBindings $ mapMaybe maybeAssignDef defs) (toEnriched expr)
 
-maybeFuncDef :: Decl -> Maybe FuncDef
+maybeAssignDef :: Decl -> Maybe AssignDef
+maybeAssignDef (AssignDef adef) = Just adef
+maybeAssignDef _ = Nothing
+
+maybeFuncDef :: AssignDef -> Maybe FuncDef
 maybeFuncDef (FuncDef fdef) = Just fdef
 maybeFuncDef _ = Nothing
 
 --------------------------------------------------------------------------------
 -- Enriching Function Defs
 
-toBindings :: [FuncDef] -> [E.LetBinding]
+toBindings :: [AssignDef] -> [E.LetBinding]
 toBindings defs = 
-  let grouped_defs = Map.toList . groupFuncDefs $ defs
+  let grouped_defs = groupFuncDefs (mapMaybe maybeFuncDef defs)
    in map (uncurry toBinding) grouped_defs
 
 toBinding :: String -> [FuncSpec] -> E.LetBinding
@@ -193,7 +206,7 @@ uncurry3 f (x,y,z) = f x y z
 -- | takes the function def components and creates a binding expression
 -- | where the def components are 
 -- | params -> rhs clauses -> 'where' definitions -> binding expression
-toBindingExp :: [FuncParam] -> [RhsClause] -> [FuncDef] -> E.Exp
+toBindingExp :: [FuncParam] -> [RhsClause] -> [AssignDef] -> E.Exp
 toBindingExp params clauses [] = wrapLambda params (clausesToExpression clauses)
 toBindingExp params clauses wdefs = 
   let wbindings = toBindings wdefs
@@ -212,19 +225,14 @@ clausesToExpression (CondClause body cond : rest) =
       if_cond_then_body_else_rest = E.Apply if_cond_then_body (clausesToExpression rest)
   in if_cond_then_body_else_rest
 
-type FuncSpec = ([FuncParam], [RhsClause], [FuncDef]) -- a 'specification' for a function (everything but the name)
+type FuncSpec = ([FuncParam], [RhsClause], [AssignDef]) -- a 'specification' for a function (everything but the name)
 type FuncDefMap = Map.Map String [FuncSpec]
 
-groupFuncDefs :: [FuncDef] -> FuncDefMap
-groupFuncDefs = foldl' insertDef Map.empty
+groupFuncDefs :: [FuncDef] -> [(String, [FuncSpec])]
+groupFuncDefs = Map.toList . foldl' insertDef Map.empty
   where 
     insertDef :: FuncDefMap -> FuncDef -> FuncDefMap
     insertDef m (FDef name pars rhs wdefs) = Map.insertWith (flip (++)) name [(pars, rhs, wdefs)] m
-
--- toBinding :: Decl -> E.LetBinding
--- toBinding (FuncDef func_name func_params [clause]) = (E.PVariable func_name, wrapLambda func_params (toEnriched clause))
--- toBinding (FuncDef _ _ expr) = error $ "Can't translate function body: " ++ show expr
--- toBinding t@TypeDef{} = error $ "Type definitions unsupported: " ++ show t
 
 wrapLambda :: [FuncParam] -> E.Exp -> E.Exp
 wrapLambda ps expr = foldr (E.Lambda . funcParamToPattern) expr ps
@@ -328,8 +336,11 @@ instance PrettyLambda Exp where
   prettyDoc = mkPrettyDocFromParenS sPrettyExp
 
 sPrettyDef :: Decl -> PrettyParenS LambdaDoc 
-sPrettyDef (FuncDef fdef) = sPrettyFuncDef fdef
+sPrettyDef (AssignDef adef) = sPrettyAssignDef adef
 sPrettyDef (TypeDef tdef) = sPrettyTypeDef tdef
+
+sPrettyAssignDef :: AssignDef -> PrettyParenS LambdaDoc
+sPrettyAssignDef (FuncDef fdef) = sPrettyFuncDef fdef
 
 sPrettyFuncDef :: FuncDef -> PrettyParenS LambdaDoc
 sPrettyFuncDef (FDef func_name vars body wdefs) = 
@@ -337,7 +348,7 @@ sPrettyFuncDef (FDef func_name vars body wdefs) =
          prepend_pvars = if null vars then (mempty <>) else ((hsep . map prettyDoc $ vars) <+>)
          pbody = align . vsep $ map ((pretty "=" <+>) . sPrettyClause) body
 
-     pwdefs <- mapM sPrettyFuncDef wdefs -- pretty where defs
+     pwdefs <- mapM sPrettyAssignDef wdefs -- pretty where defs
 
      let pwsection = hang 2 . vsep $ [pretty "where", align . vsep $ pwdefs]
 

@@ -143,6 +143,11 @@ main = hspec $ do
       mcontent <- readFile "test-ref/true-last-guard.m"
       elcontent <- readFile "test-ref/true-last-guard.el"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
+    
+    it "p67: enriches a where lhs pattern expression" $ do
+      mcontent <- readFile "test-ref/lhs-pattern.m"
+      elcontent <- readFile "test-ref/lhs-pattern.el"
+      showEnrichedMiranda mcontent `ioShouldBe` elcontent
 
   where 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()

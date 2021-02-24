@@ -1,10 +1,11 @@
-module Lambda.Reduce (Reducible (..), newName) where 
+module Lambda.Reduce (Reducible (..)) where 
 
 -- new reduction strategy that emulates laziness
 
 import Data.List (union, foldl1')
 import Data.Char (isLower)
 
+import Lambda.Name (nextName)
 import Lambda.Syntax
 import qualified Lambda.Enriched as E
 
@@ -162,7 +163,7 @@ replaceVarWithValInBody name new_exp l@(Lambda v e)
 -- | 'taken' or free variables that would result in a conflict if used
 alphaConvertRestricted :: [String] -> String -> Exp -> (String, Exp)
 alphaConvertRestricted taken_names var body 
-  = let new_name = newName taken_names var 
+  = let new_name = nextName taken_names var 
      in (new_name, alphaConvert var new_name body)
 
 -- | rather unsafely converts instances of the old name with the new name
@@ -180,21 +181,6 @@ alphaConvert old_name new_name (Apply e1 e2) = Apply (alphaConvert old_name new_
 alphaConvert old_name new_name l@(Lambda v e)
   | old_name == v = l -- name is already bound, doesn't matter
   | otherwise = Lambda v (alphaConvert old_name new_name e)
-
-newName :: [String] -> String -> String 
-newName taken name
-  | succ_name `elem` taken = newName taken succ_name
-  | otherwise = succ_name
-  where 
-    succ_name = succName name
-
-succName :: String -> String 
-succName [] = error "empty name"
-succName [c] 
-  | not (isLower c) = error $ "variable not lowercase: " ++ [c]
-  | c == 'z'        = "z'"
-  | otherwise       = [succ c]
-succName name = name ++ "'"
 
 -- freeVariables :: [String] -> Exp -> [String]
 -- freeVariables _ (Constant _) = []

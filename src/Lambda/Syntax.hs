@@ -5,6 +5,11 @@ module Lambda.Syntax
   , Constant (..)
   , ToLambda (..)
   , ToConstant (..)
+
+  -- builders
+  , mkIf
+  , mkApply
+
   , showMarked
   , varName
   , mapVarName
@@ -20,7 +25,7 @@ import Data.Text (Text, unpack, pack)
 
 import qualified Lambda.Token as T
 import Lambda.Pretty
-import Data.List (insert)
+import Data.List (foldl1', insert)
 
 -- p13: Figure 2.1 - Syntax of a Lambda Expression
 
@@ -46,6 +51,7 @@ data Function = FPlus
               | FTuple Int
               | FY   -- The Glorious Y Combinator
               | FEq
+              | FNEq
               | FLt
               | FGt
 
@@ -55,6 +61,16 @@ data Constant = CNat Int
               | CNil
               | CFail
               | CError
+
+--------------------------------------------------------------------------------
+-- Builders
+
+mkIf :: Exp -> Exp -> Exp -> Exp
+mkIf cond true_clause false_clause = 
+  mkApply [Function FIf, cond, true_clause, false_clause]
+
+mkApply :: [Exp] -> Exp
+mkApply = foldl1' Apply
 
 --------------
 -- ToLambda --
@@ -145,6 +161,7 @@ instance Show Function where
   show FHead  = "HEAD"
   show FTail  = "TAIL"
   show FEq    = "="
+  show FNEq   = "/="
   show FLt    = "<"
   show FGt    = ">"
   show FY     = "Y"

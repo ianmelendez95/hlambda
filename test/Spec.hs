@@ -6,6 +6,7 @@ import Test.HUnit.Base (assertFailure)
 import Parse
 import Lambda.Pretty (PrettyLambda (..))
 import Lambda.Reduce (reduce)
+import Lambda.Syntax (ToLambda (..))
 import Lambda.Enriched (ToEnriched (..))
 import qualified Miranda.Syntax as M (Prog (..), Decl)
 
@@ -148,13 +149,33 @@ main = hspec $ do
       mcontent <- readFile "test-ref/lhs-pattern.m"
       elcontent <- readFile "test-ref/lhs-pattern.el"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
+    
+    it "p69: lambdifies a simple constant pattern lambda" $ do 
+      let test_file_base = "constant-pattern-lambda"
+      mcontent <- readMiranda test_file_base
+      elcontent <- readEnriched test_file_base
+      lcontent <- readLambda test_file_base
+      showEnrichedMiranda mcontent `ioShouldBe` elcontent
+      showLambdadMiranda mcontent `ioShouldBe` lcontent
 
   where 
+    readMiranda :: FilePath -> IO String
+    readMiranda base_name = readFile $ "test-ref/" ++ base_name ++ ".m"
+
+    readEnriched :: FilePath -> IO String
+    readEnriched base_name = readFile $ "test-ref/" ++ base_name ++ ".el"
+  
+    readLambda :: FilePath -> IO String
+    readLambda base_name = readFile $ "test-ref/" ++ base_name ++ ".l"
+
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()
     ioShouldBe io val = (`shouldBe` val) =<< io
 
     showReducedMiranda :: String -> IO String
     showReducedMiranda input = pShow . reduce <$> (parseHunit input :: IO M.Prog)
+
+    showLambdadMiranda :: String -> IO String
+    showLambdadMiranda input = pShow . toLambda <$> (parseHunit input :: IO M.Prog)
 
     showEnrichedMiranda :: String -> IO String 
     showEnrichedMiranda input = do parsed_prog <- parseHunit input :: IO M.Prog

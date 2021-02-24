@@ -6,6 +6,7 @@ import Data.List (foldl', insert, nub)
 import Lambda.Pretty
 import Lambda.Syntax (ToLambda (..))
 import qualified Lambda.Syntax as S
+import Lambda.Name (newName)
 
 -- p40: Figure 3.2 - Syntax of Enriched Lambda Expressions
 
@@ -41,11 +42,31 @@ instance ToLambda Exp where
   toLambda (Apply e1 e2) = S.Apply (toLambda e1) (toLambda e2)
   toLambda (Lambda pat body) = toLambdaLambda pat body
   toLambda (Pure expr) = expr
-  toLambda expr@(FatBar _ _) = error $ "FatBar unsupported: " ++ show expr
+  -- <e1> | <e2>
+  -- (\new_name. IF (/= new_name FAIL) new_name <e2>) <e1>
+  toLambda (FatBar e1 e2) = 
+    let new_name = newName (nub $ concatMap freeVariables [e1, e2])
+        new_var = S.Variable new_name
+
+        -- (/= new_name FAIL)
+        neq_fail = S.mkApply [S.Function S.FNEq, new_var, S.Constant S.CFail]
+        
+        -- IF (/= new_name FAIL) new_name <e2>
+        if_neq_fail_else_e2 = S.mkIf neq_fail new_var (toLambda e2)
+
+        -- (\new_name. IF (/= new_name FAIL) new_name <e2>)
+        new_name_lambda = S.Lambda new_name if_neq_fail_else_e2
+
+        -- (\new_name. IF (/= new_name FAIL) new_name <e2>) <e1>
+     in S.Apply new_name_lambda (toLambda e1)
 
 toLambdaLambda :: Pattern -> Exp -> S.Exp
 toLambdaLambda (PVariable v) body = S.Lambda v (toLambda body)
-toLambdaLambda c@(PConstant _) _ = error $ "No support for constants in patterns: " ++ show c
+-- (\k. E) C => (\a. IF (= k a) E FAIL) C
+toLambdaLambda (PConstant k) e = 
+  let new_name = newName (freeVariables e)
+      if_cond = S.mkApply [S.Function S.FEq, S.Constant k, S.Variable new_name]
+   in S.Lambda new_name (S.mkIf if_cond (toLambda e) (S.Constant S.CFail)) 
 toLambdaLambda c@(PConstructor _ _) _ = error $ "No support for constructors to lambda yet: " ++ show c
 
 -- | (letrec v = B in E) = (let v = Y (\v. B) in E) - p42

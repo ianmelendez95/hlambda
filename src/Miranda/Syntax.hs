@@ -34,10 +34,10 @@ import Lambda.Pretty
       mkPrettyDocFromParenS )
 import Lambda.Enriched (ToEnriched (..))
 import Lambda.Syntax (ToLambda (..))
-import Lambda.Reduce (Reducible (..), newName)
+import Lambda.Reduce (Reducible (..))
+import Lambda.Name (newName, nextNames)
 import qualified Lambda.Enriched as E
 import qualified Lambda.Syntax as S
-
 
 ----------------------
 -- Lambda Expressions --
@@ -190,9 +190,8 @@ funcToBinding' fname specs =
   let binding_exprs = map (uncurry3 toBindingExp) specs
 
       free_vars = concatMap E.freeVariables binding_exprs
-      first_arg_name = if "a" `elem` free_vars then newName free_vars "a"
-                                         else "a"
-      arg_names = take (length . fst3 . head $ specs) $ iterate (newName free_vars) first_arg_name
+      first_arg_name = newName free_vars
+      arg_names = take (length . fst3 . head $ specs) $ nextNames free_vars first_arg_name
 
       lambda_body = foldr (E.FatBar . applyArgsToPatternExpr arg_names)
                           (E.Pure . S.Constant $ S.CError) 

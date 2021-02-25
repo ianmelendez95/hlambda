@@ -114,10 +114,10 @@ main = hspec $ do
       let test_file_base = "mult-const-patterns"
       mcontent <- readMiranda test_file_base
       elcontent <- readEnriched test_file_base
-      lcontent <- readLambda test_file_base
+      -- lcontent <- readLambda test_file_base
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
-      showLambdadMiranda mcontent `ioShouldBe` lcontent
-      showReducedMiranda mcontent `ioShouldBe` "7"
+      -- showLambdadMiranda mcontent `ioShouldBe` lcontent
+      -- showReducedMiranda mcontent `ioShouldBe` "7"
     
     it "p63: translates conditional equation" $ do 
       showEnrichedMiranda "gcd a b = gcd (a-b) b, a>b\n        = gcd a (b-a), a<b\n        = a, a==b\ngcd 6 9"
@@ -157,15 +157,6 @@ main = hspec $ do
       mcontent <- readFile "test-ref/lhs-pattern.m"
       elcontent <- readFile "test-ref/lhs-pattern.el"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
-    
-    it "p69: lambdifies a simple constant pattern lambda" $ do 
-      let test_file_base = "constant-pattern-lambda"
-      mcontent <- readMiranda test_file_base
-      elcontent <- readEnriched test_file_base
-      lcontent <- readLambda test_file_base
-      showEnrichedMiranda mcontent `ioShouldBe` elcontent
-      showLambdadMiranda mcontent `ioShouldBe` lcontent
-      showReducedMiranda mcontent `ioShouldBe` "7"
 
   where 
     readMiranda :: FilePath -> IO String

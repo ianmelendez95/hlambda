@@ -8,7 +8,7 @@ import Lambda.Name (nextName)
 import Lambda.Syntax
 import qualified Lambda.Enriched as E
 
-import Debug.Trace (trace, traceShow)
+import Debug.Trace (trace)
 
 class Reducible a where 
   reduce :: a -> Exp
@@ -21,7 +21,7 @@ instance Reducible Exp where
 
 reduceExp :: Exp -> Exp 
 reduceExp e = 
-  case reduceOnce (trace ("Reducing: " ++ show e) e) of 
+  case reduceOnce e of 
     Left e' -> e'
     Right e' -> reduceExp e'
 

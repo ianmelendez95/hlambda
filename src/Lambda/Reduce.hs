@@ -19,7 +19,6 @@ instance Reducible E.Exp where
 instance Reducible Exp where 
   reduce = reduceExp
 
--- TODO: reduce WHNF
 reduceExp :: Exp -> Exp 
 reduceExp e = 
   case reduceOnce e of 

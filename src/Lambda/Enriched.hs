@@ -43,22 +43,11 @@ instance ToLambda Exp where
   toLambda (Lambda pat body) = toLambdaLambda pat body
   toLambda (Pure expr) = expr
   -- <e1> | <e2>
-  -- (\new_name. IF (/= new_name FAIL) new_name <e2>) <e1>
+  -- IF (/= <e1> FAIL) <e1> <e2>
   toLambda (FatBar e1 e2) = 
-    let new_name = newName (nub $ concatMap freeVariables [e1, e2])
-        new_var = S.mkVariable new_name
-
-        -- (/= new_name FAIL)
-        neq_fail = S.mkApply [S.mkFunction S.FNEq, new_var, S.mkConstant S.CFail]
-        
-        -- IF (/= new_name FAIL) new_name <e2>
-        if_neq_fail_else_e2 = S.mkIf neq_fail new_var (toLambda e2)
-
-        -- (\new_name. IF (/= new_name FAIL) new_name <e2>)
-        new_name_lambda = S.Lambda new_name if_neq_fail_else_e2
-
-        -- (\new_name. IF (/= new_name FAIL) new_name <e2>) <e1>
-     in S.Apply new_name_lambda (toLambda e1)
+    let e1' = toLambda e1
+        e2' = toLambda e2
+     in S.mkIf (S.mkApply [S.mkFunction S.FNEq, e1', S.mkConstant S.CFail]) e1' e2'
 
 toLambdaLambda :: Pattern -> Exp -> S.Exp
 toLambdaLambda (PVariable v) body = S.Lambda v (toLambda body)

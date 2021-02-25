@@ -21,7 +21,7 @@ instance Reducible Exp where
 
 reduceExp :: Exp -> Exp 
 reduceExp e = 
-  case reduceOnce e of 
+  case reduceOnce (trace ("Reducing: " ++ show e) e) of 
     Left e' -> e'
     Right e' -> reduceExp e'
 

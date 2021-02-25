@@ -1,0 +1,1 @@
+(\xor. xor TRUE TRUE) (\a. \b. (\c. IF (/= c FAIL) c ((\c. IF (/= c FAIL) c ((\c. IF (/= c FAIL) c ERROR) ((\a. IF (= TRUE a) (\a. IF (= TRUE a) FALSE FAIL) FAIL) a b))) ((\a. IF (= TRUE a) (\a. IF (= FALSE a) TRUE FAIL) FAIL) a b))) ((\a. IF (= FALSE a) (\y. y) FAIL) a b))

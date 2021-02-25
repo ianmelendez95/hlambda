@@ -108,8 +108,13 @@ main = hspec $ do
         `ioShouldBe` "let hd = \\a. (\\CONS x xs. x) a | ERROR\nin hd (CONS 1 (CONS 2 (CONS 3 NIL)))"
 
     it "p63: translates multiple arguments" $ do 
-      showEnrichedMiranda "xor False y = y\nxor True False = True\nxor True True = False\nxor True True"
-        `ioShouldBe` "let xor = \\a. \\b. (\\FALSE. \\y. y) a b | (\\TRUE. \\FALSE. TRUE) a b | (\\TRUE. \\TRUE. FALSE) a b | ERROR\nin xor TRUE TRUE"
+      let test_file_base = "mult-const-patterns"
+      mcontent <- readMiranda test_file_base
+      elcontent <- readEnriched test_file_base
+      lcontent <- readLambda test_file_base
+      showEnrichedMiranda mcontent `ioShouldBe` elcontent
+      showLambdadMiranda mcontent `ioShouldBe` lcontent
+      -- showReducedMiranda mcontent `ioShouldBe` "7"
     
     it "p63: translates conditional equation" $ do 
       showEnrichedMiranda "gcd a b = gcd (a-b) b, a>b\n        = gcd a (b-a), a<b\n        = a, a==b\ngcd 6 9"
@@ -122,21 +127,16 @@ main = hspec $ do
       showEnrichedMiranda "factorial n = 1, n==0\n            = n * factorial (n-1)\nfactorial 4"
         `ioShouldBe` "let factorial = \\n. IF (= n 0) 1 (* n (factorial (- n 1)))\nin factorial 4"
 
-    it "p66: parses where clauses" $ do 
-      parseMatchesProg "sumsq x y = xsq + ysq\n  where\n    xsq = x * x\n    ysq = y * y\nsumsq 2 3"
-
     it "p66: enriches where clauses" $ do
       mcontent <- readFile "test-ref/sumsq.m"
       elcontent <- readFile "test-ref/sumsq.el"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
+      showReducedMiranda mcontent `ioShouldBe` "13"
 
     it "p66: enriches gcd, which has a little bit of everything" $ do 
       mcontent <- readMiranda "gcd"
-      lcontent <- readLambda "gcd"
       elcontent <- readEnriched "gcd"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
-      showLambdadMiranda mcontent `ioShouldBe` lcontent
-      showReducedMiranda mcontent `ioShouldBe` "3"
 
     it "p66: doesn't if against FAIL if no last guard" $ do
       mcontent <- readFile "test-ref/no-last-guard.m"

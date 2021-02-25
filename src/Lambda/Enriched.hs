@@ -46,10 +46,10 @@ instance ToLambda Exp where
   -- (\new_name. IF (/= new_name FAIL) new_name <e2>) <e1>
   toLambda (FatBar e1 e2) = 
     let new_name = newName (nub $ concatMap freeVariables [e1, e2])
-        new_var = S.Variable new_name
+        new_var = S.mkVariable new_name
 
         -- (/= new_name FAIL)
-        neq_fail = S.mkApply [S.Function S.FNEq, new_var, S.Constant S.CFail]
+        neq_fail = S.mkApply [S.mkFunction S.FNEq, new_var, S.mkConstant S.CFail]
         
         -- IF (/= new_name FAIL) new_name <e2>
         if_neq_fail_else_e2 = S.mkIf neq_fail new_var (toLambda e2)
@@ -65,15 +65,15 @@ toLambdaLambda (PVariable v) body = S.Lambda v (toLambda body)
 -- (\k. E) C => (\a. IF (= k a) E FAIL) C
 toLambdaLambda (PConstant k) e = 
   let new_name = newName (freeVariables e)
-      if_cond = S.mkApply [S.Function S.FEq, S.Constant k, S.Variable new_name]
-   in S.Lambda new_name (S.mkIf if_cond (toLambda e) (S.Constant S.CFail)) 
+      if_cond = S.mkApply [S.mkFunction S.FEq, S.mkConstant k, S.mkVariable new_name]
+   in S.Lambda new_name (S.mkIf if_cond (toLambda e) (S.mkConstant S.CFail)) 
 toLambdaLambda c@(PConstructor _ _) _ = error $ "No support for constructors to lambda yet: " ++ show c
 
 -- | (letrec v = B in E) = (let v = Y (\v. B) in E) - p42
 letrecToLambda ::[LetBinding] -> Exp -> S.Exp
 letrecToLambda [] body = toLambda body
 letrecToLambda [(var, val)] body = toLambda $ 
-  let applyY = Apply (Pure $ S.Function S.FY) 
+  let applyY = Apply (Pure $ S.mkFunction S.FY) 
       new_val = applyY (Lambda var val)
    in Let [(var, new_val)] body  
 letrecToLambda _ _ = error "letrec: no support for multiple bindings (yet)"
@@ -132,7 +132,7 @@ instance PrettyLambda Pattern where
   prettyDoc = mkPrettyDocFromParenS sPrettyPattern
 
 sPrettyPattern :: Pattern -> PrettyParenS LambdaDoc
-sPrettyPattern (PConstant c) = pure . prettyDoc $ S.Constant c
+sPrettyPattern (PConstant c) = pure . prettyDoc $ S.mkConstant c
 sPrettyPattern (PVariable v) = pure . pretty $ v
 sPrettyPattern (PConstructor c ps) = do setPrec 11
                                         pretty_args <- mapM sPrettyPattern ps

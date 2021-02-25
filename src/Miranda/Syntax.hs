@@ -194,7 +194,7 @@ funcToBinding' fname specs =
       arg_names = take (length . fst3 . head $ specs) $ nextNames free_vars first_arg_name
 
       lambda_body = foldr (E.FatBar . applyArgsToPatternExpr arg_names)
-                          (E.Pure . S.Constant $ S.CError) 
+                          (E.Pure . S.mkConstant $ S.CError) 
                           binding_exprs
       lambda = wrapLambdaArgs arg_names lambda_body
 
@@ -202,7 +202,7 @@ funcToBinding' fname specs =
   where 
     applyArgsToPatternExpr :: [String] -> E.Exp -> E.Exp
     applyArgsToPatternExpr args expr = 
-      foldl' (\apply arg -> E.Apply apply (E.Pure . S.Variable $ arg)) expr args
+      foldl' (\apply arg -> E.Apply apply (E.Pure . S.mkVariable $ arg)) expr args
 
     wrapLambdaArgs :: [String] -> E.Exp -> E.Exp
     wrapLambdaArgs args body = foldr (E.Lambda . E.PVariable) body args
@@ -224,14 +224,14 @@ toBindingExp params clauses wdefs =
    in wrapLambda params (E.Let wbindings (clausesToExpression clauses))
 
 clausesToExpression :: [RhsClause]  -> E.Exp
-clausesToExpression [] = E.Pure . S.Constant $ S.CFail
+clausesToExpression [] = E.Pure . S.mkConstant $ S.CFail
 clausesToExpression cs@(BaseClause expr : rest) = 
   case rest of 
     [] -> toEnriched expr
     _  -> error $ "Base clause expected at end: " ++ show cs
 clausesToExpression [CondClause body (Constant (T.CBool True))] = toEnriched body
 clausesToExpression (CondClause body cond : rest) = 
-  let if_cond = E.Apply (E.Pure . S.Function $ S.FIf) (toEnriched cond)
+  let if_cond = E.Apply (E.Pure . S.mkFunction $ S.FIf) (toEnriched cond)
       if_cond_then_body = E.Apply if_cond (toEnriched body)
       if_cond_then_body_else_rest = E.Apply if_cond_then_body (clausesToExpression rest)
   in if_cond_then_body_else_rest
@@ -299,7 +299,7 @@ instance ToEnriched RhsClause where
 instance ToEnriched Exp where 
   toEnriched (Constant c)          = toEnriched c
   toEnriched (BuiltinOp _)         = undefined
-  toEnriched (Variable x)          = E.Pure (S.Variable x)
+  toEnriched (Variable x)          = E.Pure (S.mkVariable x)
   toEnriched (Constructor c)       = constructorToEnriched c
   toEnriched (Apply e1 e2)         = E.Apply (toEnriched e1) (toEnriched e2)
   toEnriched (InfixApp op e1 e2)   = E.Apply (E.Apply (toEnriched op) (toEnriched e1)) (toEnriched e2)
@@ -309,9 +309,9 @@ instance ToEnriched Exp where
   toEnriched (EGenTypeVar v)       = error $ "Can't enrich type variable: " ++ show v
 
 constructorToEnriched :: String -> E.Exp
-constructorToEnriched "True" = E.Pure . S.Constant . S.CBool $ True
-constructorToEnriched "False" = E.Pure . S.Constant . S.CBool $ False
-constructorToEnriched constr = E.Pure . S.Variable $ constr
+constructorToEnriched "True" = E.Pure . S.mkConstant . S.CBool $ True
+constructorToEnriched "False" = E.Pure . S.mkConstant . S.CBool $ False
+constructorToEnriched constr = E.Pure . S.mkVariable $ constr
 
 enrichedListLit :: [Exp] -> E.Exp
 enrichedListLit [] = enrNil
@@ -323,12 +323,12 @@ consEnrichedExprs = foldr1 (E.Apply . E.Apply enrCons)
 enrichedTuple :: [Exp] -> E.Exp
 enrichedTuple exps = foldl1' E.Apply (enr_tuple_f : map toEnriched exps) 
   where 
-    enr_tuple_f = E.Pure (S.Function (S.FTuple (length exps)))
+    enr_tuple_f = E.Pure (S.mkFunction (S.FTuple (length exps)))
 
 -- | 'enr'iched nil and cons
 enrNil, enrCons :: E.Exp
-enrNil  = E.Pure (S.Constant S.CNil)
-enrCons = E.Pure (S.Function S.FCons)
+enrNil  = E.Pure (S.mkConstant S.CNil)
+enrCons = E.Pure (S.mkFunction S.FCons)
 
 ------------------
 -- Pretty Print --
@@ -352,6 +352,7 @@ sPrettyDef (TypeDef tdef) = sPrettyTypeDef tdef
 
 sPrettyAssignDef :: AssignDef -> PrettyParenS LambdaDoc
 sPrettyAssignDef (FuncDef fdef) = sPrettyFuncDef fdef
+sPrettyAssignDef (PattDef pdef) = sPrettyPattDef pdef
 
 sPrettyFuncDef :: FuncDef -> PrettyParenS LambdaDoc
 sPrettyFuncDef (FDef func_name vars body wdefs) = 
@@ -378,6 +379,18 @@ sPrettyTypeDef (TDef type_name type_vars constrs) =
     prettyLHS name vars = 
       if null vars then pretty name 
                    else pretty name <+> hsep (map prettyTypeVar type_vars)
+
+sPrettyPattDef :: PattDef -> PrettyParenS LambdaDoc
+sPrettyPattDef (PDef patt body wdefs) =
+  do ppatt <- sPrettyPattern patt
+     pwdefs <- mapM sPrettyAssignDef wdefs -- pretty where defs
+
+     let pbody = align . vsep $ map ((pretty "=" <+>) . sPrettyClause) body
+         pwsection = hang 2 . vsep $ [pretty "where", align . vsep $ pwdefs]
+
+     if null wdefs 
+       then pure (ppatt <+> pbody)
+       else pure (hang 2 . vsep $ [ppatt <+> pbody, pwsection])
 
 sPrettyClause :: RhsClause -> LambdaDoc
 sPrettyClause (BaseClause expr) = prettyDoc expr

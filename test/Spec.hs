@@ -157,6 +157,7 @@ main = hspec $ do
       lcontent <- readLambda test_file_base
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
       showLambdadMiranda mcontent `ioShouldBe` lcontent
+      showReducedMiranda mcontent `ioShouldBe` "7"
 
   where 
     readMiranda :: FilePath -> IO String

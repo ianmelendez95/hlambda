@@ -3,12 +3,16 @@ module Lambda.Syntax
   , Variable
   , Function (..)
   , Constant (..)
+  , Term (..)
   , ToLambda (..)
   , ToConstant (..)
 
   -- builders
   , mkIf
   , mkApply
+  , mkConstant 
+  , mkFunction
+  , mkVariable
 
   , showMarked
   , varName
@@ -29,11 +33,14 @@ import Data.List (foldl1', insert)
 
 -- p13: Figure 2.1 - Syntax of a Lambda Expression
 
-data Exp = Constant Constant 
-         | Function Function
-         | Variable String 
+data Exp = Term Term 
          | Apply Exp Exp 
          | Lambda String Exp
+
+data Term = Constant Constant
+          | Function Function
+          | Variable Variable
+          deriving Eq
 
 type Variable = String
 
@@ -54,6 +61,7 @@ data Function = FPlus
               | FNEq
               | FLt
               | FGt
+              deriving Eq
 
 data Constant = CNat Int
               | CChar Char
@@ -61,13 +69,23 @@ data Constant = CNat Int
               | CNil
               | CFail
               | CError
+              deriving Eq
 
 --------------------------------------------------------------------------------
 -- Builders
 
 mkIf :: Exp -> Exp -> Exp -> Exp
 mkIf cond true_clause false_clause = 
-  mkApply [Function FIf, cond, true_clause, false_clause]
+  mkApply [mkFunction FIf, cond, true_clause, false_clause]
+
+mkVariable :: Variable -> Exp
+mkVariable = Term . Variable
+
+mkFunction :: Function -> Exp
+mkFunction = Term . Function
+
+mkConstant :: Constant -> Exp
+mkConstant = Term . Constant
 
 mkApply :: [Exp] -> Exp
 mkApply = foldl1' Apply
@@ -85,6 +103,9 @@ class ToLambda a where
 
 class ToConstant a where 
   toConstant :: a -> Constant
+  
+  toConstantExp :: a -> Exp
+  toConstantExp = mkConstant . toConstant
 
 instance ToConstant Int where 
   toConstant = CNat
@@ -98,23 +119,23 @@ instance ToConstant Bool where
 ----------------------
 
 fromConstantToken :: T.Constant -> Exp 
-fromConstantToken (T.CNat n)   = Constant (CNat n) 
-fromConstantToken (T.CChar n)  = Constant (CChar n) 
-fromConstantToken (T.CBool b)  = Constant (CBool b) 
+fromConstantToken (T.CNat n)   = toConstantExp n
+fromConstantToken (T.CChar c)  = toConstantExp c 
+fromConstantToken (T.CBool b)  = toConstantExp b
 
 fromFunctionToken :: T.Function -> Exp
-fromFunctionToken T.FPlus  = Function FPlus
-fromFunctionToken T.FMinus = Function FMinus 
-fromFunctionToken T.FMult  = Function FMult
-fromFunctionToken T.FDiv   = Function FDiv
-fromFunctionToken T.FAnd   = Function FAnd
-fromFunctionToken T.FOr    = Function FOr 
-fromFunctionToken T.FNot   = Function FNot
-fromFunctionToken T.FIf    = Function FIf
-fromFunctionToken T.FCons  = Function FCons
-fromFunctionToken T.FHead  = Function FHead
-fromFunctionToken T.FTail  = Function FTail
-fromFunctionToken T.FY     = Function FY
+fromFunctionToken T.FPlus  = mkFunction FPlus
+fromFunctionToken T.FMinus = mkFunction FMinus 
+fromFunctionToken T.FMult  = mkFunction FMult
+fromFunctionToken T.FDiv   = mkFunction FDiv
+fromFunctionToken T.FAnd   = mkFunction FAnd
+fromFunctionToken T.FOr    = mkFunction FOr 
+fromFunctionToken T.FNot   = mkFunction FNot
+fromFunctionToken T.FIf    = mkFunction FIf
+fromFunctionToken T.FCons  = mkFunction FCons
+fromFunctionToken T.FHead  = mkFunction FHead
+fromFunctionToken T.FTail  = mkFunction FTail
+fromFunctionToken T.FY     = mkFunction FY
 
 ---------
 -- Ops --
@@ -187,9 +208,7 @@ instance PrettyLambda Exp where
   prettyDoc = mkPrettyDocFromParenS sPretty
 
 sPretty :: Exp -> PrettyParenS LambdaDoc
-sPretty (Constant c) = pure $ annStr AConstant (show c)
-sPretty (Function f) = pure $ annStr AFunction (show f)
-sPretty (Variable var) = pure $ prettyVar var
+sPretty (Term t) = sPrettyTerm t
 sPretty (Lambda var e) = do wrapper <- getParenWrapper 5 
                             ePretty <- tempState (setPrec 0) (sPretty e)
                             pure $ wrapper $ backslash
@@ -200,6 +219,12 @@ sPretty (Apply e e') = do wrapper <- getParenWrapper 10
                           ePretty <- tempState (setPrec 6) (sPretty e)
                           ePretty' <- tempState (setPrec 11) (sPretty e')
                           pure $ wrapper $ ePretty <+> ePretty'
+                        
+
+sPrettyTerm :: Term -> PrettyParenS LambdaDoc
+sPrettyTerm (Constant c) = pure $ annStr AConstant (show c)
+sPrettyTerm (Function f) = pure $ annStr AFunction (show f)
+sPrettyTerm (Variable var) = pure $ prettyVar var
 
 prettyVar :: Variable -> Doc LambdaAnn
 prettyVar  = annStr AFreeVar
@@ -211,8 +236,7 @@ freeVariables :: Exp -> [String]
 freeVariables = freeVariables' []
 
 freeVariables' :: [String] -> Exp -> [String]
-freeVariables' _ (Constant _) = []
-freeVariables' _ (Function _) = []
-freeVariables' bound (Variable var) = [varName var | varName var `notElem` bound]
+freeVariables' bound (Term (Variable var)) = [varName var | varName var `notElem` bound]
+freeVariables' _ (Term _) = []
 freeVariables' bound (Apply e1 e2)  = freeVariables' bound e1 ++ freeVariables' bound e2
 freeVariables' bound (Lambda v e) = freeVariables' (insert v bound) e

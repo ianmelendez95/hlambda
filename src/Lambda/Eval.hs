@@ -12,21 +12,18 @@ import Lambda.Pretty
 -- | defined in 2.5.1: "abstract mathematical object, such as 'the number 5', or 
 -- | 'the function which squares its argument'"
 data Value = Constant S.Constant 
-           | Function S.Function
            | Bottom
 
 class ToValue a where 
   toValue :: a -> Value
 
 instance ToValue S.Exp where 
-  toValue (S.Constant c) = Constant c
-  toValue (S.Function f) = Function f
+  toValue (S.Term (S.Constant c)) = Constant c
   toValue _ = Bottom
 
 instance PrettyLambda Value where 
   prettyDoc Bottom = annStr None "_|_"
-  prettyDoc (Constant c) = prettyDoc (S.Constant c)
-  prettyDoc (Function f) = prettyDoc (S.Function f)
+  prettyDoc (Constant c) = prettyDoc (S.mkConstant c)
 
 type Environment = (S.Variable -> Value)
 

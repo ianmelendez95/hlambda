@@ -77,9 +77,9 @@ instance Show Constant where
   show (CBool b) = show b
 
 instance E.ToEnriched Constant where 
-  toEnriched (CNat x)  = E.Pure . S.Constant . S.CNat  $ x
-  toEnriched (CChar c) = E.Pure . S.Constant . S.CChar $ c
-  toEnriched (CBool b) = E.Pure . S.Constant . S.CBool $ b
+  toEnriched (CNat x)  = E.Pure . S.toConstantExp $ x
+  toEnriched (CChar c) = E.Pure . S.toConstantExp $ c
+  toEnriched (CBool b) = E.Pure . S.toConstantExp $ b
 
 constantToLambda :: Constant -> S.Constant 
 constantToLambda (CNat x)  = S.CNat x
@@ -88,13 +88,13 @@ constantToLambda (CBool b) = S.CBool b
 
 
 instance E.ToEnriched InfixOp where 
-  toEnriched IPlus    = E.Pure . S.Function $ S.FPlus
-  toEnriched IMinus   = E.Pure . S.Function $ S.FMinus
-  toEnriched IMult    = E.Pure . S.Function $ S.FMult
-  toEnriched IDiv     = E.Pure . S.Function $ S.FDiv
-  toEnriched ICons    = E.Pure . S.Function $ S.FCons
-  toEnriched IEq      = E.Pure . S.Function $ S.FEq
-  toEnriched ILt      = E.Pure . S.Function $ S.FLt
-  toEnriched IGt      = E.Pure . S.Function $ S.FGt
-  toEnriched (IVar v) = E.Pure . S.Variable $ v
+  toEnriched IPlus    = E.Pure . S.mkFunction $ S.FPlus
+  toEnriched IMinus   = E.Pure . S.mkFunction $ S.FMinus
+  toEnriched IMult    = E.Pure . S.mkFunction $ S.FMult
+  toEnriched IDiv     = E.Pure . S.mkFunction $ S.FDiv
+  toEnriched ICons    = E.Pure . S.mkFunction $ S.FCons
+  toEnriched IEq      = E.Pure . S.mkFunction $ S.FEq
+  toEnriched ILt      = E.Pure . S.mkFunction $ S.FLt
+  toEnriched IGt      = E.Pure . S.mkFunction $ S.FGt
+  toEnriched (IVar v) = E.Pure . S.mkVariable $ v
 

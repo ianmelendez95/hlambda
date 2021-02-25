@@ -3,7 +3,6 @@ module Lambda.Reduce (Reducible (..)) where
 -- new reduction strategy that emulates laziness
 
 import Data.List (union, foldl1')
-import Data.Char (isLower)
 
 import Lambda.Name (nextName)
 import Lambda.Syntax
@@ -20,9 +19,7 @@ instance Reducible Exp where
 
 -- TODO: reduce WHNF
 reduceAfterMarked :: Exp -> Exp 
-reduceAfterMarked c@(Constant _) = c
-reduceAfterMarked f@(Function _) = f
-reduceAfterMarked v@(Variable _) = v
+reduceAfterMarked t@(Term _) = t
 reduceAfterMarked l@(Lambda var body) = maybe l reduceAfterMarked $ etaReduceLambda var body
 reduceAfterMarked s@(Apply _ _) = reduceApplyChain . parseApplyChain $ s
 
@@ -31,7 +28,7 @@ reduceAfterMarked s@(Apply _ _) = reduceApplyChain . parseApplyChain $ s
 -------------------
 
 etaReduceLambda :: String -> Exp -> Maybe Exp
-etaReduceLambda var_name (Apply func_exp (Variable var_arg)) 
+etaReduceLambda var_name (Apply func_exp (Term (Variable var_arg))) 
   = if var_name == varName var_arg && not (varFreeInExp func_exp var_name)
       then Just func_exp
       else Nothing
@@ -45,9 +42,9 @@ varFreeInExp expr = (`elem` freeVariables expr)
 -----------
 
 reduceApplyChain :: [Exp] -> Exp
-reduceApplyChain (Function func : rest) 
+reduceApplyChain ((Term (Function func)) : rest) 
   = case reduceFunctionApplication func rest of 
-      Left args -> foldl1' Apply $ Function func : args
+      Left args -> foldl1' Apply $ mkFunction func : args
       Right evaled -> reduceApplyChain evaled
 reduceApplyChain (Lambda var body : arg : rest) 
   = reduceApplyChain $ parseApplyChain (reduceLambda var body arg) ++ rest
@@ -76,61 +73,92 @@ reduceFunctionApplication (FTuple _) = Left
 reduceFunctionApplication FHead      = ((:[]) <$>) . reduceHeadApplication
 reduceFunctionApplication FTail      = ((:[]) <$>) . reduceTailApplication
 reduceFunctionApplication FY         = reduceYCombApplication
-reduceFunctionApplication FEq        = ((:[]) <$>) . reduceBinaryNumFuncApplication (==) 
+reduceFunctionApplication FEq        = reduceEq 
+reduceFunctionApplication FNEq       = reduceNEq
 reduceFunctionApplication FLt        = ((:[]) <$>) . reduceBinaryNumFuncApplication (<) 
 reduceFunctionApplication FGt        = ((:[]) <$>) . reduceBinaryNumFuncApplication (>) 
 
 reduceArithmeticApplication :: (Int -> Int -> Int) -> [Exp]  -> Either [Exp] Exp
 reduceArithmeticApplication = reduceBinaryNumFuncApplication
 
+reduceEq :: [Exp] -> Either [Exp] [Exp]
+reduceEq = reduceTermPredicate (==)
+
+reduceNEq :: [Exp] -> Either [Exp] [Exp]
+reduceNEq = reduceTermPredicate (/=) 
+
+reduceTermPredicate :: (Term -> Term -> Bool) -> [Exp] -> Either [Exp] [Exp]
+reduceTermPredicate predicate = reduceBinaryApplication (\e1 e2 -> toConstantExp <$> reduceTwoTerms e1 e2) 
+  where 
+    reduceTwoTerms :: Exp -> Exp -> Either [Exp] Bool
+    reduceTwoTerms e1 e2 = 
+      case reduceAfterMarked e1 of 
+        e1'@(Apply _ _)  -> Left [e1', e2]
+        e1'@(Lambda _ _) -> Left [e1', e2]
+        (Term t1) -> 
+          case reduceAfterMarked e2 of 
+            e2'@(Apply _ _)  -> Left [e2', e2]
+            e2'@(Lambda _ _) -> Left [e2', e2]
+            (Term t2) -> Right $ predicate t1 t2
+
+reduceBinaryApplication :: (Exp -> Exp -> Either [Exp] Exp) -> [Exp] -> Either [Exp] [Exp]
+reduceBinaryApplication f [e1, e2] = 
+  case f e1 e2 of 
+    Left fail_res -> Left fail_res 
+    Right succ_res -> Right [succ_res]
+reduceBinaryApplication _ es = Left es
+
 reduceBinaryNumFuncApplication :: ToConstant a => (Int -> Int -> a) -> [Exp] -> Either [Exp] Exp
 reduceBinaryNumFuncApplication f [arg_exp1, arg_exp2]
   = case reduceAfterMarked arg_exp1 of 
-      arg1@(Constant (CNat x)) -> case reduceAfterMarked arg_exp2 of 
-                                    Constant (CNat y) -> Right . Constant . toConstant $ f x y
-                                    arg2 -> Left [arg1, arg2]
+      arg1@(Term (Constant (CNat x))) -> 
+        case reduceAfterMarked arg_exp2 of 
+          Term (Constant (CNat y)) -> Right . toConstantExp $ f x y
+          arg2 -> Left [arg1, arg2]
       arg1 -> Left [arg1, arg_exp2]
 reduceBinaryNumFuncApplication _ exps = Left exps
 
 reduceLogicApplication :: (Bool -> Bool -> Bool) -> [Exp]  -> Either [Exp] Exp
 reduceLogicApplication f [arg_exp1, arg_exp2] 
   = case reduceAfterMarked arg_exp1 of 
-      arg1@(Constant (CBool x)) -> case reduceAfterMarked arg_exp2 of 
-                                     Constant (CBool y) -> Right . Constant . CBool $ f x y
-                                     arg2 -> Left [arg1, arg2]
+      arg1@(Term (Constant (CBool x))) -> 
+        case reduceAfterMarked arg_exp2 of 
+          Term (Constant (CBool y)) -> Right . toConstantExp $ f x y
+          arg2 -> Left [arg1, arg2]
       arg1 -> Left [arg1, arg_exp2]
 reduceLogicApplication _ exps = Left exps
 
 reduceNotApplication :: [Exp] -> Either [Exp] Exp
-reduceNotApplication [arg_exp] = case reduceAfterMarked arg_exp of 
-                                   (Constant (CBool p)) -> Right . Constant $ CBool (not p)
-                                   arg -> Left [arg]
+reduceNotApplication [arg_exp] = 
+  case reduceAfterMarked arg_exp of 
+    (Term (Constant (CBool p))) -> Right . toConstantExp $ not p
+    arg -> Left [arg]
 reduceNotApplication exps = Left exps
 
 reduceIfApplication :: [Exp] -> Either [Exp] [Exp]
 reduceIfApplication (case_exp : true_exp : false_exp : rest) 
   = case reduceAfterMarked case_exp of 
-      (Constant (CBool bool)) -> Right (reduceAfterMarked (if bool then true_exp else false_exp) : rest)
+      (Term (Constant (CBool bool))) -> Right (reduceAfterMarked (if bool then true_exp else false_exp) : rest)
       casev -> Left (casev : true_exp : false_exp : rest)
 reduceIfApplication exps = Left exps
 
 reduceHeadApplication :: [Exp] -> Either [Exp] Exp
 reduceHeadApplication (cons_exp : rest)
   = case parseApplyChain $ reduceAfterMarked cons_exp of  -- TODO: rework as WHNF instead of full reduction
-      [Function FCons, head_exp, _] -> Right head_exp
+      [Term (Function FCons), head_exp, _] -> Right head_exp
       _ -> Left (cons_exp : rest)
 reduceHeadApplication exps = Left exps
 
 reduceTailApplication :: [Exp] -> Either [Exp] Exp
 reduceTailApplication (cons_exp : rest)
   = case parseApplyChain $ reduceAfterMarked cons_exp of  -- TODO: rework as WHNF instead of full reduction
-      [Function FCons, _, tail_exp] -> Right tail_exp
+      [Term (Function FCons), _, tail_exp] -> Right tail_exp
       _ -> Left (cons_exp : rest)
 reduceTailApplication exps = Left exps
 
 reduceYCombApplication :: [Exp] -> Either [Exp] [Exp]
 reduceYCombApplication [] = Left []
-reduceYCombApplication (arg : rest) = Right (arg : Apply (Function FY) arg : rest)
+reduceYCombApplication (arg : rest) = Right (arg : Apply (mkFunction FY) arg : rest)
 
 ------------
 -- Lambda --
@@ -147,9 +175,8 @@ reduceLambda var body val = replaceVarWithValInBody var val body
 -- | replaceVarWithValInBody is called when we are applying a lambda abstraction to an argument,
 -- | replacing instances of the parameter 'name' with the 'new_exp'
 replaceVarWithValInBody :: String -> Exp -> Exp -> Exp
-replaceVarWithValInBody _ _ c@(Constant _) = c
-replaceVarWithValInBody _ _ f@(Function _) = f
-replaceVarWithValInBody name val v@(Variable var) = if varName var == name then val else v
+replaceVarWithValInBody name val v@(Term (Variable var)) = if varName var == name then val else v
+replaceVarWithValInBody _ _ t@(Term _) = t
 replaceVarWithValInBody name newExp (Apply e1 e2) = Apply (replaceVarWithValInBody name newExp e1) 
                                                           (replaceVarWithValInBody name newExp e2)
 replaceVarWithValInBody name new_exp l@(Lambda v e)
@@ -173,9 +200,8 @@ alphaConvertRestricted taken_names var body
 -- | unsafe in that it makes no discernment for whether it is replacing the name with 
 -- | a variable that is also free in the expression
 alphaConvert :: String -> String -> Exp -> Exp
-alphaConvert _ _ c@(Constant _) = c
-alphaConvert _ _ f@(Function _) = f 
-alphaConvert old_name new_name (Variable var) = Variable $ mapVarName (\n -> if n == old_name then new_name else n) var
+alphaConvert old_name new_name (Term (Variable var)) = mkVariable $ mapVarName (\n -> if n == old_name then new_name else n) var
+alphaConvert _ _ t@(Term _) = t
 alphaConvert old_name new_name (Apply e1 e2) = Apply (alphaConvert old_name new_name e1)
                                                      (alphaConvert old_name new_name e2)
 alphaConvert old_name new_name l@(Lambda v e)

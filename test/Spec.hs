@@ -131,19 +131,24 @@ main = hspec $ do
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
 
     it "p66: enriches gcd, which has a little bit of everything" $ do 
-      mcontent <- readFile "test-ref/gcd.m"
-      elcontent <- readFile "test-ref/gcd.el"
+      mcontent <- readMiranda "gcd"
+      lcontent <- readLambda "gcd"
+      elcontent <- readEnriched "gcd"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
+      showLambdadMiranda mcontent `ioShouldBe` lcontent
+      showReducedMiranda mcontent `ioShouldBe` "3"
 
     it "p66: doesn't if against FAIL if no last guard" $ do
       mcontent <- readFile "test-ref/no-last-guard.m"
       elcontent <- readFile "test-ref/no-last-guard.el"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
+      showReducedMiranda mcontent `ioShouldBe` "5"
     
     it "p66: doesn't if against FAIL if last guard is True" $ do
       mcontent <- readFile "test-ref/true-last-guard.m"
       elcontent <- readFile "test-ref/true-last-guard.el"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
+      showReducedMiranda mcontent `ioShouldBe` "5"
     
     it "p67: enriches a where lhs pattern expression" $ do
       mcontent <- readFile "test-ref/lhs-pattern.m"

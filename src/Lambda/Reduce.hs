@@ -61,7 +61,7 @@ parseApplyChain expr = [expr]
 -- | Right -> contains the resulting expression after successful application
 reduceFunctionApplication :: Function -> [Exp] -> Either [Exp] [Exp]
 reduceFunctionApplication FPlus      = ((:[]) <$>) . reduceArithmeticApplication (+)
-reduceFunctionApplication FMinus     = ((:[]) <$>) . reduceArithmeticApplication (-)
+reduceFunctionApplication FMinus     = reduceMinusOrNegation
 reduceFunctionApplication FMult      = ((:[]) <$>) . reduceArithmeticApplication (*)
 reduceFunctionApplication FDiv       = ((:[]) <$>) . reduceArithmeticApplication div
 reduceFunctionApplication FAnd       = ((:[]) <$>) . reduceLogicApplication (&&)
@@ -77,6 +77,13 @@ reduceFunctionApplication FEq        = reduceEq
 reduceFunctionApplication FNEq       = reduceNEq
 reduceFunctionApplication FLt        = ((:[]) <$>) . reduceBinaryNumFuncApplication (<) 
 reduceFunctionApplication FGt        = ((:[]) <$>) . reduceBinaryNumFuncApplication (>) 
+
+reduceMinusOrNegation :: [Exp] -> Either [Exp] [Exp]
+reduceMinusOrNegation es = 
+  case reduceArithmeticApplication (-) es of 
+    Right res -> Right [res]
+    Left [Term (Constant (CNat x))] -> Right [toConstantExp (-x)] -- can apply as negation
+    Left es' -> Left es'
 
 reduceArithmeticApplication :: (Int -> Int -> Int) -> [Exp]  -> Either [Exp] Exp
 reduceArithmeticApplication = reduceBinaryNumFuncApplication

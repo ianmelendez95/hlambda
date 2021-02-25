@@ -1,0 +1,1 @@
+(\gcd. gcd 6 9) (\a. \b. (\diff. IF (> a b) (gcd diff b) (IF (< a b) (gcd a (- diff)) (IF (= a b) a FAIL))) (- a b))

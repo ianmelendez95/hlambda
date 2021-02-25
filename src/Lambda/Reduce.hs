@@ -8,6 +8,8 @@ import Lambda.Name (nextName)
 import Lambda.Syntax
 import qualified Lambda.Enriched as E
 
+import Debug.Trace (trace, traceShow)
+
 class Reducible a where 
   reduce :: a -> Exp
 
@@ -15,13 +17,20 @@ instance Reducible E.Exp where
   reduce = reduce . toLambda
 
 instance Reducible Exp where 
-  reduce = reduceAfterMarked
+  reduce = reduceExp
 
 -- TODO: reduce WHNF
-reduceAfterMarked :: Exp -> Exp 
-reduceAfterMarked t@(Term _) = t
-reduceAfterMarked l@(Lambda var body) = maybe l reduceAfterMarked $ etaReduceLambda var body
-reduceAfterMarked s@(Apply _ _) = reduceApplyChain . parseApplyChain $ s
+reduceExp :: Exp -> Exp 
+reduceExp e = 
+  case reduceOnce e of 
+    Left e' -> e'
+    Right e' -> reduceExp e'
+
+-- | reduce with only one (or otherwise minimal) transformation
+reduceOnce :: Exp -> Either Exp Exp
+reduceOnce t@(Term _) = Left t
+reduceOnce l@(Lambda var body) = maybe (Left l) Right $ etaReduceLambda var body
+reduceOnce s@(Apply _ _) = reduceApplyOnce . parseApplyChain $ s
 
 -------------------
 -- Eta Reduction --
@@ -41,6 +50,15 @@ varFreeInExp expr = (`elem` freeVariables expr)
 -- Apply --
 -----------
 
+reduceApplyOnce :: [Exp] -> Either Exp Exp
+reduceApplyOnce ((Term (Function func)) : rest) 
+  = case reduceFunctionApplication func rest of 
+      Left args -> Left $ mkApply $ mkFunction func : args
+      Right evaled -> Right $ mkApply evaled
+reduceApplyOnce (Lambda var body : arg : rest) 
+  = Right . mkApply $ reduceLambda var body arg : rest
+reduceApplyOnce apply = Left . mkApply $ apply
+
 reduceApplyChain :: [Exp] -> Exp
 reduceApplyChain ((Term (Function func)) : rest) 
   = case reduceFunctionApplication func rest of 
@@ -51,8 +69,7 @@ reduceApplyChain (Lambda var body : arg : rest)
 reduceApplyChain apply = foldl1' Apply apply
 
 parseApplyChain :: Exp -> [Exp]
-parseApplyChain (Apply e1 e2) = parseApplyChain e1 ++ [e2]
-parseApplyChain expr = [expr]
+parseApplyChain = unApply
 
 -- Function
 
@@ -99,11 +116,11 @@ reduceTermPredicate predicate = reduceBinaryApplication (\e1 e2 -> toConstantExp
   where 
     reduceTwoTerms :: Exp -> Exp -> Either [Exp] Bool
     reduceTwoTerms e1 e2 = 
-      case reduceAfterMarked e1 of 
+      case reduceExp e1 of 
         e1'@(Apply _ _)  -> Left [e1', e2]
         e1'@(Lambda _ _) -> Left [e1', e2]
         (Term t1) -> 
-          case reduceAfterMarked e2 of 
+          case reduceExp e2 of 
             e2'@(Apply _ _)  -> Left [e2', e2]
             e2'@(Lambda _ _) -> Left [e2', e2]
             (Term t2) -> Right $ predicate t1 t2
@@ -117,9 +134,9 @@ reduceBinaryApplication _ es = Left es
 
 reduceBinaryNumFuncApplication :: ToConstant a => (Int -> Int -> a) -> [Exp] -> Either [Exp] Exp
 reduceBinaryNumFuncApplication f [arg_exp1, arg_exp2]
-  = case reduceAfterMarked arg_exp1 of 
+  = case reduceExp arg_exp1 of 
       arg1@(Term (Constant (CNat x))) -> 
-        case reduceAfterMarked arg_exp2 of 
+        case reduceExp arg_exp2 of 
           Term (Constant (CNat y)) -> Right . toConstantExp $ f x y
           arg2 -> Left [arg1, arg2]
       arg1 -> Left [arg1, arg_exp2]
@@ -127,9 +144,9 @@ reduceBinaryNumFuncApplication _ exps = Left exps
 
 reduceLogicApplication :: (Bool -> Bool -> Bool) -> [Exp]  -> Either [Exp] Exp
 reduceLogicApplication f [arg_exp1, arg_exp2] 
-  = case reduceAfterMarked arg_exp1 of 
+  = case reduceExp arg_exp1 of 
       arg1@(Term (Constant (CBool x))) -> 
-        case reduceAfterMarked arg_exp2 of 
+        case reduceExp arg_exp2 of 
           Term (Constant (CBool y)) -> Right . toConstantExp $ f x y
           arg2 -> Left [arg1, arg2]
       arg1 -> Left [arg1, arg_exp2]
@@ -137,28 +154,28 @@ reduceLogicApplication _ exps = Left exps
 
 reduceNotApplication :: [Exp] -> Either [Exp] Exp
 reduceNotApplication [arg_exp] = 
-  case reduceAfterMarked arg_exp of 
+  case reduceExp arg_exp of 
     (Term (Constant (CBool p))) -> Right . toConstantExp $ not p
     arg -> Left [arg]
 reduceNotApplication exps = Left exps
 
 reduceIfApplication :: [Exp] -> Either [Exp] [Exp]
 reduceIfApplication (case_exp : true_exp : false_exp : rest) 
-  = case reduceAfterMarked case_exp of 
-      (Term (Constant (CBool bool))) -> Right (reduceAfterMarked (if bool then true_exp else false_exp) : rest)
+  = case reduceExp case_exp of 
+      (Term (Constant (CBool bool))) -> Right (reduceExp (if bool then true_exp else false_exp) : rest)
       casev -> Left (casev : true_exp : false_exp : rest)
 reduceIfApplication exps = Left exps
 
 reduceHeadApplication :: [Exp] -> Either [Exp] Exp
 reduceHeadApplication (cons_exp : rest)
-  = case parseApplyChain $ reduceAfterMarked cons_exp of  -- TODO: rework as WHNF instead of full reduction
+  = case parseApplyChain $ reduceExp cons_exp of  -- TODO: rework as WHNF instead of full reduction
       [Term (Function FCons), head_exp, _] -> Right head_exp
       _ -> Left (cons_exp : rest)
 reduceHeadApplication exps = Left exps
 
 reduceTailApplication :: [Exp] -> Either [Exp] Exp
 reduceTailApplication (cons_exp : rest)
-  = case parseApplyChain $ reduceAfterMarked cons_exp of  -- TODO: rework as WHNF instead of full reduction
+  = case parseApplyChain $ reduceExp cons_exp of  -- TODO: rework as WHNF instead of full reduction
       [Term (Function FCons), _, tail_exp] -> Right tail_exp
       _ -> Left (cons_exp : rest)
 reduceTailApplication exps = Left exps

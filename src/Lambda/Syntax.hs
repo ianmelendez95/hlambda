@@ -13,6 +13,7 @@ module Lambda.Syntax
   , mkConstant 
   , mkFunction
   , mkVariable
+  , unApply
 
   , showMarked
   , varName
@@ -89,6 +90,10 @@ mkConstant = Term . Constant
 
 mkApply :: [Exp] -> Exp
 mkApply = foldl1' Apply
+
+unApply :: Exp -> [Exp]
+unApply (Apply e1 e2) = unApply e1 ++ [e2]
+unApply expr = [expr]
 
 --------------
 -- ToLambda --

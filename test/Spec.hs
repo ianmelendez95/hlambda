@@ -10,6 +10,9 @@ import Lambda.Syntax (ToLambda (..))
 import Lambda.Enriched (ToEnriched (..))
 import qualified Miranda.Syntax as M (Prog (..), Decl)
 
+-- Running Specific Test e.g.
+-- stack test --test-arguments "--match \"4.2 Translating Miranda into the Enriched Lambda Calculus/p63: translates multiple arguments\""
+
 main :: IO ()
 main = hspec $ do 
   xdescribe "3.3 Translating Miranda" $ do
@@ -114,7 +117,7 @@ main = hspec $ do
       lcontent <- readLambda test_file_base
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
       showLambdadMiranda mcontent `ioShouldBe` lcontent
-      -- showReducedMiranda mcontent `ioShouldBe` "7"
+      showReducedMiranda mcontent `ioShouldBe` "7"
     
     it "p63: translates conditional equation" $ do 
       showEnrichedMiranda "gcd a b = gcd (a-b) b, a>b\n        = gcd a (b-a), a<b\n        = a, a==b\ngcd 6 9"

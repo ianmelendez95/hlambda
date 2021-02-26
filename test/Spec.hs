@@ -141,6 +141,7 @@ main = hspec $ do
       mcontent <- readMiranda "gcd"
       elcontent <- readEnriched "gcd"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
+      -- showReducedMiranda mcontent `ioShouldBe` "3"
 
     it "p66: doesn't if against FAIL if no last guard" $ do
       mcontent <- readFile "test-ref/no-last-guard.m"
@@ -158,6 +159,12 @@ main = hspec $ do
       mcontent <- readFile "test-ref/lhs-pattern.m"
       elcontent <- readFile "test-ref/lhs-pattern.el"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
+    
+    it "reduces simple factorial" $ do 
+      mcontent <- readMiranda "simple-fact"
+      elcontent <- readEnriched "simple-fact"
+      showEnrichedMiranda mcontent `ioShouldBe` elcontent
+      showReducedMiranda mcontent `ioShouldBe` "24"
 
   where 
     readMiranda :: FilePath -> IO String

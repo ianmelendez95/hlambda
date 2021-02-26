@@ -42,21 +42,11 @@ instance ToLambda Exp where
   toLambda (Apply e1 e2) = S.Apply (toLambda e1) (toLambda e2)
   toLambda (Lambda pat body) = toLambdaLambda pat body
   toLambda (Pure expr) = expr
-  -- <e1> | <e2>
-  -- IF (/= <e1> FAIL) <e1> <e2>
-  toLambda (FatBar e1 e2) = 
-    let e1' = toLambda e1
-        e2' = toLambda e2
-     in S.mkIf (S.mkApply [S.mkFunction S.FNEq, e1', S.mkConstant S.CFail]) e1' e2'
+  toLambda fb@(FatBar _ _) = error $ "No support for reducing fat bar: " ++ show fb
 
 toLambdaLambda :: Pattern -> Exp -> S.Exp
 toLambdaLambda (PVariable v) body = S.Lambda v (toLambda body)
--- (\k. E) C => (\a. IF (= k a) E FAIL) C
-toLambdaLambda (PConstant k) e = 
-  let new_name = newName (freeVariables e)
-      if_cond = S.mkApply [S.mkFunction S.FEq, S.mkConstant k, S.mkVariable new_name]
-   in S.Lambda new_name (S.mkIf if_cond (toLambda e) (S.mkConstant S.CFail)) 
-toLambdaLambda c@(PConstructor _ _) _ = error $ "No support for constructors to lambda yet: " ++ show c
+toLambdaLambda patt body = error $ "No support for reducing pattern lambdas: " ++ show patt ++ ", " ++ show body
 
 -- | (letrec v = B in E) = (let v = Y (\v. B) in E) - p42
 letrecToLambda ::[LetBinding] -> Exp -> S.Exp

@@ -16,8 +16,10 @@ data Exp = Let [LetBinding] Exp
          | Apply Exp Exp 
          | Lambda Pattern Exp
          | FatBar Exp Exp
+         | Case S.Variable [CaseClause]
         
 type LetBinding = (Pattern, Exp)
+type CaseClause = (Pattern, Exp)
 type Constructor = String
 
 data Pattern = PConstant S.Constant
@@ -42,6 +44,7 @@ instance ToLambda Exp where
   toLambda (Apply e1 e2) = S.Apply (toLambda e1) (toLambda e2)
   toLambda (Lambda pat body) = toLambdaLambda pat body
   toLambda (Pure expr) = expr
+  toLambda cas@(Case _ _) = error $ "No support for reducing case: " ++ show cas
   toLambda fb@(FatBar _ _) = error $ "No support for reducing fat bar: " ++ show fb
 
 toLambdaLambda :: Pattern -> Exp -> S.Exp
@@ -99,6 +102,16 @@ sPretty (Apply e e') = do wrapper <- getParenWrapper 10
                           ePretty <- tempState (setPrec 6) (sPretty e)
                           ePretty' <- tempState (setPrec 11) (sPretty e')
                           pure $ wrapper $ ePretty <+> ePretty'
+sPretty (Case var clauses) = 
+  do wrapper <- getParenWrapper 10
+     let pvar = pretty var
+         pClause (patt, expr) = 
+           do ppatt <- sPrettyPattern patt
+              setPrec 10
+              pexpr <- sPretty expr
+              pure $ ppatt <+> pretty "=>" <+> pexpr
+     pclauses <- mapM pClause clauses
+     pure . wrapper $ (hang 2 . vsep $ (pretty "case" <+> pvar <+> pretty "of" : pclauses))
 
 prettyLet :: String -> [LetBinding] -> Exp -> PrettyParenS LambdaDoc
 prettyLet let_kw bindings body = pure $ 
@@ -129,11 +142,18 @@ freeVariables' bound (Letrec binds expr) = freeVarsInLet bound binds expr
 freeVariables' bound (Pure expr) = S.freeVariables' bound expr
 freeVariables' bound (Apply e1 e2) = concatMap (freeVariables' bound) [e1, e2]
 freeVariables' bound (FatBar e1 e2) = concatMap (freeVariables' bound) [e1, e2]
+freeVariables' bound (Case var clauses) = 
+  let inClause (patt, expr) = 
+        freeVariables' (insertAll (boundVarsInPattern patt) bound) expr 
+      in_clauses = concatMap inClause clauses
+   in if var `elem` bound
+        then in_clauses
+        else var : in_clauses
 freeVariables' bound (Lambda patt expr) = 
   freeVariables' (insertAll (boundVarsInPattern patt) bound) expr
-  where 
-    insertAll :: [String] -> [String] -> [String]
-    insertAll ls set = foldl' (flip insert) set ls
+
+insertAll :: [String] -> [String] -> [String]
+insertAll ls set = foldl' (flip insert) set ls
 
 boundVarsInPattern :: Pattern -> [String]
 boundVarsInPattern (PConstant _) = []

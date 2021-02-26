@@ -20,6 +20,7 @@ import Prettyprinter
 import Data.List (intersperse, foldl1', foldl')
 import Data.Maybe (mapMaybe)
 import qualified Data.Map as Map
+import Data.Bifunctor (bimap)
 
 import qualified Miranda.Token as T
 import Lambda.Pretty
@@ -38,6 +39,8 @@ import Lambda.Reduce (Reducible (..))
 import Lambda.Name (newName, nextNames)
 import qualified Lambda.Enriched as E
 import qualified Lambda.Syntax as S
+
+import Debug.Trace
 
 ----------------------
 -- Lambda Expressions --
@@ -60,6 +63,9 @@ data TypeDef = TDef String [GenTypeVar] [Constr]
 
 data FuncDef = FDef String [FuncParam] [RhsClause] [AssignDef] -- params, clauses, where defs
              deriving Show
+
+type FuncSpec = ([FuncParam], [RhsClause], [AssignDef]) -- a 'specification' for a function (everything but the name)
+type FuncDefMap = Map.Map String [FuncSpec]
 
 data PattDef = PDef FuncParam [RhsClause] [AssignDef] 
              deriving Show
@@ -186,20 +192,48 @@ funcToBinding fname specs
 
 -- | like funcToBinding, but does not perform preliminary checks, always performs case wrapping
 funcToBinding' :: String -> [FuncSpec] -> E.LetBinding
-funcToBinding' fname specs = 
-  let binding_exprs = map (uncurry3 toBindingExp) specs
+funcToBinding' fname specs =
+  case maybeCaseSpecs specs of 
+    Just (singleton_params, base_clauses) ->
+      let binding_exprs = map (\cs -> toBindingExp [] [cs] []) base_clauses
+          param_patts = map funcParamToPattern singleton_params
 
-      free_vars = concatMap E.freeVariables binding_exprs
-      first_arg_name = newName free_vars
-      arg_names = take (length . fst3 . head $ specs) $ nextNames free_vars first_arg_name
+          free_vars = concatMap E.freeVariables binding_exprs
+          first_arg_name = newName free_vars
+          
+      in (E.PVariable fname, 
+          E.Lambda (E.PVariable first_arg_name) 
+                   (E.Case first_arg_name (zip param_patts binding_exprs)))
+    Nothing -> 
+      let binding_exprs = map (uncurry3 toBindingExp) specs
 
-      lambda_body = foldr (E.FatBar . applyArgsToPatternExpr arg_names)
-                          (E.Pure . S.mkConstant $ S.CError) 
-                          binding_exprs
-      lambda = wrapLambdaArgs arg_names lambda_body
+          free_vars = concatMap E.freeVariables binding_exprs
+          first_arg_name = newName free_vars
+          arg_names = take (length . fst3 . head $ specs) $ nextNames free_vars first_arg_name
 
-   in (E.PVariable fname, lambda)
+          lambda_body = foldr (E.FatBar . applyArgsToPatternExpr arg_names)
+                              (E.Pure . S.mkConstant $ S.CError) 
+                              binding_exprs
+          lambda = wrapLambdaArgs arg_names lambda_body
+
+      in (E.PVariable fname, lambda)
   where 
+    -- | collects the params and clauses that can result in a case expression
+    -- | specifically, filters for func specs with a single paramater and base rhs clause,
+    -- | short-circuiting if there's multiple params or not just a single base rhs clause
+    maybeCaseSpecs :: [FuncSpec] -> Maybe ([FuncParam], [RhsClause])
+    maybeCaseSpecs = traverseMaybePairs . map maybeCaseSpec
+
+    traverseMaybePairs :: [Maybe (a, b)] -> Maybe ([a], [b])
+    traverseMaybePairs [] = Just ([], [])
+    traverseMaybePairs (Just (x, y) : rest) = 
+      bimap (x:) (y:) <$> traverseMaybePairs rest
+    traverseMaybePairs _ = Nothing
+
+    maybeCaseSpec :: FuncSpec -> Maybe (FuncParam, RhsClause)
+    maybeCaseSpec ([p], [c@(BaseClause _)], []) = Just (p, c)
+    maybeCaseSpec _ = Nothing
+
     applyArgsToPatternExpr :: [String] -> E.Exp -> E.Exp
     applyArgsToPatternExpr args expr = 
       foldl' (\apply arg -> E.Apply apply (E.Pure . S.mkVariable $ arg)) expr args
@@ -212,7 +246,6 @@ fst3 (x,_,_) = x
 
 uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
 uncurry3 f (x,y,z) = f x y z
-
 
 -- | takes the function def components and creates a binding expression
 -- | where the def components are 
@@ -235,9 +268,6 @@ clausesToExpression (CondClause body cond : rest) =
       if_cond_then_body = E.Apply if_cond (toEnriched body)
       if_cond_then_body_else_rest = E.Apply if_cond_then_body (clausesToExpression rest)
   in if_cond_then_body_else_rest
-
-type FuncSpec = ([FuncParam], [RhsClause], [AssignDef]) -- a 'specification' for a function (everything but the name)
-type FuncDefMap = Map.Map String [FuncSpec]
 
 groupFuncDefs :: [FuncDef] -> [(String, [FuncSpec])]
 groupFuncDefs = Map.toList . foldl' insertDef Map.empty

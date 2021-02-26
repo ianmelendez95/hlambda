@@ -102,15 +102,13 @@ main = hspec $ do
 
     it "p60: enriches pattern arg definition" $ do 
       showEnrichedMiranda "fst (x,y) = x\nfst (1,2)"
-        `ioShouldBe` "letrec fst = \\a. (\\PAIR x y. x) a | ERROR\nin fst (PAIR 1 2)"
-
-    it "p62: enriches multiple pattern matching" $ do 
-      showEnrichedMiranda "reflect (LEAF n) = LEAF n\nreflect (BRANCH t1 t2) = BRANCH (reflect t2) (reflect t1)\nreflect (LEAF 1)"
-        `ioShouldBe` "letrec reflect = \\a. (\\LEAF n. LEAF n) a | (\\BRANCH t1 t2. BRANCH (reflect t2) (reflect t1)) a | ERROR\nin reflect (LEAF 1)" 
+        `ioShouldBe` "letrec fst = \\a. case a of\n                   PAIR x y => x\nin fst (PAIR 1 2)"
     
     it "p62: enriches incomplete pattern matching" $ do
-      showEnrichedMiranda "hd (x:xs) = x\nhd [1,2,3]"
-        `ioShouldBe` "letrec hd = \\a. (\\CONS x xs. x) a | ERROR\nin hd (CONS 1 (CONS 2 (CONS 3 NIL)))"
+      let test_file_base = "hd-incomplete-patt"
+      mcontent <- readMiranda test_file_base
+      elcontent <- readEnriched test_file_base
+      showEnrichedMiranda mcontent `ioShouldBe` elcontent
 
     it "p63: translates multiple arguments" $ do 
       let test_file_base = "mult-const-patterns"
@@ -165,6 +163,11 @@ main = hspec $ do
       elcontent <- readEnriched "simple-fact"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
       showReducedMiranda mcontent `ioShouldBe` "24"
+
+    it "p75: transforms reflect to case" $ do 
+      mcontent <- readMiranda "reflect"
+      elcontent <- readEnriched "reflect"
+      showEnrichedMiranda mcontent `ioShouldBe` elcontent
 
   where 
     readMiranda :: FilePath -> IO String

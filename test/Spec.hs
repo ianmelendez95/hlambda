@@ -102,15 +102,15 @@ main = hspec $ do
 
     it "p60: enriches pattern arg definition" $ do 
       showEnrichedMiranda "fst (x,y) = x\nfst (1,2)"
-        `ioShouldBe` "let fst = \\a. (\\PAIR x y. x) a | ERROR\nin fst (PAIR 1 2)"
+        `ioShouldBe` "letrec fst = \\a. (\\PAIR x y. x) a | ERROR\nin fst (PAIR 1 2)"
 
     it "p62: enriches multiple pattern matching" $ do 
       showEnrichedMiranda "reflect (LEAF n) = LEAF n\nreflect (BRANCH t1 t2) = BRANCH (reflect t2) (reflect t1)\nreflect (LEAF 1)"
-        `ioShouldBe` "let reflect = \\a. (\\LEAF n. LEAF n) a | (\\BRANCH t1 t2. BRANCH (reflect t2) (reflect t1)) a | ERROR\nin reflect (LEAF 1)" 
+        `ioShouldBe` "letrec reflect = \\a. (\\LEAF n. LEAF n) a | (\\BRANCH t1 t2. BRANCH (reflect t2) (reflect t1)) a | ERROR\nin reflect (LEAF 1)" 
     
     it "p62: enriches incomplete pattern matching" $ do
       showEnrichedMiranda "hd (x:xs) = x\nhd [1,2,3]"
-        `ioShouldBe` "let hd = \\a. (\\CONS x xs. x) a | ERROR\nin hd (CONS 1 (CONS 2 (CONS 3 NIL)))"
+        `ioShouldBe` "letrec hd = \\a. (\\CONS x xs. x) a | ERROR\nin hd (CONS 1 (CONS 2 (CONS 3 NIL)))"
 
     it "p63: translates multiple arguments" $ do 
       let test_file_base = "mult-const-patterns"
@@ -123,20 +123,19 @@ main = hspec $ do
     
     it "p63: translates conditional equation" $ do 
       showEnrichedMiranda "gcd a b = gcd (a-b) b, a>b\n        = gcd a (b-a), a<b\n        = a, a==b\ngcd 6 9"
-        `ioShouldBe` "let gcd = \\a. \\b. IF (> a b) (gcd (- a b) b) (IF (< a b) (gcd a (- b a)) (IF (= a b) a FAIL))\nin gcd 6 9"
+        `ioShouldBe` "letrec gcd = \\a. \\b. IF (> a b) (gcd (- a b) b) (IF (< a b) (gcd a (- b a)) (IF (= a b) a FAIL))\nin gcd 6 9"
       
       showEnrichedMiranda "funnyLastElt (x:xs) = x, x<0\nfunnyLastElt (x:[]) = x\nfunnyLastElt (x:xs) = funnyLastElt xs\nfunnyLastElt [1,2,3]"
-        `ioShouldBe` "let funnyLastElt = \\a. (\\CONS x xs. IF (< x 0) x FAIL) a | (\\CONS x NIL. x) a | (\\CONS x xs. funnyLastElt xs) a | ERROR\nin funnyLastElt (CONS 1 (CONS 2 (CONS 3 NIL)))"
+        `ioShouldBe` "letrec funnyLastElt = \\a. (\\CONS x xs. IF (< x 0) x FAIL) a | (\\CONS x NIL. x) a | (\\CONS x xs. funnyLastElt xs) a | ERROR\nin funnyLastElt (CONS 1 (CONS 2 (CONS 3 NIL)))"
 
     it "p64: translates conditional with base clause equation" $ do
       showEnrichedMiranda "factorial n = 1, n==0\n            = n * factorial (n-1)\nfactorial 4"
-        `ioShouldBe` "let factorial = \\n. IF (= n 0) 1 (* n (factorial (- n 1)))\nin factorial 4"
+        `ioShouldBe` "letrec factorial = \\n. IF (= n 0) 1 (* n (factorial (- n 1)))\nin factorial 4"
 
     it "p66: enriches where clauses" $ do
       mcontent <- readFile "test-ref/sumsq.m"
       elcontent <- readFile "test-ref/sumsq.el"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
-      showReducedMiranda mcontent `ioShouldBe` "13"
 
     it "p66: enriches gcd, which has a little bit of everything" $ do 
       mcontent <- readMiranda "gcd"

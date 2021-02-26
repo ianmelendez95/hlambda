@@ -136,7 +136,7 @@ instance ToLambda Prog where
 
 instance ToEnriched Prog where 
   toEnriched (Prog defs expr) = 
-    E.Let (toBindings $ mapMaybe maybeAssignDef defs) (toEnriched expr)
+    E.Letrec (toBindings $ mapMaybe maybeAssignDef defs) (toEnriched expr)
 
 maybeAssignDef :: Decl -> Maybe AssignDef
 maybeAssignDef (AssignDef adef) = Just adef
@@ -221,7 +221,7 @@ toBindingExp :: [FuncParam] -> [RhsClause] -> [AssignDef] -> E.Exp
 toBindingExp params clauses [] = wrapLambda params (clausesToExpression clauses)
 toBindingExp params clauses wdefs = 
   let wbindings = toBindings wdefs
-   in wrapLambda params (E.Let wbindings (clausesToExpression clauses))
+   in wrapLambda params (E.Letrec wbindings (clausesToExpression clauses))
 
 clausesToExpression :: [RhsClause]  -> E.Exp
 clausesToExpression [] = E.Pure . S.mkConstant $ S.CFail

@@ -38,4 +38,7 @@ pPrint = putStrLn . pShow
 eitherError :: Either String a -> a
 eitherError = either error id
 
+bookToPdfPage :: Int -> Int
+bookToPdfPage book_page = book_page + 13
+
 -- tree ::= Leaf num | Branch tree tree

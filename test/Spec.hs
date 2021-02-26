@@ -10,19 +10,21 @@ import Lambda.Syntax (ToLambda (..))
 import Lambda.Enriched (ToEnriched (..))
 import qualified Miranda.Syntax as M (Prog (..), Decl)
 
+import Lambda.Eval 
+
 -- Running Specific Test e.g.
 -- stack test --test-arguments "--match \"4.2 Translating Miranda into the Enriched Lambda Calculus/p63: translates multiple arguments\""
 
 main :: IO ()
 main = hspec $ do 
-  xdescribe "3.3 Translating Miranda" $ do
+  describe "3.3 Translating Miranda" $ do
     it "p44: evaluates simple program" $ do 
       showReducedMiranda "square n = n * n\n2 * (square 5)"
         `ioShouldBe` "50"
     it "p47: evaluates user-defined infix" $ do 
       showReducedMiranda "mult x y = x * y\n2 $mult 3" `ioShouldBe` "6"
 
-  xdescribe "3.6 An Example" $ do
+  describe "3.6 An Example" $ do
     it "p48: average example" $ do 
       showReducedMiranda "average a b = (a+b)/2\naverage 2 (3+5)"  `ioShouldBe` "5"
       showReducedMiranda "average a b = (a+b)/2\n2 $average (3+5)" `ioShouldBe` "5"
@@ -170,6 +172,9 @@ main = hspec $ do
 
     ioShouldBe :: (Show a, Eq a) => IO a -> a -> IO ()
     ioShouldBe io val = (`shouldBe` val) =<< io
+
+    showEvaledMiranda :: String -> IO String 
+    showEvaledMiranda input = pShow . eval <$> (parseHunit input :: IO M.Prog)
 
     showReducedMiranda :: String -> IO String
     showReducedMiranda input = pShow . reduce <$> (parseHunit input :: IO M.Prog)

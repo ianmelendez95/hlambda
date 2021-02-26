@@ -1,34 +1,39 @@
 module Lambda.Eval
   ( Value (..)
-  , eval
-  , emptyEnvironment
+  , Eval(..)
   ) where 
+
+import Prettyprinter
 
 import Lambda.Reduce (reduce)
 import qualified Lambda.Enriched as E
 import qualified Lambda.Syntax as S
 import Lambda.Pretty
 
--- | defined in 2.5.1: "abstract mathematical object, such as 'the number 5', or 
--- | 'the function which squares its argument'"
+import Miranda.Syntax (Prog (..))
+
 data Value = Constant S.Constant 
-           | Bottom
+           | Bottom S.Exp
 
 class ToValue a where 
   toValue :: a -> Value
 
 instance ToValue S.Exp where 
   toValue (S.Term (S.Constant c)) = Constant c
-  toValue _ = Bottom
+  toValue e = Bottom e
+
+class Eval a where 
+  eval :: a -> Value
+
+instance Eval Prog where 
+  eval = evalE . E.toEnriched
+
+instance Eval E.Exp where 
+  eval = evalE
 
 instance PrettyLambda Value where 
-  prettyDoc Bottom = annStr None "_|_"
+  prettyDoc (Bottom e) = annStr None "_|_: " <+> prettyDoc e
   prettyDoc (Constant c) = prettyDoc (S.mkConstant c)
-
-type Environment = (S.Variable -> Value)
-
-emptyEnvironment :: Environment 
-emptyEnvironment = const Bottom
 
 -- | Eval[[ expr ]] = value
 -- |   2.5.1 "in all the situations where we use Eval ... [the environment] plays no significant role"
@@ -36,9 +41,9 @@ emptyEnvironment = const Bottom
 -- |   
 -- |   2.5.2 introduces the idea of bottom, where so far it seems to reflect that if reduction
 -- |         cannot result in a value (no normal form), then it is 'bottom'
-eval :: E.Exp -> Value
-eval = toValue . reduce 
-
--- eval (S.Variable var) env = env var
--- eval (S.Apply e1 e2) env = (eval e1 env) (eval e2 env)
--- eval expr _ = reduce expr
+evalE :: E.Exp -> Value
+evalE (E.FatBar e1 e2) = 
+  case eval e1 of 
+    Constant S.CFail -> eval e2
+    res -> res
+evalE expr = toValue . reduce $ expr

@@ -51,10 +51,69 @@ mGetCon eq@([], _) = error $ "Invalid equation: " ++ show eq
 makeVar :: Int -> Variable 
 makeVar k = "_u" ++ show k
 
--- span :: lhs matches
--- break :: lhs not matches
 partition :: (a -> Bool) -> [a] -> [[a]]
-partition p xs = case span p xs of 
-                   ([], []) -> []  
-                   ([], ys) -> partition (not . p) ys 
-                   (match, ys) -> match : partition (not . p) ys
+partition p = partitionSpan
+  where 
+    partitionSpan xs = 
+      case span p xs of 
+        ([], []) -> []  
+        ([], ys) -> partitionBreak ys 
+        (ps, ys) -> ps : partitionBreak ys
+    
+    partitionBreak xs = 
+      case break p xs of 
+        ([], []) -> []  
+        ([], ys) -> partitionSpan ys 
+        (nps, ys) -> nps : partitionSpan ys
+
+-- match k us qs def
+-- k = number for naming new variables
+-- us = variables
+-- qs = equations 
+-- def = default expression
+match :: Int -> [Variable] -> [Equation] -> Expression -> Expression
+match _ [] qs def = foldr (FatBar . snd) def qs
+match k (u:us) qs def = foldr (matchVarCon k (u:us)) def (partition isVar qs)
+
+matchVarCon :: Int -> [Variable] -> [Equation] -> Expression -> Expression
+matchVarCon k us qs@(q:_) def
+  | isVar q = matchVar k us (q:qs) def
+  | otherwise = matchCon k us qs def
+matchVarCon _ _ _ _ = undefined
+
+matchVar :: Int -> [Variable] -> [Equation] -> Expression -> Expression
+matchVar k (u:us) qs def = 
+  match k us (map applyVarRule qs) def
+  where 
+    -- the var rule drops the first variable argument, 
+    -- replacing instances of it with the function arg name (u)
+    applyVarRule :: Equation -> Equation
+    applyVarRule (Var v : ps, e) = (ps, subst e u v)
+    applyVarRule _ = undefined
+matchVar _ _ _ _ = undefined
+
+matchCon :: Int -> [Variable] -> [Equation] -> Expression -> Expression
+matchCon k (u:us) (q:qs) def = 
+  Case u [matchClause c k (u:us) (choose c qs) def | c <- cs]
+  where 
+    cs = constructors (getCon q)
+matchCon _ _ _ _ = undefined
+
+
+choose :: Constructor -> [Equation] -> [Equation]
+choose c = filter ((== c) . getCon)
+
+matchClause :: Constructor -> Int -> [Variable] -> [Equation] -> Expression -> Clause
+matchClause c k (_:us) qs def = 
+  Clause c us' (match (k' + k)
+                      (us' ++ us)
+                      (map flattenConstructorArgs qs)
+                      def)
+  where 
+    k' = arity c
+    us' = [makeVar (i+k) | i <- [1..k']]
+
+    flattenConstructorArgs :: Equation -> Equation
+    flattenConstructorArgs (Con _ ps' : ps, e) = (ps' ++ ps, e)
+    flattenConstructorArgs equ = error $ "Not a constructor equation: " ++ show equ
+matchClause _ _ _ _ _ = undefined

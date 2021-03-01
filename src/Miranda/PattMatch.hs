@@ -7,10 +7,13 @@ data Pattern = Var Variable
 type Variable = String
 type Constructor = String
 
-data Expression = Case Variable [Clause]
+data Expression = Case Case
                 | FatBar Expression Expression
                 --- ...
                 deriving Show
+
+data Case = CCase Variable [Clause]
+          deriving Show
 
 data Clause = Clause Constructor [Variable] Expression
             deriving Show
@@ -78,9 +81,10 @@ match k (u:us) qs def = foldr (matchVarCon k (u:us)) def (partition isVar qs)
 matchVarCon :: Int -> [Variable] -> [Equation] -> Expression -> Expression
 matchVarCon k us qs@(q:_) def
   | isVar q = matchVar k us (q:qs) def
-  | otherwise = matchCon k us qs def
+  | otherwise = Case $ matchCon k us qs def
 matchVarCon _ _ _ _ = undefined
 
+-- | generate the resulting expression from the variable equations
 matchVar :: Int -> [Variable] -> [Equation] -> Expression -> Expression
 matchVar k (u:us) qs def = 
   match k us (map applyVarRule qs) def
@@ -92,13 +96,14 @@ matchVar k (u:us) qs def =
     applyVarRule _ = undefined
 matchVar _ _ _ _ = undefined
 
-matchCon :: Int -> [Variable] -> [Equation] -> Expression -> Expression
-matchCon k (u:us) (q:qs) def = 
-  Case u [matchClause c k (u:us) (choose c qs) def | c <- cs]
+-- | generate the case expression for the given constructor equations
+matchCon :: Int -> [Variable] -> [Equation] -> Expression -> Case
+matchCon k us@(u:_) qs@(q:_) def = 
+  CCase u (map matchClause' (getConstructors q))
   where 
-    cs = constructors (getCon q)
+    getConstructors = constructors . getCon
+    matchClause' c = matchClause c k us (choose c qs) def
 matchCon _ _ _ _ = undefined
-
 
 choose :: Constructor -> [Equation] -> [Equation]
 choose c = filter ((== c) . getCon)

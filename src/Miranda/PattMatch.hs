@@ -105,9 +105,12 @@ matchCon k us@(u:_) qs@(q:_) def =
     matchClause' c = matchClause c k us (choose c qs) def
 matchCon _ _ _ _ = undefined
 
+-- | filter equations that match the constructor
 choose :: Constructor -> [Equation] -> [Equation]
 choose c = filter ((== c) . getCon)
 
+-- | create the case clause for the given constructor
+-- | NOTE: equations have the same constructor
 matchClause :: Constructor -> Int -> [Variable] -> [Equation] -> Expression -> Clause
 matchClause c k (_:us) qs def = 
   Clause c us' (match (k' + k)
@@ -121,4 +124,4 @@ matchClause c k (_:us) qs def =
     flattenConstructorArgs :: Equation -> Equation
     flattenConstructorArgs (Con _ ps' : ps, e) = (ps' ++ ps, e)
     flattenConstructorArgs equ = error $ "Not a constructor equation: " ++ show equ
-matchClause _ _ _ _ _ = undefined
+matchClause _ _ [] _ _ = undefined

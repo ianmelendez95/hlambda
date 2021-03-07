@@ -4,14 +4,26 @@ module Miranda.Syntax
   , AssignDef (..)
   , TypeDef (..)
   , FuncDef (..)
+  , DefSpec (..)
   , PattDef (..)
   , RhsClause (..)
   , GenTypeVar
   , Constr
   , ConstrArg (..)
-  , FuncParam (..)
+  , Pattern (..)
   , Exp (..)
-  , funcParamVars
+
+  -- constructors
+  , mkApply
+  , mkApplyPatt
+  , mkFuncDef
+  , mkDefSpec
+  , mkPattDef
+
+  -- to enriched helpers
+  , funcPatternVars
+  , funcPatternToPattern
+
   -- , ToLambda (..)
   -- , showMarked
   ) where 
@@ -58,16 +70,27 @@ data AssignDef = FuncDef FuncDef
                | PattDef PattDef 
                deriving Show
 
+-- Type Definition
+
 data TypeDef = TDef String [GenTypeVar] [Constr]
              deriving Show
 
-data FuncDef = FDef String [FuncParam] [RhsClause] [AssignDef] -- params, clauses, where defs
+-- Function Definition
+
+data FuncDef = FDef String DefSpec -- params, clauses, where defs
              deriving Show
 
-type FuncSpec = ([FuncParam], [RhsClause], [AssignDef]) -- a 'specification' for a function (everything but the name)
-type FuncDefMap = Map.Map String [FuncSpec]
+data DefSpec = DefSpec [Pattern] Rhs -- a 'specification' for a function (everything but the name)
+             deriving Show
 
-data PattDef = PDef FuncParam [RhsClause] [AssignDef] 
+data Rhs = Rhs [RhsClause] [AssignDef]
+         deriving Show
+
+type FuncDefMap = Map.Map String [DefSpec]
+
+-- Pattern Definition
+
+data PattDef = PDef Pattern Rhs
              deriving Show
 
 type GenTypeVar = Int
@@ -82,26 +105,16 @@ data ConstrArg = CAVar String
                | CAList [ConstrArg]
                deriving Show
 
--- subset of Exp that constitutes a valid func param
-data FuncParam = FPConstant T.Constant
-               | FPVariable String 
-               | FPConstructor String 
-               | FPApply FuncParam FuncParam
-               | FPCons FuncParam FuncParam  -- the only InfixApp that's valid as an fexp
-               | FPListLit [FuncParam]
-               | FPTuple [FuncParam]
-               deriving Show
+-- subset of Exp that constitutes a valid param
+data Pattern = PConstant T.Constant
+             | PVariable String 
+             | PConstructor String 
+             | PApply Pattern Pattern
+             | PCons Pattern Pattern  -- the only InfixApp that's valid as an fexp
+             | PListLit [Pattern]
+             | PTuple [Pattern]
+             deriving Show
               
-funcParamVars :: FuncParam -> [String]
-funcParamVars (FPConstant _) = []
-funcParamVars (FPVariable v) = [v]
-funcParamVars (FPConstructor _) = []
-funcParamVars (FPApply p1 p2) = concatMap funcParamVars [p1, p2]
-funcParamVars (FPCons p1 p2) = concatMap funcParamVars [p1, p2]
-funcParamVars (FPListLit ps) = concatMap funcParamVars ps
-funcParamVars (FPTuple ps) = concatMap funcParamVars ps
-
-
 data Exp = Constant T.Constant 
          | EGenTypeVar GenTypeVar
          | BuiltinOp ()
@@ -113,6 +126,40 @@ data Exp = Constant T.Constant
          | ListLit [Exp]    -- [], [x,y,z], [1,2]
          | Tuple [Exp]      -- (x,y,z), (1,'a',x)
          deriving Show
+
+--------------------------------------------------------------------------------
+-- Constructors
+
+mkApply :: [Exp] -> Exp
+mkApply = foldl1' Apply
+
+mkApplyPatt :: [Pattern] -> Pattern
+mkApplyPatt = foldl1' PApply
+
+mkFuncDef ::  String -> [Pattern] -> [RhsClause] -> [AssignDef] -> FuncDef
+mkFuncDef n ps rcs ads = FDef n $ mkDefSpec ps rcs ads
+
+mkPattDef :: Pattern -> [RhsClause] -> [AssignDef] -> PattDef
+mkPattDef p rcs ads = PDef p $ Rhs rcs ads
+
+mkDefSpec :: [Pattern] -> [RhsClause] -> [AssignDef] -> DefSpec
+mkDefSpec ps cls defs = DefSpec ps (Rhs cls defs)
+
+defSpecPatternCount :: DefSpec -> Int
+defSpecPatternCount (DefSpec ps _) = length ps
+
+--------------------------------------------------------------------------------
+-- Accessors
+
+funcPatternVars :: Pattern -> [String]
+funcPatternVars (PConstant _) = []
+funcPatternVars (PVariable v) = [v]
+funcPatternVars (PConstructor _) = []
+funcPatternVars (PApply p1 p2) = concatMap funcPatternVars [p1, p2]
+funcPatternVars (PCons p1 p2) = concatMap funcPatternVars [p1, p2]
+funcPatternVars (PListLit ps) = concatMap funcPatternVars ps
+funcPatternVars (PTuple ps) = concatMap funcPatternVars ps
+
 
 ----------
 -- Show --
@@ -144,6 +191,11 @@ instance ToEnriched Prog where
   toEnriched (Prog defs expr) = 
     E.Letrec (toBindings $ mapMaybe maybeAssignDef defs) (toEnriched expr)
 
+instance ToEnriched Rhs where 
+  toEnriched (Rhs clauses []) = clausesToExpression clauses
+  toEnriched (Rhs clauses wdefs) = 
+    E.Letrec (toBindings wdefs) (clausesToExpression clauses)
+
 maybeAssignDef :: Decl -> Maybe AssignDef
 maybeAssignDef (AssignDef adef) = Just adef
 maybeAssignDef _ = Nothing
@@ -168,22 +220,22 @@ toBindings defs =
       
 
 pattToBinding :: PattDef -> E.LetBinding
-pattToBinding (PDef param clauses wdefs) = 
-  let binding_exp = toBindingExp [] clauses wdefs
-   in (funcParamToPattern param, binding_exp)
+pattToBinding (PDef param rhs) = 
+  let binding_exp = toBindingExp (DefSpec [param] rhs)
+   in (funcPatternToPattern param, binding_exp)
 
-funcToBinding :: String -> [FuncSpec] -> E.LetBinding
-funcToBinding fname [spec] = 
-  if all isVarArg $ fst3 spec
-    then (E.PVariable fname, uncurry3 toBindingExp spec)
+funcToBinding :: String -> [DefSpec] -> E.LetBinding
+funcToBinding fname [spec@(DefSpec ps _)] = 
+  if all isVarArg ps
+    then (E.PVariable fname, toBindingExp spec)
     else funcToBinding' fname [spec]
   where 
-    isVarArg :: FuncParam -> Bool
-    isVarArg (FPVariable _) = True
+    isVarArg :: Pattern -> Bool
+    isVarArg (PVariable _) = True
     isVarArg _ = False
 
 funcToBinding fname specs
-  | not . allEqual . map (length . fst3) $ specs = error $ "Functions have differing number of arguments: " ++ fname
+  | not . allEqual . map defSpecPatternCount $ specs = error $ "Functions have differing number of arguments: " ++ fname
   | otherwise = funcToBinding' fname specs
   where 
     allEqual :: Eq a => [a] -> Bool
@@ -191,12 +243,12 @@ funcToBinding fname specs
     allEqual (x:xs) = all (== x) xs 
 
 -- | like funcToBinding, but does not perform preliminary checks, always performs case wrapping
-funcToBinding' :: String -> [FuncSpec] -> E.LetBinding
+funcToBinding' :: String -> [DefSpec] -> E.LetBinding
 funcToBinding' fname specs =
   case maybeCaseSpecs specs of 
     Just (singleton_params, base_clauses) ->
-      let binding_exprs = map (\cs -> toBindingExp [] [cs] []) base_clauses
-          param_patts = map funcParamToPattern singleton_params
+      let binding_exprs = map (\cs -> toBindingExp (mkDefSpec [] [cs] [])) base_clauses
+          param_patts = map funcPatternToPattern singleton_params
 
           free_vars = concatMap E.freeVariables binding_exprs
           first_arg_name = newName free_vars
@@ -205,11 +257,11 @@ funcToBinding' fname specs =
           E.Lambda (E.PVariable first_arg_name) 
                    (E.Case first_arg_name (zip param_patts binding_exprs)))
     Nothing -> 
-      let binding_exprs = map (uncurry3 toBindingExp) specs
+      let binding_exprs = map toBindingExp specs
 
           free_vars = concatMap E.freeVariables binding_exprs
           first_arg_name = newName free_vars
-          arg_names = take (length . fst3 . head $ specs) $ nextNames free_vars first_arg_name
+          arg_names = take (defSpecPatternCount . head $ specs) $ nextNames free_vars first_arg_name
 
           lambda_body = foldr (E.FatBar . applyArgsToPatternExpr arg_names)
                               (E.Pure . S.mkConstant $ S.CError) 
@@ -221,7 +273,7 @@ funcToBinding' fname specs =
     -- | collects the params and clauses that can result in a case expression
     -- | specifically, filters for func specs with a single paramater and base rhs clause,
     -- | short-circuiting if there's multiple params or not just a single base rhs clause
-    maybeCaseSpecs :: [FuncSpec] -> Maybe ([FuncParam], [RhsClause])
+    maybeCaseSpecs :: [DefSpec] -> Maybe ([Pattern], [RhsClause])
     maybeCaseSpecs = traverseMaybePairs . map maybeCaseSpec
 
     traverseMaybePairs :: [Maybe (a, b)] -> Maybe ([a], [b])
@@ -230,8 +282,8 @@ funcToBinding' fname specs =
       bimap (x:) (y:) <$> traverseMaybePairs rest
     traverseMaybePairs _ = Nothing
 
-    maybeCaseSpec :: FuncSpec -> Maybe (FuncParam, RhsClause)
-    maybeCaseSpec ([p], [c@(BaseClause _)], []) = Just (p, c)
+    maybeCaseSpec :: DefSpec -> Maybe (Pattern, RhsClause)
+    maybeCaseSpec (DefSpec [p] (Rhs [c@(BaseClause _)] [])) = Just (p, c)
     maybeCaseSpec _ = Nothing
 
     applyArgsToPatternExpr :: [String] -> E.Exp -> E.Exp
@@ -241,20 +293,11 @@ funcToBinding' fname specs =
     wrapLambdaArgs :: [String] -> E.Exp -> E.Exp
     wrapLambdaArgs args body = foldr (E.Lambda . E.PVariable) body args
 
-fst3 :: (a,b,c) -> a
-fst3 (x,_,_) = x
-
-uncurry3 :: (a -> b -> c -> d) -> (a,b,c) -> d
-uncurry3 f (x,y,z) = f x y z
-
 -- | takes the function def components and creates a binding expression
 -- | where the def components are 
 -- | params -> rhs clauses -> 'where' definitions -> binding expression
-toBindingExp :: [FuncParam] -> [RhsClause] -> [AssignDef] -> E.Exp
-toBindingExp params clauses [] = wrapLambda params (clausesToExpression clauses)
-toBindingExp params clauses wdefs = 
-  let wbindings = toBindings wdefs
-   in wrapLambda params (E.Letrec wbindings (clausesToExpression clauses))
+toBindingExp :: DefSpec -> E.Exp
+toBindingExp (DefSpec params rhs) = wrapLambda params (toEnriched rhs)
 
 clausesToExpression :: [RhsClause]  -> E.Exp
 clausesToExpression [] = E.Pure . S.mkConstant $ S.CFail
@@ -269,26 +312,27 @@ clausesToExpression (CondClause body cond : rest) =
       if_cond_then_body_else_rest = E.Apply if_cond_then_body (clausesToExpression rest)
   in if_cond_then_body_else_rest
 
-groupFuncDefs :: [FuncDef] -> [(String, [FuncSpec])]
+groupFuncDefs :: [FuncDef] -> [(String, [DefSpec])]
 groupFuncDefs = Map.toList . foldl' insertDef Map.empty
   where 
     insertDef :: FuncDefMap -> FuncDef -> FuncDefMap
-    insertDef m (FDef name pars rhs wdefs) = Map.insertWith (flip (++)) name [(pars, rhs, wdefs)] m
+    insertDef m (FDef name spec) = 
+      Map.insertWith (flip (++)) name [spec] m
 
-wrapLambda :: [FuncParam] -> E.Exp -> E.Exp
-wrapLambda ps expr = foldr (E.Lambda . funcParamToPattern) expr ps
+wrapLambda :: [Pattern] -> E.Exp -> E.Exp
+wrapLambda ps expr = foldr (E.Lambda . funcPatternToPattern) expr ps
 
-funcParamToPattern :: FuncParam -> E.Pattern
-funcParamToPattern param = 
-  case flattenFuncParam param of 
-    [FPConstant c]    -> E.PConstant (T.constantToLambda c)
-    [FPVariable v]    -> E.PVariable v
-    [FPConstructor c] -> constructorToPattern c
-    [FPCons p1 p2]    -> E.PConstructor "CONS" (map funcParamToPattern [p1, p2])
-    [FPListLit ps]    -> funcListLitToPattern ps
-    [FPTuple tuple]   -> tupleToPattern tuple
-    (FPConstructor c : rest) -> E.PConstructor c (map funcParamToPattern rest)
-    apply@[FPApply _ _] -> error $ "Apply should have been flattened: " ++ show apply
+funcPatternToPattern :: Pattern -> E.Pattern
+funcPatternToPattern param = 
+  case flattenPattern param of 
+    [PConstant c]    -> E.PConstant (T.constantToLambda c)
+    [PVariable v]    -> E.PVariable v
+    [PConstructor c] -> constructorToPattern c
+    [PCons p1 p2]    -> E.PConstructor "CONS" (map funcPatternToPattern [p1, p2])
+    [PListLit ps]    -> funcListLitToPattern ps
+    [PTuple tuple]   -> tupleToPattern tuple
+    (PConstructor c : rest) -> E.PConstructor c (map funcPatternToPattern rest)
+    apply@[PApply _ _] -> error $ "Apply should have been flattened: " ++ show apply
     p -> error $ "Invalid function parameter: " ++ show p
 
 constructorToPattern :: String -> E.Pattern
@@ -296,12 +340,12 @@ constructorToPattern "True" = E.PConstant . S.CBool $ True
 constructorToPattern "False" = E.PConstant . S.CBool $ False
 constructorToPattern constr = E.PConstructor constr []
 
-flattenFuncParam :: FuncParam -> [FuncParam]
-flattenFuncParam (FPApply p1 p2) = flattenFuncParam p1 ++ [p2]
-flattenFuncParam param = [param]
+flattenPattern :: Pattern -> [Pattern]
+flattenPattern (PApply p1 p2) = flattenPattern p1 ++ [p2]
+flattenPattern param = [param]
 
-funcListLitToPattern :: [FuncParam] -> E.Pattern
-funcListLitToPattern = foldl' (\cons p -> enrConsPattern (funcParamToPattern p) cons) enrNilPattern
+funcListLitToPattern :: [Pattern] -> E.Pattern
+funcListLitToPattern = foldl' (\cons p -> enrConsPattern (funcPatternToPattern p) cons) enrNilPattern
   where
     enrConsPattern :: E.Pattern -> E.Pattern -> E.Pattern
     enrConsPattern p1 p2 = E.PConstructor "CONS" [p1, p2]
@@ -309,10 +353,10 @@ funcListLitToPattern = foldl' (\cons p -> enrConsPattern (funcParamToPattern p) 
     enrNilPattern :: E.Pattern 
     enrNilPattern = E.PConstructor "NIL" []
 
-tupleToPattern :: [FuncParam] -> E.Pattern
-tupleToPattern ps = E.PConstructor (tupleToConstructor ps) (map funcParamToPattern ps)
+tupleToPattern :: [Pattern] -> E.Pattern
+tupleToPattern ps = E.PConstructor (tupleToConstructor ps) (map funcPatternToPattern ps)
   where 
-    tupleToConstructor :: [FuncParam] -> E.Constructor
+    tupleToConstructor :: [Pattern] -> E.Constructor
     tupleToConstructor ps' = 
       case length ps' of 
         0 -> error "0 length tuple"
@@ -370,7 +414,7 @@ instance PrettyLambda Prog where
 instance PrettyLambda Decl where 
   prettyDoc = mkPrettyDocFromParenS sPrettyDef
 
-instance PrettyLambda FuncParam where 
+instance PrettyLambda Pattern where 
   prettyDoc = mkPrettyDocFromParenS sPrettyPattern
 
 instance PrettyLambda Exp where 
@@ -385,7 +429,7 @@ sPrettyAssignDef (FuncDef fdef) = sPrettyFuncDef fdef
 sPrettyAssignDef (PattDef pdef) = sPrettyPattDef pdef
 
 sPrettyFuncDef :: FuncDef -> PrettyParenS LambdaDoc
-sPrettyFuncDef (FDef func_name vars body wdefs) = 
+sPrettyFuncDef (FDef func_name (DefSpec vars (Rhs body wdefs))) = 
   do let pname = pretty func_name
          prepend_pvars = if null vars then (mempty <>) else ((hsep . map prettyDoc $ vars) <+>)
          pbody = align . vsep $ map ((pretty "=" <+>) . sPrettyClause) body
@@ -411,7 +455,7 @@ sPrettyTypeDef (TDef type_name type_vars constrs) =
                    else pretty name <+> hsep (map prettyTypeVar type_vars)
 
 sPrettyPattDef :: PattDef -> PrettyParenS LambdaDoc
-sPrettyPattDef (PDef patt body wdefs) =
+sPrettyPattDef (PDef patt (Rhs body wdefs)) =
   do ppatt <- sPrettyPattern patt
      pwdefs <- mapM sPrettyAssignDef wdefs -- pretty where defs
 
@@ -426,18 +470,18 @@ sPrettyClause :: RhsClause -> LambdaDoc
 sPrettyClause (BaseClause expr) = prettyDoc expr
 sPrettyClause (CondClause expr cond_expr) = prettyDoc expr <> comma <+> prettyDoc cond_expr
 
-sPrettyPattern :: FuncParam -> PrettyParenS LambdaDoc
+sPrettyPattern :: Pattern -> PrettyParenS LambdaDoc
 sPrettyPattern param = do setPrec 11 
-                          sPrettyExp . funcParamToExp $ param
+                          sPrettyExp . funcPatternToExp $ param
 
-funcParamToExp :: FuncParam -> Exp
-funcParamToExp (FPConstant c) = Constant c
-funcParamToExp (FPVariable v) = Variable v
-funcParamToExp (FPConstructor c) = Constructor c
-funcParamToExp (FPApply e1 e2) = Apply (funcParamToExp e1) (funcParamToExp e2)
-funcParamToExp (FPCons e1 e2) = InfixApp T.ICons (funcParamToExp e1) (funcParamToExp e2)
-funcParamToExp (FPListLit exprs) = ListLit (map funcParamToExp exprs)
-funcParamToExp (FPTuple exprs) = Tuple (map funcParamToExp exprs)
+funcPatternToExp :: Pattern -> Exp
+funcPatternToExp (PConstant c) = Constant c
+funcPatternToExp (PVariable v) = Variable v
+funcPatternToExp (PConstructor c) = Constructor c
+funcPatternToExp (PApply e1 e2) = Apply (funcPatternToExp e1) (funcPatternToExp e2)
+funcPatternToExp (PCons e1 e2) = InfixApp T.ICons (funcPatternToExp e1) (funcPatternToExp e2)
+funcPatternToExp (PListLit exprs) = ListLit (map funcPatternToExp exprs)
+funcPatternToExp (PTuple exprs) = Tuple (map funcPatternToExp exprs)
 
 
 prettyConstructor :: Constr -> PrettyParenS LambdaDoc

@@ -6,7 +6,6 @@ import Data.List (foldl', insert, nub)
 import Lambda.Pretty
 import Lambda.Syntax (ToLambda (..))
 import qualified Lambda.Syntax as S
-import Lambda.Name (newName)
 
 -- p40: Figure 3.2 - Syntax of Enriched Lambda Expressions
 

@@ -215,12 +215,12 @@ checkAssignDef lhs rhs wdefs =
   case flattenApplyLHS lhs of 
     (S.Variable func_name : rest) -> 
       -- want to check there aren't repeated variable names
-      let params = map checkFuncParam rest
+      let params = map checkPattern rest
           dupes xs = not $ length xs == length (nub xs)
-       in if dupes . concatMap S.funcParamVars $ params
+       in if dupes . concatMap S.funcPatternVars $ params
             then error $ "Repeated variable names in lhs: " ++ show lhs ++ ", " ++ show rhs
-            else S.FuncDef $ S.FDef func_name params rhs wdefs
-    _ -> S.PattDef $ S.PDef (checkFuncParam lhs) rhs wdefs
+            else S.FuncDef $ S.mkFuncDef func_name params rhs wdefs
+    _ -> S.PattDef $ S.mkPattDef (checkPattern lhs) rhs wdefs
 
 checkTypeDef :: S.Exp -> [S.Constr] -> S.Decl
 checkTypeDef lhs constrs = 
@@ -235,14 +235,14 @@ checkFuncClauses (clause@(S.CondClause _ _) : rest) = clause : checkFuncClauses 
 checkFuncClauses (clause@(S.BaseClause _) : _) = error "expecting base clause to be last"
 
 -- coerce an expression into a pattern
-checkFuncParam :: S.Exp -> S.FuncParam
-checkFuncParam (S.Constant c) = S.FPConstant c
-checkFuncParam (S.Variable v) = S.FPVariable v
-checkFuncParam (S.Constructor c) = S.FPConstructor c
-checkFuncParam (S.Apply e1 e2) = S.FPApply (checkFuncParam e1) (checkFuncParam e2)
-checkFuncParam (S.InfixApp T.ICons e1 e2) = S.FPCons (checkFuncParam e1) (checkFuncParam e2)
-checkFuncParam (S.ListLit exprs) = S.FPListLit (map checkFuncParam exprs)
-checkFuncParam (S.Tuple exprs) = S.FPTuple (map checkFuncParam exprs)
+checkPattern :: S.Exp -> S.Pattern
+checkPattern (S.Constant c) = S.PConstant c
+checkPattern (S.Variable v) = S.PVariable v
+checkPattern (S.Constructor c) = S.PConstructor c
+checkPattern (S.Apply e1 e2) = S.PApply (checkPattern e1) (checkPattern e2)
+checkPattern (S.InfixApp T.ICons e1 e2) = S.PCons (checkPattern e1) (checkPattern e2)
+checkPattern (S.ListLit exprs) = S.PListLit (map checkPattern exprs)
+checkPattern (S.Tuple exprs) = S.PTuple (map checkPattern exprs)
 
 checkConstr :: S.Exp -> S.Constr
 checkConstr expr = case flattenApplyLHS expr of 

@@ -1,4 +1,4 @@
-module Miranda.PattMatch where 
+module PattMatch where 
 
 data Pattern = Var Variable 
              | Con Constructor [Pattern]

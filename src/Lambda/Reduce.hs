@@ -2,7 +2,7 @@ module Lambda.Reduce (Reducible (..)) where
 
 -- new reduction strategy that emulates laziness
 
-import Data.List (union, foldl1')
+import Data.List (union)
 
 import Lambda.Name (nextName)
 import Lambda.Syntax
@@ -57,15 +57,6 @@ reduceApplyOnce ((Term (Function func)) : rest)
 reduceApplyOnce (Lambda var body : arg : rest) 
   = Right . mkApply $ reduceLambda var body arg : rest
 reduceApplyOnce apply = Left . mkApply $ apply
-
-reduceApplyChain :: [Exp] -> Exp
-reduceApplyChain ((Term (Function func)) : rest) 
-  = case reduceFunctionApplication func rest of 
-      Left args -> foldl1' Apply $ mkFunction func : args
-      Right evaled -> reduceApplyChain evaled
-reduceApplyChain (Lambda var body : arg : rest) 
-  = reduceApplyChain $ parseApplyChain (reduceLambda var body arg) ++ rest
-reduceApplyChain apply = foldl1' Apply apply
 
 parseApplyChain :: Exp -> [Exp]
 parseApplyChain = unApply

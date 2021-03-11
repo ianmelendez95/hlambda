@@ -1,7 +1,7 @@
 module Lambda.Enriched where 
 
 import Prettyprinter
-import Data.List (foldl', insert, nub)
+import Data.List (foldl', foldl1', insert, nub)
 
 import Lambda.Pretty
 import Lambda.Syntax (ToLambda (..))
@@ -25,6 +25,15 @@ data Pattern = PConstant S.Constant
              | PVariable S.Variable
              | PConstructor Constructor [Pattern]
              deriving Show
+
+--------------------------------------------------------------------------------
+-- Constructors
+
+mkPattConstr :: Constructor -> [Pattern] -> Pattern
+mkPattConstr = PConstructor
+
+mkApply :: [Exp] -> Exp
+mkApply = foldl1' Apply
 
 ----------------
 -- ToEnriched --
@@ -125,9 +134,10 @@ instance PrettyLambda Pattern where
 sPrettyPattern :: Pattern -> PrettyParenS LambdaDoc
 sPrettyPattern (PConstant c) = pure . prettyDoc $ S.mkConstant c
 sPrettyPattern (PVariable v) = pure . pretty $ v
-sPrettyPattern (PConstructor c ps) = do setPrec 11
-                                        pretty_args <- mapM sPrettyPattern ps
-                                        return $ hsep (pretty c : pretty_args)
+sPrettyPattern (PConstructor c ps) = 
+  do setPrec 11
+     pretty_args <- mapM sPrettyPattern ps
+     return $ hsep (pretty c : pretty_args)
 
 --------------------------------------------------------------------------------
 -- Free Variables 

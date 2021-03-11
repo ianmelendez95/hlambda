@@ -328,17 +328,17 @@ funcPatternToPattern param =
     [PConstant c]    -> E.PConstant (T.constantToLambda c)
     [PVariable v]    -> E.PVariable v
     [PConstructor c] -> constructorToPattern c
-    [PCons p1 p2]    -> E.PConstructor "CONS" (map funcPatternToPattern [p1, p2])
+    [PCons p1 p2]    -> E.mkPattConstr "CONS" (map funcPatternToPattern [p1, p2])
     [PListLit ps]    -> funcListLitToPattern ps
     [PTuple tuple]   -> tupleToPattern tuple
-    (PConstructor c : rest) -> E.PConstructor c (map funcPatternToPattern rest)
+    (PConstructor c : rest) -> E.mkPattConstr c (map funcPatternToPattern rest)
     apply@[PApply _ _] -> error $ "Apply should have been flattened: " ++ show apply
     p -> error $ "Invalid function parameter: " ++ show p
 
 constructorToPattern :: String -> E.Pattern
 constructorToPattern "True" = E.PConstant . S.CBool $ True
 constructorToPattern "False" = E.PConstant . S.CBool $ False
-constructorToPattern constr = E.PConstructor constr []
+constructorToPattern constr = E.mkPattConstr constr []
 
 flattenPattern :: Pattern -> [Pattern]
 flattenPattern (PApply p1 p2) = flattenPattern p1 ++ [p2]
@@ -348,13 +348,14 @@ funcListLitToPattern :: [Pattern] -> E.Pattern
 funcListLitToPattern = foldl' (\cons p -> enrConsPattern (funcPatternToPattern p) cons) enrNilPattern
   where
     enrConsPattern :: E.Pattern -> E.Pattern -> E.Pattern
-    enrConsPattern p1 p2 = E.PConstructor "CONS" [p1, p2]
+    enrConsPattern p1 p2 = E.mkPattConstr "CONS" [p1, p2]
 
     enrNilPattern :: E.Pattern 
-    enrNilPattern = E.PConstructor "NIL" []
+    enrNilPattern = E.mkPattConstr "NIL" []
 
 tupleToPattern :: [Pattern] -> E.Pattern
-tupleToPattern ps = E.PConstructor (tupleToConstructor ps) (map funcPatternToPattern ps)
+tupleToPattern ps = 
+  E.mkPattConstr (tupleToConstructor ps) (map funcPatternToPattern ps)
   where 
     tupleToConstructor :: [Pattern] -> E.Constructor
     tupleToConstructor ps' = 

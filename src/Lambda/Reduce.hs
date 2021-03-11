@@ -1,4 +1,7 @@
-module Lambda.Reduce (Reducible (..)) where 
+module Lambda.Reduce 
+  ( Reducible (..),
+    unsafeAlphaConvert
+  ) where 
 
 -- new reduction strategy that emulates laziness
 
@@ -196,16 +199,16 @@ replaceVarWithValInBody name newExp (Apply e1 e2) = Apply (replaceVarWithValInBo
 replaceVarWithValInBody name new_exp l@(Lambda v e)
   | v == name = l
   | (name `elem` freeVariables e) && (v `elem` freeVariables new_exp)
-      = let (new_v, new_e) = alphaConvertRestricted (freeVariables new_exp `union` freeVariables' [v] e) v e
+      = let (new_v, new_e) = unsafeAlphaConvertRestricted (freeVariables new_exp `union` freeVariables' [v] e) v e
          in Lambda new_v (replaceVarWithValInBody name new_exp new_e)
   | otherwise = Lambda v (replaceVarWithValInBody name new_exp e)
 
 -- | performs an alpha conversion, where the new name is restricted by the existing 
 -- | 'taken' or free variables that would result in a conflict if used
-alphaConvertRestricted :: [String] -> String -> Exp -> (String, Exp)
-alphaConvertRestricted taken_names var body 
+unsafeAlphaConvertRestricted :: [String] -> String -> Exp -> (String, Exp)
+unsafeAlphaConvertRestricted taken_names var body 
   = let new_name = nextName taken_names var 
-     in (new_name, alphaConvert var new_name body)
+     in (new_name, unsafeAlphaConvert var new_name body)
 
 -- | rather unsafely converts instances of the old name with the new name
 -- | only scrutinizing on formal parameters (that is, if encounter a lambda with the formal parameter 
@@ -213,14 +216,14 @@ alphaConvertRestricted taken_names var body
 -- | 
 -- | unsafe in that it makes no discernment for whether it is replacing the name with 
 -- | a variable that is also free in the expression
-alphaConvert :: String -> String -> Exp -> Exp
-alphaConvert old_name new_name (Term (Variable var)) = mkVariable $ mapVarName (\n -> if n == old_name then new_name else n) var
-alphaConvert _ _ t@(Term _) = t
-alphaConvert old_name new_name (Apply e1 e2) = Apply (alphaConvert old_name new_name e1)
-                                                     (alphaConvert old_name new_name e2)
-alphaConvert old_name new_name l@(Lambda v e)
+unsafeAlphaConvert :: String -> String -> Exp -> Exp
+unsafeAlphaConvert old_name new_name (Term (Variable var)) = mkVariable $ mapVarName (\n -> if n == old_name then new_name else n) var
+unsafeAlphaConvert _ _ t@(Term _) = t
+unsafeAlphaConvert old_name new_name (Apply e1 e2) = Apply (unsafeAlphaConvert old_name new_name e1)
+                                                     (unsafeAlphaConvert old_name new_name e2)
+unsafeAlphaConvert old_name new_name l@(Lambda v e)
   | old_name == v = l -- name is already bound, doesn't matter
-  | otherwise = Lambda v (alphaConvert old_name new_name e)
+  | otherwise = Lambda v (unsafeAlphaConvert old_name new_name e)
 
 -- freeVariables :: [String] -> Exp -> [String]
 -- freeVariables _ (Constant _) = []

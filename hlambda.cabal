@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: f2c6b2dc84a4564a88be306fabacea686a0ea6277f21b1234acd70a4dfd1fffe
+-- hash: 7342cd3df392e544ee405688b7003eae73e70d0020a90f9720a547016968eda2
 
 name:           hlambda
 version:        0.1.0.0
@@ -28,6 +28,7 @@ source-repository head
 library
   exposed-modules:
       GhciUtil
+      Lambda.AlphaConv
       Lambda.Enriched
       Lambda.Eval
       Lambda.Name

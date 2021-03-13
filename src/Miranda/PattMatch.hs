@@ -1,6 +1,7 @@
 module Miranda.PattMatch where 
 
 import Control.Monad.State.Lazy
+import Data.List (foldl1')
 
 import qualified Miranda.Syntax as M
 import qualified Lambda.Syntax as S
@@ -56,7 +57,10 @@ test_def3 =
   ( [ E.PVariable "f", 
       E.PConstructor "CONS" [E.PVariable "x", E.PVariable "xs"],
       E.PConstructor "CONS" [E.PVariable "y", E.PVariable "ys"] ],
-    E.mkApply [E.Pure (S.mkVariable "B"), E.Pure (S.mkVariable "f"), E.Pure (S.mkVariable "xs")])
+    E.mkApply [mkV "C", mkV "f", mkV "xs", mkV "ys"])
+  where 
+    mkV :: String -> E.Exp
+    mkV = E.Pure . S.mkVariable
 
 test_tree1 :: PattTree
 test_tree1 = uncurry mkTree test_def1
@@ -66,6 +70,26 @@ test_tree2 = uncurry mkTree test_def2
 
 test_tree3 :: PattTree
 test_tree3 = uncurry mkTree test_def3
+
+test_trees :: [PattTree]
+test_trees = [test_tree1, test_tree2, test_tree3]
+
+merged_trees :: MatchTree
+merged_trees = mergePTrees test_trees
+{-
+MTVariable 1 ["f","f","f"] 
+    (MTFatBar 
+        (MTFatBar 
+            (MTConstructor 2 ["NIL"] (MTVariable 3 ["ys"] (MTExp A f ys))) 
+            (MTVariable 2 ["xs"] (MTConstructor 3 ["NIL"] (MTExp B f xs)))) 
+        (MTConstructor 2 ["CONS"] 
+            (MTVariable 4 ["x"] 
+                (MTVariable 5 ["xs"] 
+                    (MTConstructor 3 ["CONS"] 
+                        (MTVariable 6 ["y"] 
+                            (MTVariable 7 ["ys"] 
+                                (MTExp C f xs ys))))))))
+-}
 
 --------------------------------------------------------------------------------
 -- Making the 'pattern tree'
@@ -104,21 +128,30 @@ pattToMatchTree (PTConstructor (Numd n c) t) = MTConstructor n [c] (pattToMatchT
 pattToMatchTree (PTVariable (Numd n v) t) = MTVariable n [v] (pattToMatchTree t)
 pattToMatchTree (PTExp e) = MTExp e
 
-mergePTrees :: PattTree -> PattTree -> MatchTree
-mergePTrees p1@(PTVariable (Numd n1 v1) t1) p2@(PTVariable (Numd n2 v2) t2) = 
-  MTVariable (assertEqual (treeDivergeMsg p1 p2) n1 n2) [v1, v2] (mergePTrees t1 t2)
+mergePTrees :: [PattTree] -> MatchTree
+mergePTrees = mergeMTrees . map pattToMatchTree
 
-mergePTrees p1@(PTConstructor (Numd n1 c1) t1) p2@(PTConstructor (Numd n2 c2) t2) = 
-  MTConstructor (assertEqual (treeDivergeMsg p1 p2) n1 n2) [c1, c2] (mergePTrees t1 t2)
+mergeMTrees :: [MatchTree] -> MatchTree
+mergeMTrees = foldl1' mergeMTree
 
-mergePTrees p1@(PTConstant (Numd n1 c1) t1) p2@(PTConstant (Numd n2 c2) t2) = 
-  MTConstant (assertEqual (treeDivergeMsg p1 p2) n1 n2) [c1, c2] (mergePTrees t1 t2)
+mergeMTree :: MatchTree -> MatchTree -> MatchTree
+mergeMTree m1@(MTVariable n1 vs1 t1) m2@(MTVariable n2 vs2 t2) = 
+  MTVariable (assertEqual (mTreeDivergeMsg m1 m2) n1 n2) (vs1 ++ vs2) (mergeMTree t1 t2)
 
-mergePTrees (PTExp e) (PTExp _) = MTExp e
-mergePTrees p1 p2 = MTFatBar (pattToMatchTree p1) (pattToMatchTree p2)
+mergeMTree m1@(MTConstructor n1 cs1 t1) m2@(MTConstructor n2 cs2 t2) = 
+  MTConstructor (assertEqual (mTreeDivergeMsg m1 m2) n1 n2) (cs1 ++ cs2) (mergeMTree t1 t2)
+
+mergeMTree m1@(MTConstant n1 cs1 t1) m2@(MTConstant n2 cs2 t2) = 
+  MTConstant (assertEqual (mTreeDivergeMsg m1 m2) n1 n2) (cs1 ++ cs2) (mergeMTree t1 t2)
+
+mergeMTree (MTExp e) (MTExp _) = MTExp e
+mergeMTree m1 m2 = MTFatBar m1 m2
 
 treeDivergeMsg :: PattTree -> PattTree -> String
 treeDivergeMsg p1 p2 = "Pattern trees diverged in number: " ++ show p1 ++ " =/= " ++ show p2
+
+mTreeDivergeMsg :: MatchTree -> MatchTree -> String
+mTreeDivergeMsg p1 p2 = "Pattern trees diverged in number: " ++ show p1 ++ " =/= " ++ show p2
 
 assertEqual :: (Eq a) => String -> a -> a -> a
 assertEqual msg x y = if x == y then x else error msg

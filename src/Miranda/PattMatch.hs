@@ -2,6 +2,8 @@ module Miranda.PattMatch where
 
 import Control.Monad.State.Lazy
 import Data.List (foldl1')
+import qualified Data.Map.Strict as Map
+import qualified Data.Set as Set
 
 import qualified Miranda.Syntax as M
 import qualified Lambda.Syntax as S
@@ -14,8 +16,8 @@ data PattTree = PTConstant (Numd S.Constant) PattTree
               deriving Show
 
 data MatchTree = MTConstant Int [S.Constant] MatchTree
-               | MTVariable Int [S.Variable] MatchTree
-               | MTConstructor Int [E.Constructor] MatchTree
+               | MTVariable Int (Set.Set S.Variable) MatchTree
+               | MTConstructor Int (Map.Map E.Constructor MatchTree)
                | MTFatBar MatchTree MatchTree
                | MTExp E.Exp
                deriving Show
@@ -91,6 +93,38 @@ MTVariable 1 ["f","f","f"]
                                 (MTExp C f xs ys))))))))
 -}
 
+mappairs_defs :: [([E.Pattern], E.Exp)]
+mappairs_defs = 
+  [ ( [ E.PVariable    "f", 
+        E.PConstructor "NIL" [],
+        E.PVariable    "ys" ],
+      E.Pure $ mkV "NIL"),
+    ( [ E.PVariable    "f", 
+        E.PConstructor "CONS" [E.PVariable "x", E.PVariable "xs"],
+        E.PConstructor "NIL" []],
+      E.Pure $ mkV "NIL"),
+    ( [ E.PVariable    "f", 
+        E.PConstructor "CONS" [E.PVariable "x", E.PVariable "xs"],
+        E.PConstructor "CONS" [E.PVariable "y", E.PVariable "ys"] ],
+      E.Pure (S.mkApply [mkV "CONS", S.mkApply [mkV "f", mkV "x", mkV "y"],
+                                     S.mkApply [mkV "mappairs", mkV "f", mkV "xs", mkV "ys"]])) ]
+  where 
+    mkV :: String -> S.Exp
+    mkV = S.mkVariable
+
+{-
+MTVariable 1 ["f"] 
+  (MTConstructor 2 [
+    ("CONS",  MTVariable 4 ["x"] 
+                (MTVariable 5 ["xs"] 
+                  (MTConstructor 3 [
+                    ("CONS",  MTVariable 6 ["y"] 
+                                (MTVariable 7 ["ys"] 
+                                  (MTExp CONS (f x y) (mappairs f xs ys)))),
+                    ("NIL",   MTExp NIL)]))),
+    ("NIL",MTVariable 3 ["ys"] (MTExp NIL))])
+-}
+
 --------------------------------------------------------------------------------
 -- Making the 'pattern tree'
 
@@ -124,8 +158,8 @@ mkTree' (Numd n p:ps) e =
 
 pattToMatchTree :: PattTree -> MatchTree
 pattToMatchTree (PTConstant (Numd n c) t) = MTConstant n [c] (pattToMatchTree t)
-pattToMatchTree (PTConstructor (Numd n c) t) = MTConstructor n [c] (pattToMatchTree t)
-pattToMatchTree (PTVariable (Numd n v) t) = MTVariable n [v] (pattToMatchTree t)
+pattToMatchTree (PTConstructor (Numd n c) t) = MTConstructor n (Map.singleton c (pattToMatchTree t))
+pattToMatchTree (PTVariable (Numd n v) t) = MTVariable n (Set.singleton v) (pattToMatchTree t)
 pattToMatchTree (PTExp e) = MTExp e
 
 mergePTrees :: [PattTree] -> MatchTree
@@ -136,10 +170,10 @@ mergeMTrees = foldl1' mergeMTree
 
 mergeMTree :: MatchTree -> MatchTree -> MatchTree
 mergeMTree m1@(MTVariable n1 vs1 t1) m2@(MTVariable n2 vs2 t2) = 
-  MTVariable (assertEqual (mTreeDivergeMsg m1 m2) n1 n2) (vs1 ++ vs2) (mergeMTree t1 t2)
+  MTVariable (assertEqual (mTreeDivergeMsg m1 m2) n1 n2) (Set.union vs1 vs2) (mergeMTree t1 t2)
 
-mergeMTree m1@(MTConstructor n1 cs1 t1) m2@(MTConstructor n2 cs2 t2) = 
-  MTConstructor (assertEqual (mTreeDivergeMsg m1 m2) n1 n2) (cs1 ++ cs2) (mergeMTree t1 t2)
+mergeMTree m1@(MTConstructor n1 ctrees1) m2@(MTConstructor n2 ctrees2) = 
+  MTConstructor (assertEqual (mTreeDivergeMsg m1 m2) n1 n2) (Map.unionWith mergeMTree ctrees1 ctrees2)
 
 mergeMTree m1@(MTConstant n1 cs1 t1) m2@(MTConstant n2 cs2 t2) = 
   MTConstant (assertEqual (mTreeDivergeMsg m1 m2) n1 n2) (cs1 ++ cs2) (mergeMTree t1 t2)

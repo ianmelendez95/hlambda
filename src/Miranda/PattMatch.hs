@@ -9,6 +9,11 @@ import qualified Miranda.Syntax as M
 import qualified Lambda.Syntax as S
 import qualified Lambda.Enriched as E
 
+data Root a = Root {
+  rootNums :: [Int],
+  rootTree :: a
+} deriving Show
+
 data PattTree = PTConstant (Numd S.Constant) PattTree
               | PTVariable (Numd S.Variable) PattTree
               | PTConstructor (Numd E.Constructor) PattTree
@@ -25,10 +30,18 @@ data MatchTree = MTConstant Int [S.Constant] MatchTree
 --------------------------------------------------------------------------------
 -- The 'numbering' monad
 
+type IntS = State Int
+
+nextInt :: IntS Int
+nextInt = state (\n -> (n, n+1))
+
 data Numd a = Numd Int a
             deriving Show
 
 type NumdM = State Int
+
+numdNum :: Numd a -> Int
+numdNum (Numd n _) = n
 
 numdNextN :: NumdM Int
 numdNextN = state (\n -> (n, n+1))
@@ -64,20 +77,20 @@ test_def3 =
     mkV :: String -> E.Exp
     mkV = E.Pure . S.mkVariable
 
-test_tree1 :: PattTree
+test_tree1 :: Root PattTree
 test_tree1 = uncurry mkTree test_def1
 
-test_tree2 :: PattTree
+test_tree2 :: Root PattTree
 test_tree2 = uncurry mkTree test_def2
 
-test_tree3 :: PattTree
+test_tree3 :: Root PattTree
 test_tree3 = uncurry mkTree test_def3
 
-test_trees :: [PattTree]
+test_trees :: [Root PattTree]
 test_trees = [test_tree1, test_tree2, test_tree3]
 
-merged_trees :: MatchTree
-merged_trees = mergePTrees test_trees
+merged_trees :: Root MatchTree
+merged_trees = mergePRoots test_trees
 {-
 MTVariable 1 ["f","f","f"] 
     (MTFatBar 
@@ -139,12 +152,12 @@ MTVariable 1 ["f"]
 --------------------------------------------------------------------------------
 -- Making the 'pattern tree'
 
-mkTree :: [E.Pattern] -> E.Exp -> PattTree
+mkTree :: [E.Pattern] -> E.Exp -> Root PattTree
 mkTree ps e = evalState doMk 1
   where
-    doMk :: NumdM PattTree
+    doMk :: NumdM (Root PattTree)
     doMk = do ps' <- numd_ps
-              mkTree' ps' e
+              Root (map numdNum ps') <$> mkTree' ps' e
 
     numd_ps :: NumdM [Numd E.Pattern]
     numd_ps = mapM numdNext ps
@@ -172,6 +185,12 @@ pattToMatchTree (PTConstant (Numd n c) t) = MTConstant n [c] (pattToMatchTree t)
 pattToMatchTree (PTConstructor (Numd n c) t) = MTConstructor n (Map.singleton c (pattToMatchTree t))
 pattToMatchTree (PTVariable (Numd n v) t) = MTVariable n (Set.singleton v) (pattToMatchTree t)
 pattToMatchTree (PTExp e) = MTExp e
+
+mergePRoots :: [Root PattTree] -> Root MatchTree
+mergePRoots [] = error "No pattern trees"
+mergePRoots all_ts@((Root nums _):ts) 
+  | all ((nums ==) . rootNums) ts = Root nums (mergePTrees (map rootTree all_ts))
+  | otherwise = error "mismatched root numbers"
 
 mergePTrees :: [PattTree] -> MatchTree
 mergePTrees = mergeMTrees . map pattToMatchTree

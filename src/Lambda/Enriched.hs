@@ -94,7 +94,7 @@ instance Show Exp where
 ------------------
 
 instance PrettyLambda Exp where 
-  prettyDoc = mkPrettyDocFromParenS sPretty
+  prettyDoc' = mkPrettyDocFromParenS' sPretty
 
 sPretty :: Exp -> PrettyParenS LambdaDoc
 sPretty (Pure expr) = pure $ prettyDoc expr
@@ -131,18 +131,18 @@ prettyLet let_kw bindings body = pure $
   align . vsep $ [pretty let_kw <+> (align . vsep $ map prettyBinding bindings), pretty "in" <+> prettyDoc body]
 
 prettyBinding :: LetBinding -> LambdaDoc
-prettyBinding (pat, val) = prettyDoc pat <+> pretty "=" <+> prettyDoc val
+prettyBinding (pat, val) = prettyDoc' 11 pat <+> pretty "=" <+> prettyDoc val
 
 instance PrettyLambda Pattern where 
-  prettyDoc = mkPrettyDocFromParenS sPrettyPattern
+  prettyDoc' = mkPrettyDocFromParenS' sPrettyPattern
 
 sPrettyPattern :: Pattern -> PrettyParenS LambdaDoc
 sPrettyPattern (PConstant c) = pure . prettyDoc $ S.mkConstant c
 sPrettyPattern (PVariable v) = pure . pretty $ v
 sPrettyPattern (PConstructor c ps) = 
-  do setPrec 11
+  do wrapper <- getParenWrapper 10
      pretty_args <- mapM sPrettyPattern ps
-     return $ hsep (pretty c : pretty_args)
+     return $ wrapper $ hsep (pretty c : pretty_args)
 
 --------------------------------------------------------------------------------
 -- Free Variables 

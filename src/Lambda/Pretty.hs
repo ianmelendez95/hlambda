@@ -12,6 +12,7 @@ module Lambda.Pretty
   , LambdaDoc 
   , Doc 
   , mkPrettyDocFromParenS
+  , mkPrettyDocFromParenS'
   , getParenWrapper
   , tempState 
   , setPrec 
@@ -41,7 +42,10 @@ data AParen = AParenYellow
 -- | class that can be represented as a lambda expression, 
 -- | according to how its defined in out pretty print framework
 class PrettyLambda a where 
+  prettyDoc' :: Int -> a -> Doc LambdaAnn
+
   prettyDoc :: a -> Doc LambdaAnn
+  prettyDoc = prettyDoc' 0
 
   pShow :: a -> String
   pShow = show . prettyDoc
@@ -105,10 +109,14 @@ type ParenWrapper = (LambdaDoc -> LambdaDoc)
 --   prettyDoc = mkPrettyFromParenS your_prettyparen_func src_value
 
 mkPrettyDocFromParenS :: (a -> PrettyParenS LambdaDoc) -> a -> Doc LambdaAnn
-mkPrettyDocFromParenS pretty_func pretty_src = evalState (pretty_func pretty_src) initParenState
+mkPrettyDocFromParenS = flip mkPrettyDocFromParenS' 0
 
-initParenState :: ParenState
-initParenState = ParenState 0 AParenMagenta
+mkPrettyDocFromParenS' :: (a -> PrettyParenS LambdaDoc) -> Int -> a -> Doc LambdaAnn
+mkPrettyDocFromParenS' pretty_func init_prec pretty_src = 
+  evalState (pretty_func pretty_src) (initParenState init_prec)
+
+initParenState :: Int -> ParenState
+initParenState init_prec = ParenState init_prec AParenMagenta
 
 tempState :: PrettyParenS () -> PrettyParenS a -> PrettyParenS a
 tempState change pe = do s <- get 

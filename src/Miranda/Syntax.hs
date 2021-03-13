@@ -36,7 +36,7 @@ import Data.Bifunctor (bimap)
 
 import qualified Miranda.Token as T
 import Lambda.Pretty
-    ( PrettyLambda(prettyDoc),
+    ( PrettyLambda(..),
       LambdaAnn(AConstant),
       annStr,
       PrettyParenS,
@@ -44,15 +44,13 @@ import Lambda.Pretty
       tempState,
       setPrec,
       getParenWrapper,
-      mkPrettyDocFromParenS )
+      mkPrettyDocFromParenS' )
 import Lambda.Enriched (ToEnriched (..))
 import Lambda.Syntax (ToLambda (..))
 import Lambda.Reduce (Reducible (..))
 import Lambda.Name (newName, nextNames)
 import qualified Lambda.Enriched as E
 import qualified Lambda.Syntax as S
-
-import Debug.Trace
 
 ----------------------
 -- Lambda Expressions --
@@ -410,16 +408,16 @@ enrCons = E.Pure (S.mkFunction S.FCons)
 ------------------
 
 instance PrettyLambda Prog where 
-  prettyDoc (Prog defs expr) = vsep (map prettyDoc defs ++ [prettyDoc expr])
+  prettyDoc' _ (Prog defs expr) = vsep (map prettyDoc defs ++ [prettyDoc expr])
 
 instance PrettyLambda Decl where 
-  prettyDoc = mkPrettyDocFromParenS sPrettyDef
+  prettyDoc' = mkPrettyDocFromParenS' sPrettyDef
 
 instance PrettyLambda Pattern where 
-  prettyDoc = mkPrettyDocFromParenS sPrettyPattern
+  prettyDoc' = mkPrettyDocFromParenS' sPrettyPattern
 
 instance PrettyLambda Exp where 
-  prettyDoc = mkPrettyDocFromParenS sPrettyExp
+  prettyDoc' = mkPrettyDocFromParenS' sPrettyExp
 
 sPrettyDef :: Decl -> PrettyParenS LambdaDoc 
 sPrettyDef (AssignDef adef) = sPrettyAssignDef adef

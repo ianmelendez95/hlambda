@@ -11,8 +11,6 @@ import Lambda.Name (nextName)
 import Lambda.Syntax
 import qualified Lambda.Enriched as E
 
-import Debug.Trace (trace)
-
 class Reducible a where 
   reduce :: a -> Exp
 

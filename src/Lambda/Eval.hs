@@ -32,8 +32,8 @@ instance Eval E.Exp where
   eval = evalE
 
 instance PrettyLambda Value where 
-  prettyDoc (Bottom e) = annStr None "_|_: " <+> prettyDoc e
-  prettyDoc (Constant c) = prettyDoc (S.mkConstant c)
+  prettyDoc' _ (Bottom e) = annStr None "_|_: " <+> prettyDoc e
+  prettyDoc' _ (Constant c) = prettyDoc (S.mkConstant c)
 
 -- | Eval[[ expr ]] = value
 -- |   2.5.1 "in all the situations where we use Eval ... [the environment] plays no significant role"

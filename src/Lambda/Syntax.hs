@@ -210,7 +210,7 @@ instance Show Constant where
 ------------------
 
 instance PrettyLambda Exp where 
-  prettyDoc = mkPrettyDocFromParenS sPretty
+  prettyDoc' = mkPrettyDocFromParenS' sPretty
 
 sPretty :: Exp -> PrettyParenS LambdaDoc
 sPretty (Term t) = sPrettyTerm t

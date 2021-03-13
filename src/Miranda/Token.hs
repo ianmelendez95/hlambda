@@ -62,15 +62,15 @@ data Constant = CNat Int
               | CBool Bool 
 
 instance PrettyLambda InfixOp where 
-  prettyDoc IPlus    = pretty "+"
-  prettyDoc IMinus   = pretty "-"
-  prettyDoc IMult    = pretty "*"
-  prettyDoc IDiv     = pretty "/"
-  prettyDoc ICons    = pretty ":"
-  prettyDoc IEq      = pretty "=="
-  prettyDoc ILt      = pretty "<"
-  prettyDoc IGt      = pretty ">"
-  prettyDoc (IVar v) = pretty "$" <> pretty v
+  prettyDoc' _ IPlus    = pretty "+"
+  prettyDoc' _ IMinus   = pretty "-"
+  prettyDoc' _ IMult    = pretty "*"
+  prettyDoc' _ IDiv     = pretty "/"
+  prettyDoc' _ ICons    = pretty ":"
+  prettyDoc' _ IEq      = pretty "=="
+  prettyDoc' _ ILt      = pretty "<"
+  prettyDoc' _ IGt      = pretty ">"
+  prettyDoc' _ (IVar v) = pretty "$" <> pretty v
 
 instance Show Constant where 
   show (CNat x) = show x

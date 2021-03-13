@@ -124,7 +124,7 @@ main = hspec $ do
         `ioShouldBe` "letrec gcd = \\a. \\b. IF (> a b) (gcd (- a b) b) (IF (< a b) (gcd a (- b a)) (IF (= a b) a FAIL))\nin gcd 6 9"
       
       showEnrichedMiranda "funnyLastElt (x:xs) = x, x<0\nfunnyLastElt (x:[]) = x\nfunnyLastElt (x:xs) = funnyLastElt xs\nfunnyLastElt [1,2,3]"
-        `ioShouldBe` "letrec funnyLastElt = \\a. (\\CONS x xs. IF (< x 0) x FAIL) a | (\\CONS x NIL. x) a | (\\CONS x xs. funnyLastElt xs) a | ERROR\nin funnyLastElt (CONS 1 (CONS 2 (CONS 3 NIL)))"
+        `ioShouldBe` "letrec funnyLastElt = \\a. (\\CONS x xs. IF (< x 0) x FAIL) a\n                          | (\\CONS x NIL. x) a\n                            | (\\CONS x xs. funnyLastElt xs) a\n                              | ERROR\nin funnyLastElt (CONS 1 (CONS 2 (CONS 3 NIL)))"
 
     it "p64: translates conditional with base clause equation" $ do
       showEnrichedMiranda "factorial n = 1, n==0\n            = n * factorial (n-1)\nfactorial 4"

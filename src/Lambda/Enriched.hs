@@ -102,7 +102,8 @@ sPretty (Letrec bindings body) = prettyLet "letrec" bindings body
 sPretty (Let bindings body)    = prettyLet "let" bindings body
 sPretty (FatBar e1 e2) = do p1 <- sPretty e1
                             p2 <- sPretty e2
-                            return $ p1 <+> pipe <+> p2
+                            return $ align . vsep $ [p1, pipe <+> p2]
+                            -- return $ p1 <+> 
 sPretty (Lambda patt e) = 
   do wrapper <- getParenWrapper 5 
      e_pretty <- tempState (setPrec 0) (sPretty e)

@@ -79,7 +79,7 @@ demo_def3 =
   ( [ E.PVariable "f", 
       E.PConstructor "CONS" [E.PVariable "x", E.PVariable "xs"],
       E.PConstructor "CONS" [E.PVariable "y", E.PVariable "ys"] ],
-    E.mkApply [mkV "C", mkV "f", mkV "xs", mkV "ys"])
+    E.mkApply [mkV "C", mkV "f", mkV "x", mkV "xs", mkV "y", mkV "ys"])
   where 
     mkV :: String -> E.Exp
     mkV = E.Pure . S.mkVariable
@@ -130,6 +130,14 @@ Root [1,2,3]
                   MTVariable 6 (fromList ["y"]) 
                     (MTVariable 7 (fromList ["ys"]) 
                       (MTExp C f xs ys)))]))))])))
+
+\_u1. \_u2. \_u3. case _u2 of
+                    NIL => A _u1 _u3 
+                  | case _u3 of
+                      NIL => B _u1 _u2 
+                    | case _u2 of
+                        CONS _u4 _u5 => case _u3 of
+                                          CONS _u6 _u7 => C _u1 _u4 _u5 _u6 _u7
 -}
 
 mappairs_defs :: [([E.Pattern], E.Exp)]
@@ -153,6 +161,9 @@ mappairs_defs =
 
 mappairs_tree :: Root MatchTree
 mappairs_tree = mergePRoots (map (uncurry mkTree) mappairs_defs)
+
+mappairs_exp :: E.Exp
+mappairs_exp = enrichMRoot mappairs_tree
 
 {-
 MTVariable 1 ["f"] 
@@ -181,6 +192,11 @@ Root [1,2,3]
                                   (MTExp NIL))]))))),
       ("NIL",Root [] (MTVariable 3 (fromList ["ys"]) (MTExp NIL)))])))
 
+\_u1. \_u2. \_u3. case _u2 of
+                    CONS _u4 _u5 => case _u3 of
+                                      CONS _u6 _u7 => CONS (_u1 _u4 _u6) (mappairs _u1 _u5 _u7)
+                                      NIL => NIL
+                    NIL => NIL
 
 -}
 

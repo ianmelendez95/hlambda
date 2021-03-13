@@ -2,6 +2,7 @@ module Lambda.Enriched where
 
 import Prettyprinter
 import Data.List (foldl', foldl1', insert, nub)
+import Data.Foldable (foldr')
 
 import Lambda.Pretty
 import Lambda.Syntax (ToLambda (..))
@@ -31,6 +32,9 @@ data Pattern = PConstant S.Constant
 
 mkPattConstr :: Constructor -> [Pattern] -> Pattern
 mkPattConstr = PConstructor
+
+mkLambda :: [Pattern] -> Exp -> Exp
+mkLambda ps e = foldr' Lambda e ps
 
 mkApply :: [Exp] -> Exp
 mkApply = foldl1' Apply

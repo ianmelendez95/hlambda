@@ -91,6 +91,17 @@ MTVariable 1 ["f","f","f"]
                         (MTVariable 6 ["y"] 
                             (MTVariable 7 ["ys"] 
                                 (MTExp C f xs ys))))))))
+
+MTVariable 1 ["f"] 
+  (MTFatBar (MTFatBar (MTConstructor 2 [
+                        ("NIL",MTVariable 3 ["ys"] (MTExp A f ys))]) 
+                      (MTVariable 2 ["xs"] (MTConstructor 3 [("NIL",MTExp B f xs)]))) 
+            (MTConstructor 2 [
+              ("CONS",  MTVariable 4 ["x"] 
+                (MTVariable 5 ["xs"] 
+                  (MTConstructor 3 [ 
+                    ("CONS",  MTVariable 6 ["y"] (MTVariable 7 
+                                ["ys"] (MTExp C f xs ys))) ])))]))
 -}
 
 mappairs_defs :: [([E.Pattern], E.Exp)]

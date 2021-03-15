@@ -13,12 +13,19 @@ import Lambda.AlphaConv
 data Root a = Root [Int] a
             deriving Show
 
+instance Functor Root where 
+  fmap f (Root ns x) = Root ns (f x)
+
 rootNums :: Root a -> [Int]
 rootNums (Root ns _) = ns
 
 rootTree :: Root a -> a
 rootTree (Root _ t) = t
 
+-- | Honestly not a tree TODO: change naming to reflect this
+-- | it's the linear pattern structure of any given function definition,
+-- | formulated in such a way that it can be easily constructed and subsequently
+-- | converted to the actual 'match' tree 
 data PattTree = PTConstant (Numd S.Constant) PattTree
               | PTVariable (Numd S.Variable) PattTree
               | PTConstructor (Numd E.Constructor) (Root PattTree)
@@ -27,20 +34,41 @@ data PattTree = PTConstant (Numd S.Constant) PattTree
 
 data MatchTree = MTConstant Int [S.Constant] MatchTree
                | MTVariable Int (Set.Set S.Variable) MatchTree
-               | MTConstructor Int ConstructorMap
+               | MTConstructor Int ConsMap
                | MTFatBar MatchTree MatchTree
                | MTExp E.Exp
+               | MTFail
                deriving Show
 
-type ConstructorMap = Map.Map E.Constructor (Root MatchTree)
+-- TODO: candidate for a lazy map, not all values inserted will be used
+type ConsMap = Map.Map E.Constructor (Root MatchTree)
+
+newConsMap :: Int -> E.Constructor -> Root MatchTree -> ConsMap
+newConsMap i c t = insertConsMap c t (emptyConsMap c i)
+
+insertConsMap :: E.Constructor -> Root MatchTree -> ConsMap -> ConsMap
+insertConsMap = Map.insertWith (mergeRootsWith mergeCTrees)
+  where 
+    mergeCTrees :: MatchTree -> MatchTree -> MatchTree
+    mergeCTrees MTFail t2     = t2
+    mergeCTrees t1     MTFail = t1
+    mergeCTrees t1 t2 = mergeMTree t1 t2
+
+emptyConsMap :: E.Constructor -> Int -> ConsMap
+emptyConsMap "CONS" = listConsMap  
+emptyConsMap "NIL"  = listConsMap  
+emptyConsMap c = error $ "Uknown constructor: " ++ show c
+
+listConsMap :: Int -> ConsMap
+listConsMap first_n = 
+  let cons_arg_nums = take 2 [first_n..]
+   in Map.fromList [
+        ("CONS", Root cons_arg_nums MTFail),
+        ("NIL",  Root [] MTFail) 
+      ]
 
 --------------------------------------------------------------------------------
 -- The 'numbering' monad
-
-type IntS = State Int
-
-nextInt :: IntS Int
-nextInt = state (\n -> (n, n+1))
 
 data Numd a = Numd Int a
             deriving Show
@@ -99,16 +127,9 @@ demo_ptrees = [demo_ptree1, demo_ptree2, demo_ptree3]
 demo_mtree :: Root MatchTree
 demo_mtree = mergePRoots demo_ptrees
 {-
-MTVariable 1 ["f"] 
-  (MTFatBar (MTFatBar (MTConstructor 2 [
-                        ("NIL",MTVariable 3 ["ys"] (MTExp A f ys))]) 
-                      (MTVariable 2 ["xs"] (MTConstructor 3 [("NIL",MTExp B f xs)]))) 
-            (MTConstructor 2 [
-              ("CONS",  MTVariable 4 ["x"] 
-                (MTVariable 5 ["xs"] 
-                  (MTConstructor 3 [ 
-                    ("CONS",  MTVariable 6 ["y"] (MTVariable 7 
-                                ["ys"] (MTExp C f xs ys))) ])))]))
+demo f [] ys = A f ys
+demo f xs [] = B f xs
+demo f xs ys = C f x xs y ys
 
 Root [1,2,3] 
   MTVariable 1 (fromList ["f"]) 
@@ -166,17 +187,6 @@ mappairs_exp :: E.Exp
 mappairs_exp = enrichMRoot mappairs_tree
 
 {-
-MTVariable 1 ["f"] 
-  (MTConstructor 2 [
-    ("CONS",  MTVariable 4 ["x"] 
-                (MTVariable 5 ["xs"] 
-                  (MTConstructor 3 [
-                    ("CONS",  MTVariable 6 ["y"] 
-                                (MTVariable 7 ["ys"] 
-                                  (MTExp CONS (f x y) (mappairs f xs ys)))),
-                    ("NIL",   MTExp NIL)]))),
-    ("NIL",MTVariable 3 ["ys"] (MTExp NIL))])
-
 Root [1,2,3] 
   (MTVariable 1 (fromList ["f"]) 
     (MTConstructor 2 (fromList [
@@ -244,11 +254,6 @@ mergePRoots all_ts@((Root nums _):ts)
   | all ((nums ==) . rootNums) ts = Root nums (mergePTrees (map rootTree all_ts))
   | otherwise = error "mismatched root numbers"
 
-mergeRootsWith :: Show a => (a -> a -> a) -> Root a -> Root a -> Root a
-mergeRootsWith f r1@(Root ns1 t1) r2@(Root ns2 t2)
-  | ns1 == ns2 = Root ns1 (f t1 t2)
-  | otherwise = error $ "Mismatched root numbers: " ++ show r1 ++ " /= " ++ show r2
-
 mergePTrees :: [PattTree] -> MatchTree
 mergePTrees = mergeMTrees . map pattToMatchTree
 
@@ -256,6 +261,7 @@ mergeMTrees :: [MatchTree] -> MatchTree
 mergeMTrees = foldl1' mergeMTree
 
 mergeMTree :: MatchTree -> MatchTree -> MatchTree
+
 mergeMTree m1@(MTVariable n1 vs1 t1) m2@(MTVariable n2 vs2 t2) = 
   MTVariable (assertEqual (mTreeDivergeMsg m1 m2) n1 n2) (Set.union vs1 vs2) (mergeMTree t1 t2)
 
@@ -268,6 +274,12 @@ mergeMTree m1@(MTConstant n1 cs1 t1) m2@(MTConstant n2 cs2 t2) =
 
 mergeMTree (MTExp e) (MTExp _) = MTExp e
 mergeMTree m1 m2 = MTFatBar m1 m2
+
+mergeRootsWith :: Show a => (a -> a -> a) -> Root a -> Root a -> Root a
+mergeRootsWith f r1@(Root ns1 t1) r2@(Root ns2 t2)
+  | ns1 == ns2 = Root ns1 (f t1 t2)
+  | otherwise =
+      error $ "Mismatched root numbers: " ++ show r1 ++ " /= " ++ show r2
 
 treeDivergeMsg :: PattTree -> PattTree -> String
 treeDivergeMsg p1 p2 = "Pattern trees diverged in number: " ++ show p1 ++ " =/= " ++ show p2
@@ -300,9 +312,10 @@ enrichMTree' ns (MTConstructor i c_map) =
 enrichMTree' ns (MTFatBar t1 t2) = 
   E.FatBar (enrichMTree' ns t1) (enrichMTree' ns t2)
 enrichMTree' ns (MTExp expr) = alphaConvExp ns expr
+enrichMTree' _  MTFail = E.Pure (S.mkConstant S.CFail)
 
 -- TODO: - account for all constructors of type
-consMapToClauses :: Names -> ConstructorMap -> [E.CaseClause]
+consMapToClauses :: Names -> ConsMap -> [E.CaseClause]
 consMapToClauses ns = Map.foldrWithKey' foldrF []
   where 
     foldrF :: E.Constructor -> Root MatchTree -> [E.CaseClause] -> [E.CaseClause]

@@ -28,7 +28,7 @@ rootTree (Root _ t) = t
 -- | converted to the actual 'match' tree 
 data PattTree = PTConstant (Numd S.Constant) PattTree
               | PTVariable (Numd S.Variable) PattTree
-              | PTConstructor (Numd E.Constructor) (Root PattTree)
+              | PTConstructor (Numd E.Constructor) Int (Root PattTree) -- Int = the starting number for constructor args
               | PTExp E.Exp
               deriving Show
 
@@ -44,8 +44,9 @@ data MatchTree = MTConstant Int [S.Constant] MatchTree
 type ConsMap = Map.Map E.Constructor (Root MatchTree)
 
 newConsMap :: Int -> E.Constructor -> Root MatchTree -> ConsMap
-newConsMap i c t = insertConsMap c t (emptyConsMap c i)
+newConsMap an1 cons tree = insertConsMap cons tree (emptyConsMap an1 cons)
 
+-- TODO: account for invalid constructor for map
 insertConsMap :: E.Constructor -> Root MatchTree -> ConsMap -> ConsMap
 insertConsMap = Map.insertWith (mergeRootsWith mergeCTrees)
   where 
@@ -54,18 +55,17 @@ insertConsMap = Map.insertWith (mergeRootsWith mergeCTrees)
     mergeCTrees t1     MTFail = t1
     mergeCTrees t1 t2 = mergeMTree t1 t2
 
-emptyConsMap :: E.Constructor -> Int -> ConsMap
-emptyConsMap "CONS" = listConsMap  
-emptyConsMap "NIL"  = listConsMap  
-emptyConsMap c = error $ "Uknown constructor: " ++ show c
+emptyConsMap :: Int -> E.Constructor -> ConsMap
+emptyConsMap n "CONS" = listConsMap n
+emptyConsMap n "NIL"  = listConsMap n
+emptyConsMap _ c = error $ "Uknown constructor: " ++ show c
 
 listConsMap :: Int -> ConsMap
-listConsMap first_n = 
-  let cons_arg_nums = take 2 [first_n..]
-   in Map.fromList [
-        ("CONS", Root cons_arg_nums MTFail),
-        ("NIL",  Root [] MTFail) 
-      ]
+listConsMap n = 
+  Map.fromList [
+    ("NIL",  Root [] MTFail),
+    ("CONS", Root (take 2 [n..]) MTFail)
+  ]
 
 --------------------------------------------------------------------------------
 -- The 'numbering' monad
@@ -111,6 +111,9 @@ demo_def3 =
   where 
     mkV :: String -> E.Exp
     mkV = E.Pure . S.mkVariable
+
+demo_defs :: [([E.Pattern], E.Exp)]
+demo_defs = [demo_def1, demo_def2, demo_def3]
 
 demo_ptree1 :: Root PattTree
 demo_ptree1 = uncurry mkTree demo_def1
@@ -159,6 +162,18 @@ Root [1,2,3]
                     | case _u2 of
                         CONS _u4 _u5 => case _u3 of
                                           CONS _u6 _u7 => C _u1 _u4 _u5 _u6 _u7
+
+\_u1. \_u2. \_u3. case _u2 of
+                    CONS _u4 _u5 => FAIL
+                    NIL => A _u1 _u3
+                  | case _u3 of
+                      CONS _u4 _u5 => FAIL
+                      NIL => B _u1 _u2
+                  | case _u2 of
+                      CONS _u4 _u5 => case _u3 of
+                                        CONS _u6 _u7 => C _u1 _u4 _u5 _u6 _u7
+                                        NIL => FAIL
+                      NIL => FAIL
 -}
 
 mappairs_defs :: [([E.Pattern], E.Exp)]
@@ -235,16 +250,17 @@ mkTree' (Numd n p:ps) e =
     (E.PConstant c) -> PTConstant (Numd n c) <$> mkTree' ps e
     (E.PVariable v) -> PTVariable (Numd n v) <$> mkTree' ps e
     (E.PConstructor c cps) -> 
-      do numd_cps <- mapM numdNext cps
-         PTConstructor (Numd n c) . Root (map numdNum numd_cps) <$> mkTree' (numd_cps ++ ps) e
+      do a1n <- get
+         numd_cps <- mapM numdNext cps
+         PTConstructor (Numd n c) a1n . Root (map numdNum numd_cps) <$> mkTree' (numd_cps ++ ps) e
 
 --------------------------------------------------------------------------------
 -- merging into 'match tree'
 
 pattToMatchTree :: PattTree -> MatchTree
 pattToMatchTree (PTConstant (Numd n c) t) = MTConstant n [c] (pattToMatchTree t)
-pattToMatchTree (PTConstructor (Numd n c) (Root ns t)) = 
-  MTConstructor n (Map.singleton c (Root ns $ pattToMatchTree t))
+pattToMatchTree (PTConstructor (Numd n c) a1_n (Root ns t)) = 
+  MTConstructor n (newConsMap a1_n c (Root ns $ pattToMatchTree t))
 pattToMatchTree (PTVariable (Numd n v) t) = MTVariable n (Set.singleton v) (pattToMatchTree t)
 pattToMatchTree (PTExp e) = MTExp e
 

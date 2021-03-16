@@ -130,39 +130,6 @@ demo_ptrees = [demo_ptree1, demo_ptree2, demo_ptree3]
 demo_mtree :: Root MatchTree
 demo_mtree = mergePRoots demo_ptrees
 {-
-demo f [] ys = A f ys
-demo f xs [] = B f xs
-demo f xs ys = C f x xs y ys
-
-Root [1,2,3] 
-  MTVariable 1 (fromList ["f"]) 
-    (MTFatBar 
-      (MTFatBar (MTConstructor 2 (fromList [
-                  ("NIL", Root [] 
-                    MTVariable 3 (fromList ["ys"]) 
-                      (MTExp A f ys))])) 
-                (MTVariable 2 (fromList ["xs"]) 
-                  (MTConstructor 3 (fromList [
-                    ("NIL",Root [] 
-                      (MTExp B f xs))])))) 
-      (MTConstructor 2 (fromList [
-        ("CONS", Root [4,5] 
-          MTVariable 4 (fromList ["x"]) 
-            (MTVariable 5 (fromList ["xs"]) 
-              (MTConstructor 3 (fromList [
-                ("CONS",Root [6,7] 
-                  MTVariable 6 (fromList ["y"]) 
-                    (MTVariable 7 (fromList ["ys"]) 
-                      (MTExp C f xs ys)))]))))])))
-
-\_u1. \_u2. \_u3. case _u2 of
-                    NIL => A _u1 _u3 
-                  | case _u3 of
-                      NIL => B _u1 _u2 
-                    | case _u2 of
-                        CONS _u4 _u5 => case _u3 of
-                                          CONS _u6 _u7 => C _u1 _u4 _u5 _u6 _u7
-
 \_u1. \_u2. \_u3. case _u2 of
                     CONS _u4 _u5 => FAIL
                     NIL => A _u1 _u3
@@ -202,21 +169,6 @@ mappairs_exp :: E.Exp
 mappairs_exp = enrichMRoot mappairs_tree
 
 {-
-Root [1,2,3] 
-  (MTVariable 1 (fromList ["f"]) 
-    (MTConstructor 2 (fromList [
-      ("CONS", Root [4,5] 
-                 (MTVariable 4 (fromList ["x"]) 
-                   (MTVariable 5 (fromList ["xs"]) 
-                     (MTConstructor 3 (fromList [
-                       ("CONS", Root [6,7] 
-                                  (MTVariable 6 (fromList ["y"]) 
-                                    (MTVariable 7 (fromList ["ys"]) 
-                                      (MTExp CONS (f x y) (mappairs f xs ys))))),
-                       ("NIL",  Root [] 
-                                  (MTExp NIL))]))))),
-      ("NIL",Root [] (MTVariable 3 (fromList ["ys"]) (MTExp NIL)))])))
-
 \_u1. \_u2. \_u3. case _u2 of
                     CONS _u4 _u5 => case _u3 of
                                       CONS _u6 _u7 => CONS (_u1 _u4 _u6) (mappairs _u1 _u5 _u7)

@@ -40,6 +40,8 @@ data MatchTree = MTConstant Int [S.Constant] MatchTree
                | MTFail
                deriving Show
 
+type PattEq = ([E.Pattern], E.Exp)
+
 -- TODO: candidate for a lazy map, not all values inserted will be used
 type ConsMap = Map.Map E.Constructor (Root MatchTree)
 
@@ -163,10 +165,16 @@ mappairs_defs =
     mkV = S.mkVariable
 
 mappairs_tree :: Root MatchTree
-mappairs_tree = mergePRoots (map (uncurry mkTree) mappairs_defs)
+mappairs_tree = eqsToMTree mappairs_defs
 
 mappairs_exp :: E.Exp
-mappairs_exp = enrichMRoot mappairs_tree
+mappairs_exp = eqsToExp mappairs_defs
+
+eqsToMTree :: [PattEq] -> Root MatchTree
+eqsToMTree = mergePRoots . map (uncurry mkTree)
+
+eqsToExp :: [PattEq] -> E.Exp
+eqsToExp = enrichMRoot . eqsToMTree
 
 {-
 \_u1. \_u2. \_u3. case _u2 of
@@ -175,6 +183,27 @@ mappairs_exp = enrichMRoot mappairs_tree
                                       NIL => NIL
                     NIL => NIL
 
+-}
+
+unwieldy_defs :: [PattEq]
+unwieldy_defs = 
+  [ ( [ E.PConstructor "NIL" [],
+        E.PConstructor "NIL" [] ],
+      E.Pure $ mkV "A"),
+    ( [ E.PVariable    "xs", 
+        E.PVariable    "ys" ],
+      E.Pure (S.mkApply [mkV "B", mkV "xs", mkV "ys" ])) ]
+  where 
+    mkV :: String -> S.Exp
+    mkV = S.mkVariable
+
+{-
+\_u1. \_u2. case _u1 of
+              CONS _u3 _u4 => FAIL
+              NIL => case _u2 of
+                       CONS _u3 _u4 => FAIL
+                       NIL => A
+            | B _u1 _u2
 -}
 
 --------------------------------------------------------------------------------

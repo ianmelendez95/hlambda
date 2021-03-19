@@ -39,6 +39,13 @@ mkLambda ps e = foldr' Lambda e ps
 mkApply :: [Exp] -> Exp
 mkApply = foldl1' Apply
 
+mkIf :: Exp -> Exp -> Exp -> Exp
+mkIf cond true_clause false_clause = 
+  mkApply [mkFunction S.FIf, cond, true_clause, false_clause]
+
+mkFunction :: S.Function -> Exp
+mkFunction = Pure . S.mkFunction
+
 ----------------
 -- ToEnriched --
 ----------------
@@ -97,7 +104,9 @@ instance PrettyLambda Exp where
   prettyDoc' = mkPrettyDocFromParenS' sPretty
 
 sPretty :: Exp -> PrettyParenS LambdaDoc
-sPretty (Pure expr) = pure $ prettyDoc expr
+sPretty (Pure expr) = 
+  do curPrec <- getPrec
+     pure $ prettyDoc' curPrec expr
 sPretty (Letrec bindings body) = prettyLet "letrec" bindings body
 sPretty (Let bindings body)    = prettyLet "let" bindings body
 sPretty (FatBar e1 e2) = do p1 <- sPretty e1
@@ -128,7 +137,8 @@ sPretty (Case var clauses) =
 
 prettyLet :: String -> [LetBinding] -> Exp -> PrettyParenS LambdaDoc
 prettyLet let_kw bindings body = pure $ 
-  align . vsep $ [pretty let_kw <+> (align . vsep $ map prettyBinding bindings), pretty "in" <+> prettyDoc body]
+  align . vsep $ [pretty let_kw <+> (align . vsep $ map prettyBinding bindings), 
+                  pretty "in" <+> prettyDoc body]
 
 prettyBinding :: LetBinding -> LambdaDoc
 prettyBinding (pat, val) = prettyDoc' 11 pat <+> pretty "=" <+> prettyDoc val

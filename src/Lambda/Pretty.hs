@@ -15,6 +15,7 @@ module Lambda.Pretty
   , mkPrettyDocFromParenS'
   , getParenWrapper
   , tempState 
+  , getPrec
   , setPrec 
   ) where 
 
@@ -127,6 +128,9 @@ tempState change pe = do s <- get
 
 setPrec :: Int -> PrettyParenS ()
 setPrec prec = modify (\ps -> ps { parenPrec = prec })
+
+getPrec :: PrettyParenS Int
+getPrec = gets parenPrec
 
 -- | main reason for using state, so we can get the paren wrapper and update the paren state
 -- | in one swoop (still probably too obfuscated to be worth it)

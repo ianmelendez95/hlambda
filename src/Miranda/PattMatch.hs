@@ -55,8 +55,8 @@ data PattTree = PTConstant (Numd S.Constant) PattTree
               | PTExp E.Exp
               deriving Show
 
-data MatchTree = MTConstant Int [S.Constant] MatchTree
-               | MTVariable Int (Set.Set S.Variable) MatchTree
+data MatchTree = MTVariable Int (Set.Set S.Variable) MatchTree
+               | MTConstant Int S.Constant MatchTree
                | MTConstructor Int ConsMap
                | MTFatBar MatchTree MatchTree
                | MTExp E.Exp
@@ -150,7 +150,7 @@ mkTree' (Numd n p:ps) e =
 -- merging into 'match tree'
 
 pattToMatchTree :: PattTree -> MatchTree
-pattToMatchTree (PTConstant (Numd n c) t) = MTConstant n [c] (pattToMatchTree t)
+pattToMatchTree (PTConstant (Numd n c) t) = MTConstant n c (pattToMatchTree t)
 pattToMatchTree (PTConstructor (Numd n c) a1_n (Root ns t)) = 
   MTConstructor n (newConsMap a1_n c (Root ns $ pattToMatchTree t))
 pattToMatchTree (PTVariable (Numd n v) t) = MTVariable n (Set.singleton v) (pattToMatchTree t)
@@ -177,10 +177,8 @@ mergeMTree m1@(MTConstructor n1 ctrees1) m2@(MTConstructor n2 ctrees2) =
   MTConstructor (assertEqual (mTreeDivergeMsg m1 m2) n1 n2) 
                 (Map.unionWith (mergeRootsWith mergeMTree) ctrees1 ctrees2)
 
-mergeMTree m1@(MTConstant n1 cs1 t1) m2@(MTConstant n2 cs2 t2) = 
-  MTConstant (assertEqual (mTreeDivergeMsg m1 m2) n1 n2) (cs1 ++ cs2) (mergeMTree t1 t2)
-
 mergeMTree (MTExp e) (MTExp _) = MTExp e
+
 mergeMTree m1 m2 = MTFatBar m1 m2
 
 mergeRootsWith :: Show a => (a -> a -> a) -> Root a -> Root a -> Root a
@@ -213,8 +211,11 @@ enrichMTree :: MatchTree -> E.Exp
 enrichMTree = enrichMTree' IMap.empty 
 
 enrichMTree' :: Names -> MatchTree -> E.Exp
-enrichMTree' _ MTConstant{} = error "Don't know how to enrich constant branches"
 enrichMTree' ns (MTVariable i vs t) = enrichMTree' (IMap.insertWith Set.union i vs ns) t
+enrichMTree' ns (MTConstant i c t) =
+  E.mkIf (E.Pure (S.mkApply [S.mkFunction S.FNEq, S.mkVariable (numVar i), S.mkConstant c])) 
+         (E.Pure (S.mkConstant S.CFail))
+         (enrichMTree' ns t)
 enrichMTree' ns (MTConstructor i c_map) = 
   E.Case (numVar i) (consMapToClauses ns c_map)
 enrichMTree' ns (MTFatBar t1 t2) = 

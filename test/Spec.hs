@@ -100,9 +100,11 @@ main = hspec $ do
     it "p58: parses funnyLastElt" $ do 
       parseMatchesProg "funnyLastElt (x : xs) = x, x < 0\nfunnyLastElt (x : []) = x\nfunnyLastElt (x : xs) = funnyLastElt xs\nfunnyLastElt [1,2,3]"
 
-    it "p60: enriches pattern arg definition" $ do 
-      showEnrichedMiranda "fst (x,y) = x\nfst (1,2)"
-        `ioShouldBe` "letrec fst = \\a. case a of\n                   PAIR x y => x\nin fst (PAIR 1 2)"
+    it "p60: [single-pattern-arg] enriches pattern arg definition" $ do 
+      let test_file_base = "single-pattern-arg"
+      mcontent <- readMiranda test_file_base
+      elcontent <- readEnriched test_file_base
+      showEnrichedMiranda mcontent `ioShouldBe` elcontent
     
     it "p62: enriches incomplete pattern matching" $ do
       let test_file_base = "hd-incomplete-patt"

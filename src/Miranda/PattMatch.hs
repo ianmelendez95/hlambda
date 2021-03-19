@@ -14,7 +14,15 @@ import Lambda.AlphaConv
 -- Interface
 
 patternEquationsToEnriched :: [([E.Pattern], E.Exp)] -> E.Exp
-patternEquationsToEnriched = enrichMRoot . eqsToMTree
+patternEquationsToEnriched patt_eqs 
+  | not . allEqual $ map (length . fst) patt_eqs = 
+      error $ "Equations have different number of arguments: " ++ show patt_eqs
+  | otherwise = enrichMRoot . eqsToMTree $ patt_eqs
+  where 
+    allEqual :: Eq a => [a] -> Bool
+    allEqual [] = True
+    allEqual (x:xs) = all (== x) xs 
+
 
 eqsToMTree :: [([E.Pattern], E.Exp)] -> Root MatchTree
 eqsToMTree = mergePRoots . map (uncurry mkTree)

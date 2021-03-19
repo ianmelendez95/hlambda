@@ -33,6 +33,7 @@ import Data.List (intersperse, foldl1', foldl')
 import Data.Maybe (mapMaybe)
 import qualified Data.Map as Map
 import Data.Bifunctor (bimap)
+import Miranda.PattMatch (PattEq, patternEquationsToEnriched)
 
 import qualified Miranda.Token as T
 import Lambda.Pretty
@@ -223,73 +224,16 @@ pattToBinding (PDef param rhs) =
    in (funcPatternToPattern param, binding_exp)
 
 funcToBinding :: String -> [DefSpec] -> E.LetBinding
-funcToBinding fname [spec@(DefSpec ps _)] = 
-  if all isVarArg ps
-    then (E.PVariable fname, toBindingExp spec)
-    else funcToBinding' fname [spec]
-  where 
-    isVarArg :: Pattern -> Bool
-    isVarArg (PVariable _) = True
-    isVarArg _ = False
+funcToBinding fname specs = (E.PVariable fname, defSpecsToEnriched specs)
 
-funcToBinding fname specs
-  | not . allEqual . map defSpecPatternCount $ specs = error $ "Functions have differing number of arguments: " ++ fname
-  | otherwise = funcToBinding' fname specs
-  where 
-    allEqual :: Eq a => [a] -> Bool
-    allEqual [] = True
-    allEqual (x:xs) = all (== x) xs 
+defSpecsToEnriched :: [DefSpec] -> E.Exp
+defSpecsToEnriched = patternEquationsToEnriched . map defSpecToPattEq
 
--- | like funcToBinding, but does not perform preliminary checks, always performs case wrapping
-funcToBinding' :: String -> [DefSpec] -> E.LetBinding
-funcToBinding' fname specs =
-  case maybeCaseSpecs specs of 
-    Just (singleton_params, base_clauses) ->
-      let binding_exprs = map (\cs -> toBindingExp (mkDefSpec [] [cs] [])) base_clauses
-          param_patts = map funcPatternToPattern singleton_params
-
-          free_vars = concatMap E.freeVariables binding_exprs
-          first_arg_name = newName free_vars
-          
-      in (E.PVariable fname, 
-          E.Lambda (E.PVariable first_arg_name) 
-                   (E.Case first_arg_name (zip param_patts binding_exprs)))
-    Nothing -> 
-      let binding_exprs = map toBindingExp specs
-
-          free_vars = concatMap E.freeVariables binding_exprs
-          first_arg_name = newName free_vars
-          arg_names = take (defSpecPatternCount . head $ specs) $ nextNames free_vars first_arg_name
-
-          lambda_body = foldr (E.FatBar . applyArgsToPatternExpr arg_names)
-                              (E.Pure . S.mkConstant $ S.CError) 
-                              binding_exprs
-          lambda = wrapLambdaArgs arg_names lambda_body
-
-      in (E.PVariable fname, lambda)
-  where 
-    -- | collects the params and clauses that can result in a case expression
-    -- | specifically, filters for func specs with a single paramater and base rhs clause,
-    -- | short-circuiting if there's multiple params or not just a single base rhs clause
-    maybeCaseSpecs :: [DefSpec] -> Maybe ([Pattern], [RhsClause])
-    maybeCaseSpecs = traverseMaybePairs . map maybeCaseSpec
-
-    traverseMaybePairs :: [Maybe (a, b)] -> Maybe ([a], [b])
-    traverseMaybePairs [] = Just ([], [])
-    traverseMaybePairs (Just (x, y) : rest) = 
-      bimap (x:) (y:) <$> traverseMaybePairs rest
-    traverseMaybePairs _ = Nothing
-
-    maybeCaseSpec :: DefSpec -> Maybe (Pattern, RhsClause)
-    maybeCaseSpec (DefSpec [p] (Rhs [c@(BaseClause _)] [])) = Just (p, c)
-    maybeCaseSpec _ = Nothing
-
-    applyArgsToPatternExpr :: [String] -> E.Exp -> E.Exp
-    applyArgsToPatternExpr args expr = 
-      foldl' (\apply arg -> E.Apply apply (E.Pure . S.mkVariable $ arg)) expr args
-
-    wrapLambdaArgs :: [String] -> E.Exp -> E.Exp
-    wrapLambdaArgs args body = foldr (E.Lambda . E.PVariable) body args
+defSpecToPattEq :: DefSpec -> PattEq
+defSpecToPattEq (DefSpec patts rhs) = 
+  let enr_patts = map funcPatternToPattern patts
+      enr_rhs = E.toEnriched rhs
+   in (enr_patts, enr_rhs)
 
 -- | takes the function def components and creates a binding expression
 -- | where the def components are 

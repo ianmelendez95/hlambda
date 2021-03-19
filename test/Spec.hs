@@ -106,7 +106,7 @@ main = hspec $ do
       elcontent <- readEnriched test_file_base
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
     
-    it "p62: enriches incomplete pattern matching" $ do
+    it "p62: [hd-incomplete-patt] enriches incomplete pattern matching" $ do
       let test_file_base = "hd-incomplete-patt"
       mcontent <- readMiranda test_file_base
       elcontent <- readEnriched test_file_base

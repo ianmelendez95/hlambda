@@ -87,7 +87,12 @@ insertConsMap = Map.insertWith (mergeRootsWith mergeCTrees)
 emptyConsMap :: Int -> E.Constructor -> ConsMap
 emptyConsMap n "CONS" = listConsMap n
 emptyConsMap n "NIL"  = listConsMap n
+
 emptyConsMap n "PAIR" = pairMap n
+
+emptyConsMap n "LEAF"   = treeMap n
+emptyConsMap n "BRANCH" = treeMap n
+
 emptyConsMap _ c = error $ "Uknown constructor: " ++ show c
 
 listConsMap :: Int -> ConsMap
@@ -100,6 +105,12 @@ listConsMap n =
 pairMap :: Int -> ConsMap
 pairMap n = Map.singleton "PAIR" (Root (take 2 [n..]) MTFail)
   
+treeMap :: Int -> ConsMap
+treeMap n =
+  Map.fromList [
+    ("LEAF",  Root [n] MTFail),
+    ("BRANCH", Root (take 2 [n..]) MTFail)
+  ]
 
 --------------------------------------------------------------------------------
 -- The 'numbering' monad

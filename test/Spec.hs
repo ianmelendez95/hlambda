@@ -123,7 +123,6 @@ main = hspec $ do
       elcontent <- readEnriched "conditional-no-default"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
       
-    -- TODO check out unnecessary FAIL | FAIL ...
     it "p63: [conditional-list-patts] translates conditional equation" $ do
       let test_file_base = "conditional-list-patts"
       mcontent <- readMiranda test_file_base

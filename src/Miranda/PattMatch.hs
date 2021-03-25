@@ -191,9 +191,6 @@ mergeRootsWith f r1@(Root ns1 t1) r2@(Root ns2 t2)
   | otherwise =
       error $ "Mismatched root numbers: " ++ show r1 ++ " /= " ++ show r2
 
-treeDivergeMsg :: PattTree -> PattTree -> String
-treeDivergeMsg p1 p2 = "Pattern trees diverged in number: " ++ show p1 ++ " =/= " ++ show p2
-
 mTreeDivergeMsg :: MatchTree -> MatchTree -> String
 mTreeDivergeMsg p1 p2 = "Pattern trees diverged in number: " ++ show p1 ++ " =/= " ++ show p2
 

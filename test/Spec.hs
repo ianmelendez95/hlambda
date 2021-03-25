@@ -134,12 +134,12 @@ main = hspec $ do
       showEnrichedMiranda "factorial n = 1, n==0\n            = n * factorial (n-1)\nfactorial 4"
         `ioShouldBe` "letrec factorial = \\_u1. IF (= _u1 0) 1 (* _u1 (factorial (- _u1 1)))\nin factorial 4"
 
-    it "p66: enriches where clauses" $ do
+    it "p66: [sumsq] enriches where clauses" $ do
       mcontent <- readFile "test-ref/sumsq.m"
       elcontent <- readFile "test-ref/sumsq.el"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
 
-    it "p66: enriches gcd, which has a little bit of everything" $ do 
+    it "p66: [gcd] enriches gcd, which has a little bit of everything" $ do 
       mcontent <- readMiranda "gcd"
       elcontent <- readEnriched "gcd"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent

@@ -1,2 +1,2 @@
-letrec fact = \n. IF (= n 0) 1 (* n (fact (- n 1)))
+letrec fact = \_u1. IF (= _u1 0) 1 (* _u1 (fact (- _u1 1)))
 in fact 4

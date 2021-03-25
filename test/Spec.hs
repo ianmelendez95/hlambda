@@ -144,30 +144,30 @@ main = hspec $ do
       elcontent <- readEnriched "gcd"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
 
-    it "p66: doesn't if against FAIL if no last guard" $ do
+    it "p66: [no-last-guard] doesn't if against FAIL if no last guard" $ do
       mcontent <- readFile "test-ref/no-last-guard.m"
       elcontent <- readFile "test-ref/no-last-guard.el"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
       showReducedMiranda mcontent `ioShouldBe` "5"
     
-    it "p66: doesn't if against FAIL if last guard is True" $ do
+    it "p66: [true-last-guard] doesn't if against FAIL if last guard is True" $ do
       mcontent <- readFile "test-ref/true-last-guard.m"
       elcontent <- readFile "test-ref/true-last-guard.el"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
       showReducedMiranda mcontent `ioShouldBe` "5"
     
-    it "p67: enriches a where lhs pattern expression" $ do
+    it "p67: [lhs-pattern] enriches a where lhs pattern expression" $ do
       mcontent <- readFile "test-ref/lhs-pattern.m"
       elcontent <- readFile "test-ref/lhs-pattern.el"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
     
-    it "reduces simple factorial" $ do 
+    it "[simple-fact] reduces simple factorial" $ do 
       mcontent <- readMiranda "simple-fact"
       elcontent <- readEnriched "simple-fact"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
       showReducedMiranda mcontent `ioShouldBe` "24"
 
-    it "p75: transforms reflect to case" $ do 
+    it "p75: [reflect] transforms reflect to case" $ do 
       mcontent <- readMiranda "reflect"
       elcontent <- readEnriched "reflect"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent

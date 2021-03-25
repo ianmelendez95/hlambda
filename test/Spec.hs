@@ -112,21 +112,23 @@ main = hspec $ do
       elcontent <- readEnriched test_file_base
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
 
-    it "p63: translates multiple arguments" $ do 
+    it "p63: [mult-const-patterns] translates multiple arguments" $ do 
       let test_file_base = "mult-const-patterns"
       mcontent <- readMiranda test_file_base
       elcontent <- readEnriched test_file_base
-      -- lcontent <- readLambda test_file_base
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
-      -- showLambdadMiranda mcontent `ioShouldBe` lcontent
-      -- showReducedMiranda mcontent `ioShouldBe` "7"
     
-    it "p63: translates conditional equation" $ do 
-      showEnrichedMiranda "gcd a b = gcd (a-b) b, a>b\n        = gcd a (b-a), a<b\n        = a, a==b\ngcd 6 9"
-        `ioShouldBe` "letrec gcd = \\a. \\b. IF (> a b) (gcd (- a b) b) (IF (< a b) (gcd a (- b a)) (IF (= a b) a FAIL))\nin gcd 6 9"
+    it "p63: [conditional-no-default] translates conditional equation" $ do 
+      mcontent <- readMiranda "conditional-no-default"
+      elcontent <- readEnriched "conditional-no-default"
+      showEnrichedMiranda mcontent `ioShouldBe` elcontent
       
-      showEnrichedMiranda "funnyLastElt (x:xs) = x, x<0\nfunnyLastElt (x:[]) = x\nfunnyLastElt (x:xs) = funnyLastElt xs\nfunnyLastElt [1,2,3]"
-        `ioShouldBe` "letrec funnyLastElt = \\a. (\\CONS x xs. IF (< x 0) x FAIL) a\n                          | (\\CONS x NIL. x) a\n                            | (\\CONS x xs. funnyLastElt xs) a\n                              | ERROR\nin funnyLastElt (CONS 1 (CONS 2 (CONS 3 NIL)))"
+    -- TODO check out unnecessary FAIL | FAIL ...
+    it "p63: [conditional-list-patts] translates conditional equation" $ do
+      let test_file_base = "conditional-list-patts"
+      mcontent <- readMiranda test_file_base
+      elcontent <- readEnriched test_file_base
+      showEnrichedMiranda mcontent `ioShouldBe` elcontent
 
     it "p64: translates conditional with base clause equation" $ do
       showEnrichedMiranda "factorial n = 1, n==0\n            = n * factorial (n-1)\nfactorial 4"

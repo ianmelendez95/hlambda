@@ -1,5 +1,2 @@
-letrec xor = \a. \b. (\FALSE. \y. y) a b
-                     | (\TRUE. \FALSE. TRUE) a b
-                       | (\TRUE. \TRUE. FALSE) a b
-                         | ERROR
+letrec xor = \_u1. \_u2. IF (= _u1 FALSE) _u2 (IF (= _u1 TRUE) (IF (= _u2 FALSE) TRUE (IF (= _u2 TRUE) FALSE FAIL)) FAIL)
 in xor TRUE TRUE

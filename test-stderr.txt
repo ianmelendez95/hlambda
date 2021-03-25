@@ -1,0 +1,11 @@
+hlambda> test (suite: hlambda-test)
+
+hlambda-test: Uknown constructor: "BRANCH"
+CallStack (from HasCallStack):
+  error, called at src/Miranda/PattMatch.hs:91:20 in hlambda-0.1.0.0-6JnRyRxu0OEHRD9n5KVsXe:Miranda.PattMatch
+
+hlambda> Test suite hlambda-test failed
+Test suite failure for package hlambda-0.1.0.0
+    hlambda-test:  exited with: ExitFailure 1
+Logs printed to console
+

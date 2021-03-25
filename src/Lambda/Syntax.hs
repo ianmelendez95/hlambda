@@ -70,7 +70,7 @@ data Constant = CNat Int
               | CNil
               | CFail
               | CError
-              deriving Eq
+              deriving (Eq, Ord)
 
 --------------------------------------------------------------------------------
 -- Builders

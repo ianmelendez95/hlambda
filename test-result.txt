@@ -1,0 +1,97 @@
+
+3.3 Translating Miranda
+  p44: evaluates simple program
+  p47: evaluates user-defined infix
+3.6 An Example
+  p48: average example
+4.1 Introduction to Structured Types
+  p52: parses simple tree type
+  p52: parses constructors as functions
+  p52: parses constructors as args
+  p53: parses constructor with type variables
+  p53: parses constructor in expressions
+  p53: parses list definition
+  p53: parses list special syntax
+  p53: translates list special syntax
+  p54: translates tuple type sigs
+  p54: translates tuple special syntax
+  p55: parses no arg constructors
+4.2 Translating Miranda into the Enriched Lambda Calculus
+  p57: parses multiple function defs
+  p58: parses string literals in patterns
+  p58: parses several arguments
+  p58: parses conditional equations
+  p58: parses funnyLastElt
+  p60: [single-pattern-arg] enriches pattern arg definition
+  p62: [hd-incomplete-patt] enriches incomplete pattern matching
+  p63: [mult-const-patterns] translates multiple arguments
+  p63: translates conditional equation FAILED [1]
+  p64: translates conditional with base clause equation FAILED [2]
+  p66: enriches where clauses FAILED [3]
+  p66: enriches gcd, which has a little bit of everything FAILED [4]
+  p66: doesn't if against FAIL if no last guard FAILED [5]
+  p66: doesn't if against FAIL if last guard is True FAILED [6]
+  p67: enriches a where lhs pattern expression FAILED [7]
+  reduces simple factorial FAILED [8]
+  p75: transforms reflect to case FAILED [9]
+
+Failures:
+
+  test/Spec.hs:185:26: 
+  1) 4.2 Translating Miranda into the Enriched Lambda Calculus p63: translates conditional equation
+       expected: "letrec gcd = \\a. \\b. IF (> a b) (gcd (- a b) b) (IF (< a b) (gcd a (- b a)) (IF (= a b) a FAIL))\nin gcd 6 9"
+        but got: "letrec gcd = \\_u1. \\_u2. IF (> _u1 _u2) (gcd (- _u1 _u2) _u2) (IF (< _u1 _u2) (gcd _u1 (- _u2 _u1)) (IF (= _u1 _u2) _u1 FAIL))\nin gcd 6 9"
+
+  To rerun use: --match "/4.2 Translating Miranda into the Enriched Lambda Calculus/p63: translates conditional equation/"
+
+  test/Spec.hs:185:26: 
+  2) 4.2 Translating Miranda into the Enriched Lambda Calculus p64: translates conditional with base clause equation
+       expected: "letrec factorial = \\n. IF (= n 0) 1 (* n (factorial (- n 1)))\nin factorial 4"
+        but got: "letrec factorial = \\_u1. IF (= _u1 0) 1 (* _u1 (factorial (- _u1 1)))\nin factorial 4"
+
+  To rerun use: --match "/4.2 Translating Miranda into the Enriched Lambda Calculus/p64: translates conditional with base clause equation/"
+
+  test/Spec.hs:185:26: 
+  3) 4.2 Translating Miranda into the Enriched Lambda Calculus p66: enriches where clauses
+       expected: "letrec sumsq = \\x. \\y. letrec xsq = * x x\n                              ysq = * y y\n                       in + xsq ysq\nin sumsq 2 3"
+        but got: "letrec sumsq = \\_u1. \\_u2. letrec xsq = * x x\n                                  ysq = * y y\n                           in + xsq ysq\nin sumsq 2 3"
+
+  To rerun use: --match "/4.2 Translating Miranda into the Enriched Lambda Calculus/p66: enriches where clauses/"
+
+  test/Spec.hs:185:26: 
+  4) 4.2 Translating Miranda into the Enriched Lambda Calculus p66: enriches gcd, which has a little bit of everything
+       expected: "letrec gcd = \\a. \\b. letrec diff = - a b\n                     in IF (> a b) (gcd diff b) (IF (< a b) (gcd a (- diff)) (IF (= a b) a FAIL))\nin gcd 6 9"
+        but got: "letrec gcd = \\_u1. \\_u2. letrec diff = - a b\n                         in IF (> _u1 _u2) (gcd diff _u2) (IF (< _u1 _u2) (gcd _u1 (- diff)) (IF (= _u1 _u2) _u1 FAIL))\nin gcd 6 9"
+
+  To rerun use: --match "/4.2 Translating Miranda into the Enriched Lambda Calculus/p66: enriches gcd, which has a little bit of everything/"
+
+  test/Spec.hs:185:26: 
+  5) 4.2 Translating Miranda into the Enriched Lambda Calculus p66: doesn't if against FAIL if no last guard
+       expected: "letrec f = \\x. IF (> x 0) x 0\nin f 5"
+        but got: "letrec f = \\_u1. IF (> _u1 0) _u1 0\nin f 5"
+
+  To rerun use: --match "/4.2 Translating Miranda into the Enriched Lambda Calculus/p66: doesn't if against FAIL if no last guard/"
+
+  test/Spec.hs:185:26: 
+  6) 4.2 Translating Miranda into the Enriched Lambda Calculus p66: doesn't if against FAIL if last guard is True
+       expected: "letrec f = \\x. IF (> x 0) x 0\nin f 5"
+        but got: "letrec f = \\_u1. IF (> _u1 0) _u1 0\nin f 5"
+
+  To rerun use: --match "/4.2 Translating Miranda into the Enriched Lambda Calculus/p66: doesn't if against FAIL if last guard is True/"
+
+  test/Spec.hs:185:26: 
+  7) 4.2 Translating Miranda into the Enriched Lambda Calculus p67: enriches a where lhs pattern expression
+       expected: "letrec addPair = \\w. letrec (PAIR x y) = w\n                     in + x y\nin addPair (PAIR 3 7)"
+        but got: "letrec addPair = \\_u1. letrec (PAIR x y) = \\PAIR x y. w\n                       in + x y\nin addPair (PAIR 3 7)"
+
+  To rerun use: --match "/4.2 Translating Miranda into the Enriched Lambda Calculus/p67: enriches a where lhs pattern expression/"
+
+  test/Spec.hs:185:26: 
+  8) 4.2 Translating Miranda into the Enriched Lambda Calculus reduces simple factorial
+       expected: "letrec fact = \\n. IF (= n 0) 1 (* n (fact (- n 1)))\nin fact 4"
+        but got: "letrec fact = \\_u1. IF (= _u1 0) 1 (* _u1 (fact (- _u1 1)))\nin fact 4"
+
+  To rerun use: --match "/4.2 Translating Miranda into the Enriched Lambda Calculus/reduces simple factorial/"
+
+  test/Spec.hs:185:26: 
+  9) 4.2 Translating Miranda into the Enriched Lambda Calculus p75: transforms reflect to case

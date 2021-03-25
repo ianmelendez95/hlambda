@@ -9,6 +9,7 @@ import qualified Data.Set as Set
 import qualified Lambda.Syntax as S
 import qualified Lambda.Enriched as E
 import Lambda.AlphaConv
+import Debug.Trace (trace)
 
 --------------------------------------------------------------------------------
 -- Interface
@@ -56,7 +57,7 @@ data PattTree = PTConstant (Numd S.Constant) PattTree
               deriving Show
 
 data MatchTree = MTVariable Int (Set.Set S.Variable) MatchTree
-               | MTConstant Int S.Constant MatchTree
+               | MTConstant Int (Map.Map S.Constant MatchTree)
                | MTConstructor Int ConsMap
                | MTFatBar MatchTree MatchTree
                | MTExp E.Exp
@@ -150,7 +151,7 @@ mkTree' (Numd n p:ps) e =
 -- merging into 'match tree'
 
 pattToMatchTree :: PattTree -> MatchTree
-pattToMatchTree (PTConstant (Numd n c) t) = MTConstant n c (pattToMatchTree t)
+pattToMatchTree (PTConstant (Numd n c) t) = MTConstant n (Map.singleton c (pattToMatchTree t))
 pattToMatchTree (PTConstructor (Numd n c) a1_n (Root ns t)) = 
   MTConstructor n (newConsMap a1_n c (Root ns $ pattToMatchTree t))
 pattToMatchTree (PTVariable (Numd n v) t) = MTVariable n (Set.singleton v) (pattToMatchTree t)
@@ -177,8 +178,11 @@ mergeMTree m1@(MTConstructor n1 ctrees1) m2@(MTConstructor n2 ctrees2) =
   MTConstructor (assertEqual (mTreeDivergeMsg m1 m2) n1 n2) 
                 (Map.unionWith (mergeRootsWith mergeMTree) ctrees1 ctrees2)
 
-mergeMTree (MTExp e) (MTExp _) = MTExp e
+mergeMTree m1@(MTConstant n1 cmap1) m2@(MTConstant n2 cmap2) =
+  MTConstant (assertEqual (mTreeDivergeMsg m1 m2) n1 n2)
+             (Map.unionWith mergeMTree cmap1 cmap2)
 
+mergeMTree (MTExp e) (MTExp _) = MTExp e
 mergeMTree m1 m2 = MTFatBar m1 m2
 
 mergeRootsWith :: Show a => (a -> a -> a) -> Root a -> Root a -> Root a
@@ -212,16 +216,21 @@ enrichMTree = enrichMTree' IMap.empty
 
 enrichMTree' :: Names -> MatchTree -> E.Exp
 enrichMTree' ns (MTVariable i vs t) = enrichMTree' (IMap.insertWith Set.union i vs ns) t
-enrichMTree' ns (MTConstant i c t) =
-  E.mkIf (E.Pure (S.mkApply [S.mkFunction S.FNEq, S.mkVariable (numVar i), S.mkConstant c])) 
-         (E.Pure (S.mkConstant S.CFail))
-         (enrichMTree' ns t)
+enrichMTree' ns (MTConstant i ct) = enrichConstantBranch ns i ct
 enrichMTree' ns (MTConstructor i c_map) = 
   E.Case (numVar i) (consMapToClauses ns c_map)
 enrichMTree' ns (MTFatBar t1 t2) = 
   E.FatBar (enrichMTree' ns t1) (enrichMTree' ns t2)
 enrichMTree' ns (MTExp expr) = alphaConvExp ns expr
 enrichMTree' _  MTFail = E.Pure (S.mkConstant S.CFail)
+
+enrichConstantBranch :: Names -> Int -> Map.Map S.Constant MatchTree -> E.Exp
+enrichConstantBranch ns i = Map.foldrWithKey' foldF (E.Pure $ S.mkConstant S.CFail)
+  where 
+    foldF :: S.Constant -> MatchTree -> E.Exp -> E.Exp
+    foldF c ct = 
+      E.mkIf (E.Pure (S.mkApply [S.mkFunction S.FEq, S.mkVariable (numVar i), S.mkConstant c])) 
+             (enrichMTree' ns ct)
 
 -- TODO: - account for all constructors of type
 consMapToClauses :: Names -> ConsMap -> [E.CaseClause]

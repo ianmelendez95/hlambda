@@ -132,7 +132,7 @@ main = hspec $ do
 
     it "p64: translates conditional with base clause equation" $ do
       showEnrichedMiranda "factorial n = 1, n==0\n            = n * factorial (n-1)\nfactorial 4"
-        `ioShouldBe` "letrec factorial = \\n. IF (= n 0) 1 (* n (factorial (- n 1)))\nin factorial 4"
+        `ioShouldBe` "letrec factorial = \\_u1. IF (= _u1 0) 1 (* _u1 (factorial (- _u1 1)))\nin factorial 4"
 
     it "p66: enriches where clauses" $ do
       mcontent <- readFile "test-ref/sumsq.m"

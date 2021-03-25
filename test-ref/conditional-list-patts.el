@@ -5,6 +5,4 @@ letrec funnyLastElt = \_u1. case _u1 of
                                                   NIL => _u2
                                               | funnyLastElt _u3
                               NIL => FAIL
-                                     | FAIL
-                                     | FAIL
 in funnyLastElt (CONS 1 (CONS 2 (CONS 3 NIL)))

@@ -194,6 +194,10 @@ mergeMTree m1@(MTConstant n1 cmap1) m2@(MTConstant n2 cmap2) =
              (Map.unionWith mergeMTree cmap1 cmap2)
 
 mergeMTree (MTExp e) (MTExp _) = MTExp e
+
+mergeMTree MTFail t = t
+mergeMTree t MTFail = t
+
 mergeMTree m1 m2 = MTFatBar m1 m2
 
 mergeRootsWith :: Show a => (a -> a -> a) -> Root a -> Root a -> Root a

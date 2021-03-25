@@ -220,7 +220,7 @@ toBindings defs =
 
 pattToBinding :: PattDef -> E.LetBinding
 pattToBinding (PDef param rhs) = 
-  let binding_exp = toBindingExp (DefSpec [param] rhs)
+  let binding_exp = toBindingExp (DefSpec [] rhs)
    in (funcPatternToPattern param, binding_exp)
 
 funcToBinding :: String -> [DefSpec] -> E.LetBinding

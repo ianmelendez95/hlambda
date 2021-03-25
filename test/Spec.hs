@@ -143,7 +143,6 @@ main = hspec $ do
       mcontent <- readMiranda "gcd"
       elcontent <- readEnriched "gcd"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
-      -- showReducedMiranda mcontent `ioShouldBe` "3"
 
     it "p66: doesn't if against FAIL if no last guard" $ do
       mcontent <- readFile "test-ref/no-last-guard.m"

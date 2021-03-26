@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 0c8c21e68e88d129793cb03438555344f3635745cd9ec283a4ab99727b256710
+-- hash: 96f188947814636d3e02e7d68d1a1f09032827b01e30fcd9d9bc38dc32197918
 
 name:           hlambda
 version:        0.1.0.0
@@ -81,6 +81,7 @@ test-suite hlambda-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Miranda.TransformSpec
       SpecUtil
       Paths_hlambda
   hs-source-dirs:

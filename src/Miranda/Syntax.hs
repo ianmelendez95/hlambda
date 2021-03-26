@@ -32,7 +32,6 @@ import Prettyprinter
 import Data.List (intersperse, foldl1', foldl')
 import Data.Maybe (mapMaybe)
 import qualified Data.Map as Map
-import Data.Bifunctor (bimap)
 import Miranda.PattMatch (PattEq, patternEquationsToEnriched)
 
 import qualified Miranda.Token as T
@@ -49,7 +48,6 @@ import Lambda.Pretty
 import Lambda.Enriched (ToEnriched (..))
 import Lambda.Syntax (ToLambda (..))
 import Lambda.Reduce (Reducible (..))
-import Lambda.Name (newName, nextNames)
 import qualified Lambda.Enriched as E
 import qualified Lambda.Syntax as S
 
@@ -143,9 +141,6 @@ mkPattDef p rcs ads = PDef p $ Rhs rcs ads
 
 mkDefSpec :: [Pattern] -> [RhsClause] -> [AssignDef] -> DefSpec
 mkDefSpec ps cls defs = DefSpec ps (Rhs cls defs)
-
-defSpecPatternCount :: DefSpec -> Int
-defSpecPatternCount (DefSpec ps _) = length ps
 
 --------------------------------------------------------------------------------
 -- Accessors

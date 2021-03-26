@@ -9,7 +9,6 @@ import qualified Data.Set as Set
 import qualified Lambda.Syntax as S
 import qualified Lambda.Enriched as E
 import Lambda.AlphaConv
-import Debug.Trace (trace)
 
 --------------------------------------------------------------------------------
 -- Interface
@@ -271,48 +270,48 @@ numVar n = "_u" ++ show n
 --------------------------------------------------------------------------------
 -- Test Input
 
-demo_def1 :: ([E.Pattern], E.Exp)
-demo_def1 = 
-  ( [ E.PVariable "f", 
-      E.PConstructor "NIL" [],
-      E.PVariable "ys" ],
-    E.mkApply [E.Pure (S.mkVariable "A"), E.Pure (S.mkVariable "f"), E.Pure (S.mkVariable "ys")])
+-- demo_def1 :: ([E.Pattern], E.Exp)
+-- demo_def1 = 
+--   ( [ E.PVariable "f", 
+--       E.PConstructor "NIL" [],
+--       E.PVariable "ys" ],
+--     E.mkApply [E.Pure (S.mkVariable "A"), E.Pure (S.mkVariable "f"), E.Pure (S.mkVariable "ys")])
 
 
-demo_def2 :: ([E.Pattern], E.Exp)
-demo_def2 = 
-  ( [ E.PVariable "f", 
-      E.PVariable "xs",
-      E.PConstructor "NIL" [] ],
-    E.mkApply [E.Pure (S.mkVariable "B"), E.Pure (S.mkVariable "f"), E.Pure (S.mkVariable "xs")])
+-- demo_def2 :: ([E.Pattern], E.Exp)
+-- demo_def2 = 
+--   ( [ E.PVariable "f", 
+--       E.PVariable "xs",
+--       E.PConstructor "NIL" [] ],
+--     E.mkApply [E.Pure (S.mkVariable "B"), E.Pure (S.mkVariable "f"), E.Pure (S.mkVariable "xs")])
 
-demo_def3 :: ([E.Pattern], E.Exp)
-demo_def3 = 
-  ( [ E.PVariable "f", 
-      E.PConstructor "CONS" [E.PVariable "x", E.PVariable "xs"],
-      E.PConstructor "CONS" [E.PVariable "y", E.PVariable "ys"] ],
-    E.mkApply [mkV "C", mkV "f", mkV "x", mkV "xs", mkV "y", mkV "ys"])
-  where 
-    mkV :: String -> E.Exp
-    mkV = E.Pure . S.mkVariable
+-- demo_def3 :: ([E.Pattern], E.Exp)
+-- demo_def3 = 
+--   ( [ E.PVariable "f", 
+--       E.PConstructor "CONS" [E.PVariable "x", E.PVariable "xs"],
+--       E.PConstructor "CONS" [E.PVariable "y", E.PVariable "ys"] ],
+--     E.mkApply [mkV "C", mkV "f", mkV "x", mkV "xs", mkV "y", mkV "ys"])
+--   where 
+--     mkV :: String -> E.Exp
+--     mkV = E.Pure . S.mkVariable
 
-demo_defs :: [([E.Pattern], E.Exp)]
-demo_defs = [demo_def1, demo_def2, demo_def3]
+-- demo_defs :: [([E.Pattern], E.Exp)]
+-- demo_defs = [demo_def1, demo_def2, demo_def3]
 
-demo_ptree1 :: Root PattTree
-demo_ptree1 = uncurry mkTree demo_def1
+-- demo_ptree1 :: Root PattTree
+-- demo_ptree1 = uncurry mkTree demo_def1
 
-demo_ptree2 :: Root PattTree
-demo_ptree2 = uncurry mkTree demo_def2
+-- demo_ptree2 :: Root PattTree
+-- demo_ptree2 = uncurry mkTree demo_def2
 
-demo_ptree3 :: Root PattTree
-demo_ptree3 = uncurry mkTree demo_def3
+-- demo_ptree3 :: Root PattTree
+-- demo_ptree3 = uncurry mkTree demo_def3
 
-demo_ptrees :: [Root PattTree]
-demo_ptrees = [demo_ptree1, demo_ptree2, demo_ptree3]
+-- demo_ptrees :: [Root PattTree]
+-- demo_ptrees = [demo_ptree1, demo_ptree2, demo_ptree3]
 
-demo_mtree :: Root MatchTree
-demo_mtree = mergePRoots demo_ptrees
+-- demo_mtree :: Root MatchTree
+-- demo_mtree = mergePRoots demo_ptrees
 {-
 \_u1. \_u2. \_u3. case _u2 of
                     CONS _u4 _u5 => FAIL
@@ -327,30 +326,30 @@ demo_mtree = mergePRoots demo_ptrees
                       NIL => FAIL
 -}
 
-mappairs_defs :: [([E.Pattern], E.Exp)]
-mappairs_defs = 
-  [ ( [ E.PVariable    "f", 
-        E.PConstructor "NIL" [],
-        E.PVariable    "ys" ],
-      E.Pure $ mkV "NIL"),
-    ( [ E.PVariable    "f", 
-        E.PConstructor "CONS" [E.PVariable "x", E.PVariable "xs"],
-        E.PConstructor "NIL" []],
-      E.Pure $ mkV "NIL"),
-    ( [ E.PVariable    "f", 
-        E.PConstructor "CONS" [E.PVariable "x", E.PVariable "xs"],
-        E.PConstructor "CONS" [E.PVariable "y", E.PVariable "ys"] ],
-      E.Pure (S.mkApply [mkV "CONS", S.mkApply [mkV "f", mkV "x", mkV "y"],
-                                     S.mkApply [mkV "mappairs", mkV "f", mkV "xs", mkV "ys"]])) ]
-  where 
-    mkV :: String -> S.Exp
-    mkV = S.mkVariable
+-- mappairs_defs :: [([E.Pattern], E.Exp)]
+-- mappairs_defs = 
+--   [ ( [ E.PVariable    "f", 
+--         E.PConstructor "NIL" [],
+--         E.PVariable    "ys" ],
+--       E.Pure $ mkV "NIL"),
+--     ( [ E.PVariable    "f", 
+--         E.PConstructor "CONS" [E.PVariable "x", E.PVariable "xs"],
+--         E.PConstructor "NIL" []],
+--       E.Pure $ mkV "NIL"),
+--     ( [ E.PVariable    "f", 
+--         E.PConstructor "CONS" [E.PVariable "x", E.PVariable "xs"],
+--         E.PConstructor "CONS" [E.PVariable "y", E.PVariable "ys"] ],
+--       E.Pure (S.mkApply [mkV "CONS", S.mkApply [mkV "f", mkV "x", mkV "y"],
+--                                      S.mkApply [mkV "mappairs", mkV "f", mkV "xs", mkV "ys"]])) ]
+--   where 
+--     mkV :: String -> S.Exp
+--     mkV = S.mkVariable
 
-mappairs_tree :: Root MatchTree
-mappairs_tree = eqsToMTree mappairs_defs
+-- mappairs_tree :: Root MatchTree
+-- mappairs_tree = eqsToMTree mappairs_defs
 
-mappairs_exp :: E.Exp
-mappairs_exp = patternEquationsToEnriched mappairs_defs
+-- mappairs_exp :: E.Exp
+-- mappairs_exp = patternEquationsToEnriched mappairs_defs
 
 {-
 \_u1. \_u2. \_u3. case _u2 of
@@ -361,17 +360,17 @@ mappairs_exp = patternEquationsToEnriched mappairs_defs
 
 -}
 
-unwieldy_defs :: [PattEq]
-unwieldy_defs = 
-  [ ( [ E.PConstructor "NIL" [],
-        E.PConstructor "NIL" [] ],
-      E.Pure $ mkV "A"),
-    ( [ E.PVariable    "xs", 
-        E.PVariable    "ys" ],
-      E.Pure (S.mkApply [mkV "B", mkV "xs", mkV "ys" ])) ]
-  where 
-    mkV :: String -> S.Exp
-    mkV = S.mkVariable
+-- unwieldy_defs :: [PattEq]
+-- unwieldy_defs = 
+--   [ ( [ E.PConstructor "NIL" [],
+--         E.PConstructor "NIL" [] ],
+--       E.Pure $ mkV "A"),
+--     ( [ E.PVariable    "xs", 
+--         E.PVariable    "ys" ],
+--       E.Pure (S.mkApply [mkV "B", mkV "xs", mkV "ys" ])) ]
+--   where 
+--     mkV :: String -> S.Exp
+--     mkV = S.mkVariable
 
 {-
 \_u1. \_u2. case _u1 of

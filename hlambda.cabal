@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 96f188947814636d3e02e7d68d1a1f09032827b01e30fcd9d9bc38dc32197918
+-- hash: 743e61966c44636b6313a6a41f7e5f9ccb4155a75b93afcd878248c2067e06c5
 
 name:           hlambda
 version:        0.1.0.0
@@ -27,6 +27,7 @@ source-repository head
 
 library
   exposed-modules:
+      Common.Name
       GhciUtil
       Lambda.AlphaConv
       Lambda.Enriched
@@ -81,6 +82,7 @@ test-suite hlambda-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Enriched.TransformSpec
       Miranda.TransformSpec
       SpecUtil
       Paths_hlambda

@@ -37,6 +37,7 @@ import Data.List (foldl1', insert)
 data Exp = Term Term 
          | Apply Exp Exp 
          | Lambda String Exp
+         deriving Eq
 
 data Term = Constant Constant
           | Function Function

@@ -4,7 +4,6 @@ module Lambda.AlphaConv (AlphaConv (..)) where
 import qualified Lambda.Reduce as Reduce
 import qualified Lambda.Syntax as S
 import qualified Lambda.Enriched as E
-import Debug.Trace
 
 class AlphaConv a where 
   unsafeAlphaConv :: String -> String -> a -> a

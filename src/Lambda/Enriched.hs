@@ -8,6 +8,8 @@ import Lambda.Pretty
 import Lambda.Syntax (ToLambda (..))
 import qualified Lambda.Syntax as S
 
+import Common.Name (newName)
+
 -- p40: Figure 3.2 - Syntax of Enriched Lambda Expressions
 
 data Exp = Let [LetBinding] Exp
@@ -68,6 +70,13 @@ instance ToLambda Exp where
 
 toLambdaLambda :: Pattern -> Exp -> S.Exp
 toLambdaLambda (PVariable v) body = S.Lambda v (toLambda body)
+toLambdaLambda (PConstant c) body = 
+  let new_name = newName $ freeVariables body
+   in S.Lambda new_name (S.mkIf (S.mkApply [S.mkFunction S.FEq, 
+                                            S.mkConstant c,
+                                            S.mkVariable new_name])
+                                (toLambda body)
+                                (S.mkConstant S.CFail))
 toLambdaLambda patt body = error $ "No support for reducing pattern lambdas: " ++ show patt ++ ", " ++ show body
 
 -- | (letrec v = B in E) = (let v = Y (\v. B) in E) - p42

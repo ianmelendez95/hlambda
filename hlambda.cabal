@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 614207531657fb2b55b51b85051bab14de523e424f7eba06bb052fa6f6a19c5a
+-- hash: 0c8c21e68e88d129793cb03438555344f3635745cd9ec283a4ab99727b256710
 
 name:           hlambda
 version:        0.1.0.0
@@ -81,6 +81,7 @@ test-suite hlambda-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      SpecUtil
       Paths_hlambda
   hs-source-dirs:
       test

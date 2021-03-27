@@ -13,6 +13,7 @@ module Lambda.Syntax
   , mkConstant 
   , mkFunction
   , mkVariable
+  , mkLambda
   , unApply
 
   , showMarked
@@ -95,6 +96,9 @@ mkApply = foldl1' Apply
 unApply :: Exp -> [Exp]
 unApply (Apply e1 e2) = unApply e1 ++ [e2]
 unApply expr = [expr]
+
+mkLambda :: [String] -> Exp -> Exp
+mkLambda vars expr = foldr Lambda expr vars
 
 --------------
 -- ToLambda --

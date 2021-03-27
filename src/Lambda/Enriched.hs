@@ -36,7 +36,7 @@ mkPattConstr :: Constructor -> [Pattern] -> Pattern
 mkPattConstr = PConstructor
 
 mkLambda :: [Pattern] -> Exp -> Exp
-mkLambda ps e = foldr' Lambda e ps
+mkLambda ps e = foldr Lambda e ps
 
 mkApply :: [Exp] -> Exp
 mkApply = foldl1' Apply
@@ -77,7 +77,13 @@ toLambdaLambda (PConstant c) body =
                                             S.mkVariable new_name])
                                 (toLambda body)
                                 (S.mkConstant S.CFail))
+toLambdaLambda (PConstructor "PAIR" ps) body = toLambdaLambdaPairConstructor ps body
 toLambdaLambda patt body = error $ "No support for reducing pattern lambdas: " ++ show patt ++ ", " ++ show body
+
+toLambdaLambdaPairConstructor :: [Pattern] -> Exp -> S.Exp
+toLambdaLambdaPairConstructor ps expr = 
+  let unpack_arg = toLambda (mkLambda ps expr)
+   in S.mkApply [S.mkVariable "UNPACK-PRODUCT-PAIR", unpack_arg]
 
 -- | (letrec v = B in E) = (let v = Y (\v. B) in E) - p42
 letrecToLambda ::[LetBinding] -> Exp -> S.Exp

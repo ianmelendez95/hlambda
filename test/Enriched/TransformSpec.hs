@@ -5,8 +5,6 @@ import Lambda.ToLambda
 import qualified Lambda.Syntax as S
 import qualified Lambda.Enriched as E
 
-import SpecUtil
-
 spec :: Spec
 spec = do
   describe "Enriched Transformations" $ do
@@ -18,4 +16,17 @@ spec = do
                                        (S.toConstantExp (1 :: Int))
                                        (S.mkConstant S.CFail))
       toLambda enr `shouldBe` lam
-      
+    
+    it "p106: transforms PAIR pattern lambda expressions" $ do
+      -- \PAIR x y. + x y
+      -- UNPACK-PRODUCT-PAIR (\_u1. \_u2. + _u1 _u2)
+      let enr = E.Lambda (E.PConstructor "PAIR" [E.PVariable "x", E.PVariable "y"]) 
+                         (E.mkApply [E.Pure (S.mkFunction S.FPlus), 
+                                     E.Pure (S.mkVariable "x"),
+                                     E.Pure (S.mkVariable "y")])
+          lam = S.mkApply [S.mkVariable "UNPACK-PRODUCT-PAIR", 
+                           S.mkLambda ["x", "y"] 
+                                      (S.mkApply [S.mkFunction S.FPlus, 
+                                                  S.mkVariable "x",
+                                                  S.mkVariable "y"])]
+       in toLambda enr `shouldBe` lam

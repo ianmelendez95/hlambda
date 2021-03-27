@@ -55,8 +55,8 @@ spec = do
           lam = S.mkApply [S.mkVariable "UNPACK-SUM-BRANCH", 
                            S.mkLambda ["t1", "t2"] 
                                       (S.mkApply [S.mkVariable "BRANCH", 
-                                       S.Apply (S.mkVariable "reflect") 
-                                               (S.mkVariable "t2"),
-                                       S.Apply (S.mkVariable "reflect") 
-                                               (S.mkVariable "t1")])] 
+                                                  S.Apply (S.mkVariable "reflect") 
+                                                          (S.mkVariable "t2"),
+                                                  S.Apply (S.mkVariable "reflect") 
+                                                          (S.mkVariable "t1")])] 
       toLambda enr `shouldBe` lam

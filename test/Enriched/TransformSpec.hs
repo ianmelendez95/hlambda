@@ -29,4 +29,15 @@ spec = do
                                       (S.mkApply [S.mkFunction S.FPlus, 
                                                   S.mkVariable "x",
                                                   S.mkVariable "y"])]
-       in toLambda enr `shouldBe` lam
+      toLambda enr `shouldBe` lam
+
+    it "p107: transforma TREE pattern lambda expresssions" $ do 
+      -- \LEAF n. LEAF n
+      -- UNPACK-SUM-LEAF (\n. LEAF n)
+      let enr = E.Lambda (E.PConstructor "LEAF" [E.PVariable "n"]) 
+                         (E.mkApply [E.Pure (S.mkVariable "LEAF"), 
+                                     E.Pure (S.mkVariable "n")]) 
+          lam = S.mkApply [S.mkVariable "UNPACK-SUM-LEAF", 
+                           S.mkLambda ["n"] (S.mkApply [S.mkVariable "LEAF", 
+                                                        S.mkVariable "n"])] 
+      toLambda enr `shouldBe` lam

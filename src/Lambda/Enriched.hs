@@ -77,13 +77,25 @@ toLambdaLambda (PConstant c) body =
                                             S.mkVariable new_name])
                                 (toLambda body)
                                 (S.mkConstant S.CFail))
-toLambdaLambda (PConstructor "PAIR" ps) body = toLambdaLambdaPairConstructor ps body
+toLambdaLambda (PConstructor c ps) body = toLambdaConstructorLambda c ps body
 toLambdaLambda patt body = error $ "No support for reducing pattern lambdas: " ++ show patt ++ ", " ++ show body
 
-toLambdaLambdaPairConstructor :: [Pattern] -> Exp -> S.Exp
-toLambdaLambdaPairConstructor ps expr = 
-  let unpack_arg = toLambda (mkLambda ps expr)
-   in S.mkApply [S.mkVariable "UNPACK-PRODUCT-PAIR", unpack_arg]
+--------------------------------------------------------------------------------
+-- toLambda constructor patterns
+
+toLambdaConstructorLambda :: String -> [Pattern] -> Exp -> S.Exp
+toLambdaConstructorLambda c ps body =
+  S.mkApply [S.mkVariable (constructorLambdaFunc c),
+             toLambda (mkLambda ps body)]
+
+constructorLambdaFunc :: String -> String
+constructorLambdaFunc "PAIR"   = "UNPACK-PRODUCT-PAIR"
+constructorLambdaFunc "LEAF"   = "UNPACK-SUM-LEAF"
+constructorLambdaFunc "BRANCH" = "UNPACK-SUM-BRANCH"
+constructorLambdaFunc c = error $ "Unknown constructor: " ++ c 
+
+--------------------------------------------------------------------------------
+-- toLambda let bindings
 
 -- | (letrec v = B in E) = (let v = Y (\v. B) in E) - p42
 letrecToLambda ::[LetBinding] -> Exp -> S.Exp

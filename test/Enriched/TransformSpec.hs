@@ -31,7 +31,7 @@ spec = do
                                                   S.mkVariable "y"])]
       toLambda enr `shouldBe` lam
 
-    it "p107: transforma TREE pattern lambda expresssions" $ do 
+    it "p107: transforma TREE (LEAF) pattern lambda expresssions" $ do 
       -- \LEAF n. LEAF n
       -- UNPACK-SUM-LEAF (\n. LEAF n)
       let enr = E.Lambda (E.PConstructor "LEAF" [E.PVariable "n"]) 
@@ -40,4 +40,23 @@ spec = do
           lam = S.mkApply [S.mkVariable "UNPACK-SUM-LEAF", 
                            S.mkLambda ["n"] (S.mkApply [S.mkVariable "LEAF", 
                                                         S.mkVariable "n"])] 
+      toLambda enr `shouldBe` lam
+
+    it "p107: transforma TREE (BRANCH) pattern lambda expresssions" $ do 
+      -- \BRANCH t1 t2. BRANCH (reflect t2) (reflect t1)
+      -- UNPACK-SUM-BRANCH (\t1. \t2. BRANCH (reflect t2) (reflect t1))
+      let enr = E.Lambda (E.PConstructor "BRANCH" [E.PVariable "t1",
+                                                   E.PVariable "t2"]) 
+                         (E.mkApply [E.Pure (S.mkVariable "BRANCH"), 
+                                     E.Apply (E.Pure (S.mkVariable "reflect")) 
+                                             (E.Pure (S.mkVariable "t2")),
+                                     E.Apply (E.Pure (S.mkVariable "reflect")) 
+                                             (E.Pure (S.mkVariable "t1"))]) 
+          lam = S.mkApply [S.mkVariable "UNPACK-SUM-BRANCH", 
+                           S.mkLambda ["t1", "t2"] 
+                                      (S.mkApply [S.mkVariable "BRANCH", 
+                                       S.Apply (S.mkVariable "reflect") 
+                                               (S.mkVariable "t2"),
+                                       S.Apply (S.mkVariable "reflect") 
+                                               (S.mkVariable "t1")])] 
       toLambda enr `shouldBe` lam

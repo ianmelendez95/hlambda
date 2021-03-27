@@ -4,6 +4,7 @@ import Test.Hspec
 import Lambda.ToLambda
 import qualified Lambda.Syntax as S
 import qualified Lambda.Enriched as E
+import qualified Lambda.Constructor as C
 
 spec :: Spec
 spec = do
@@ -20,7 +21,7 @@ spec = do
     it "p106: transforms PAIR pattern lambda expressions" $ do
       -- \PAIR x y. + x y
       -- UNPACK-PRODUCT-PAIR (\_u1. \_u2. + _u1 _u2)
-      let enr = E.Lambda (E.PConstructor "PAIR" [E.PVariable "x", E.PVariable "y"]) 
+      let enr = E.Lambda (E.PConstructor (C.fromString "PAIR") [E.PVariable "x", E.PVariable "y"]) 
                          (E.mkApply [E.Pure (S.mkFunction S.FPlus), 
                                      E.Pure (S.mkVariable "x"),
                                      E.Pure (S.mkVariable "y")])
@@ -34,7 +35,7 @@ spec = do
     it "p107: transforma TREE (LEAF) pattern lambda expresssions" $ do 
       -- \LEAF n. LEAF n
       -- UNPACK-SUM-LEAF (\n. LEAF n)
-      let enr = E.Lambda (E.PConstructor "LEAF" [E.PVariable "n"]) 
+      let enr = E.Lambda (E.PConstructor (C.fromString "LEAF") [E.PVariable "n"]) 
                          (E.mkApply [E.Pure (S.mkVariable "LEAF"), 
                                      E.Pure (S.mkVariable "n")]) 
           lam = S.mkApply [S.mkVariable "UNPACK-SUM-1-1", 
@@ -45,7 +46,7 @@ spec = do
     it "p107: transforma TREE (BRANCH) pattern lambda expresssions" $ do 
       -- \BRANCH t1 t2. BRANCH (reflect t2) (reflect t1)
       -- UNPACK-SUM-BRANCH (\t1. \t2. BRANCH (reflect t2) (reflect t1))
-      let enr = E.Lambda (E.PConstructor "BRANCH" [E.PVariable "t1",
+      let enr = E.Lambda (E.PConstructor (C.fromString "BRANCH") [E.PVariable "t1",
                                                    E.PVariable "t2"]) 
                          (E.mkApply [E.Pure (S.mkVariable "BRANCH"), 
                                      E.Apply (E.Pure (S.mkVariable "reflect")) 

@@ -1,3 +1,4 @@
+{-# LANGUAGE FlexibleInstances #-}
 module Lambda.Pretty 
   ( PrettyLambda (..)
   , LambdaAnn (..)
@@ -56,6 +57,9 @@ class PrettyLambda a where
 
   ansiPrettyDoc :: a -> SimpleDocStream AnsiStyle
   ansiPrettyDoc = lambdaToAnsi . prettyStream
+
+instance PrettyLambda String where 
+  prettyDoc' _ s = pretty s
 
 ----------
 -- Ansi --

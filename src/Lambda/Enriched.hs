@@ -7,6 +7,8 @@ import Lambda.Pretty
 import Lambda.Syntax (ToLambda (..))
 import qualified Lambda.Syntax as S
 
+import Lambda.Constructor
+
 import Common.Name (newName)
 
 -- p40: Figure 3.2 - Syntax of Enriched Lambda Expressions
@@ -21,7 +23,6 @@ data Exp = Let [LetBinding] Exp
         
 type LetBinding = (Pattern, Exp)
 type CaseClause = (Pattern, Exp)
-type Constructor = String
 
 data Pattern = PConstant S.Constant
              | PVariable S.Variable
@@ -84,28 +85,10 @@ toLambdaLambda (PConstructor c ps) body = toLambdaConstructorLambda c ps body
 --------------------------------------------------------------------------------
 -- toLambda constructor patterns
 
-toLambdaConstructorLambda :: String -> [Pattern] -> Exp -> S.Exp
+toLambdaConstructorLambda :: Constructor -> [Pattern] -> Exp -> S.Exp
 toLambdaConstructorLambda c ps body =
-  S.mkApply [S.mkVariable (strConstrUnpackFunc c),
+  S.mkApply [S.mkVariable (unpackStr c),
              toLambda (mkLambda ps body)]
-
-strConstrUnpackFunc :: String -> String
-strConstrUnpackFunc = constrUnpackFunc . strConstrType
-
-strConstrType :: String -> ConstructorType
-strConstrType "PAIR"   = CTProduct 2
-               
-strConstrType "LEAF"   = CTSum 1 1
-strConstrType "BRANCH" = CTSum 2 2
-
-strConstrType "NIL"    = CTSum 1 0
-strConstrType "CONS"   = CTSum 2 2
-
-strConstrType c = error $ "Unknown constructor: " ++ c
-
-constrUnpackFunc :: ConstructorType -> String
-constrUnpackFunc (CTSum tag arity) = "UNPACK-SUM-" ++ show tag ++ "-" ++ show arity
-constrUnpackFunc (CTProduct arity) = "UNPACK-PRODUCT-" ++ show arity
 
 --------------------------------------------------------------------------------
 -- toLambda let bindings
@@ -192,7 +175,7 @@ sPrettyPattern (PVariable v) = pure . pretty $ v
 sPrettyPattern (PConstructor c ps) = 
   do wrapper <- getParenWrapper 10
      pretty_args <- mapM sPrettyPattern ps
-     return $ wrapper $ hsep (pretty c : pretty_args)
+     return $ wrapper $ hsep (prettyDoc c : pretty_args)
 
 --------------------------------------------------------------------------------
 -- Free Variables 

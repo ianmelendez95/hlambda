@@ -50,6 +50,7 @@ import Lambda.Syntax (ToLambda (..))
 import Lambda.Reduce (Reducible (..))
 import qualified Lambda.Enriched as E
 import qualified Lambda.Syntax as S
+import qualified Lambda.Constructor as C
 
 ----------------------
 -- Lambda Expressions --
@@ -265,17 +266,17 @@ funcPatternToPattern param =
     [PConstant c]    -> E.PConstant (T.constantToLambda c)
     [PVariable v]    -> E.PVariable v
     [PConstructor c] -> constructorToPattern c
-    [PCons p1 p2]    -> E.mkPattConstr "CONS" (map funcPatternToPattern [p1, p2])
+    [PCons p1 p2]    -> E.mkPattConstr (C.fromString "CONS") (map funcPatternToPattern [p1, p2])
     [PListLit ps]    -> funcListLitToPattern ps
     [PTuple tuple]   -> tupleToPattern tuple
-    (PConstructor c : rest) -> E.mkPattConstr c (map funcPatternToPattern rest)
+    (PConstructor c : rest) -> E.mkPattConstr (C.fromString c) (map funcPatternToPattern rest)
     apply@[PApply _ _] -> error $ "Apply should have been flattened: " ++ show apply
     p -> error $ "Invalid function parameter: " ++ show p
 
 constructorToPattern :: String -> E.Pattern
 constructorToPattern "True" = E.PConstant . S.CBool $ True
 constructorToPattern "False" = E.PConstant . S.CBool $ False
-constructorToPattern constr = E.mkPattConstr constr []
+constructorToPattern constr = E.mkPattConstr (C.fromString constr) []
 
 flattenPattern :: Pattern -> [Pattern]
 flattenPattern (PApply p1 p2) = flattenPattern p1 ++ [p2]
@@ -285,24 +286,14 @@ funcListLitToPattern :: [Pattern] -> E.Pattern
 funcListLitToPattern = foldl' (\cons p -> enrConsPattern (funcPatternToPattern p) cons) enrNilPattern
   where
     enrConsPattern :: E.Pattern -> E.Pattern -> E.Pattern
-    enrConsPattern p1 p2 = E.mkPattConstr "CONS" [p1, p2]
+    enrConsPattern p1 p2 = E.mkPattConstr (C.fromString "CONS") [p1, p2]
 
     enrNilPattern :: E.Pattern 
-    enrNilPattern = E.mkPattConstr "NIL" []
+    enrNilPattern = E.mkPattConstr (C.fromString "NIL") []
 
 tupleToPattern :: [Pattern] -> E.Pattern
 tupleToPattern ps = 
-  E.mkPattConstr (tupleToConstructor ps) (map funcPatternToPattern ps)
-  where 
-    tupleToConstructor :: [Pattern] -> E.Constructor
-    tupleToConstructor ps' = 
-      case length ps' of 
-        0 -> error "0 length tuple"
-        1 -> error "1 length tuple"
-        2 -> "PAIR"
-        3 -> "TRIPLE"
-        4 -> "QUADRUPLE"
-        n -> "TUPLE-" ++ show n
+  E.mkPattConstr (C.nTuple (length ps)) (map funcPatternToPattern ps)
 
 instance ToEnriched RhsClause where 
   toEnriched (BaseClause expr) = toEnriched expr

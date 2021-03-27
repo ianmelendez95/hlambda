@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 743e61966c44636b6313a6a41f7e5f9ccb4155a75b93afcd878248c2067e06c5
+-- hash: e1c467769ace02dea46945c1a902d7ecbc7abc697e15f78e016d57aaa9306567
 
 name:           hlambda
 version:        0.1.0.0
@@ -30,6 +30,7 @@ library
       Common.Name
       GhciUtil
       Lambda.AlphaConv
+      Lambda.Constructor
       Lambda.Enriched
       Lambda.Eval
       Lambda.Name
@@ -44,7 +45,6 @@ library
       Miranda.Syntax
       Miranda.Token
       Parse
-      PattMatch
       Trace
   other-modules:
       Paths_hlambda

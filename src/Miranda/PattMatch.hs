@@ -3,12 +3,14 @@ module Miranda.PattMatch (PattEq, patternEquationsToEnriched) where
 import Control.Monad.State.Lazy
 import Data.List (foldl1')
 import qualified Data.IntMap.Strict as IMap
-import qualified Data.Map.Strict as Map
+import qualified Data.Map as Map
 import qualified Data.Set as Set
 
 import qualified Lambda.Syntax as S
 import qualified Lambda.Enriched as E
 import Lambda.AlphaConv
+
+import Lambda.Constructor
 
 --------------------------------------------------------------------------------
 -- Interface
@@ -51,7 +53,7 @@ rootTree (Root _ t) = t
 -- | converted to the actual 'match' tree 
 data PattTree = PTConstant (Numd S.Constant) PattTree
               | PTVariable (Numd S.Variable) PattTree
-              | PTConstructor (Numd E.Constructor) Int (Root PattTree) -- Int = the starting number for constructor args
+              | PTConstructor (Numd Constructor) Int (Root PattTree) -- Int = the starting number for constructor args
               | PTExp E.Exp
               deriving Show
 
@@ -69,13 +71,12 @@ type PattEq = ([E.Pattern], E.Exp)
 -- Constructor Map
 
 -- TODO: candidate for a lazy map, not all values inserted will be used
-type ConsMap = Map.Map E.Constructor (Root MatchTree)
+type ConsMap = Map.Map Constructor (Root MatchTree)
 
-newConsMap :: Int -> E.Constructor -> Root MatchTree -> ConsMap
+newConsMap :: Int -> Constructor -> Root MatchTree -> ConsMap
 newConsMap an1 cons tree = insertConsMap cons tree (emptyConsMap an1 cons)
 
--- TODO: account for invalid constructor for map
-insertConsMap :: E.Constructor -> Root MatchTree -> ConsMap -> ConsMap
+insertConsMap :: Constructor -> Root MatchTree -> ConsMap -> ConsMap
 insertConsMap = Map.insertWith (mergeRootsWith mergeCTrees)
   where 
     mergeCTrees :: MatchTree -> MatchTree -> MatchTree
@@ -83,33 +84,14 @@ insertConsMap = Map.insertWith (mergeRootsWith mergeCTrees)
     mergeCTrees t1     MTFail = t1
     mergeCTrees t1 t2 = mergeMTree t1 t2
 
-emptyConsMap :: Int -> E.Constructor -> ConsMap
-emptyConsMap n "CONS" = listConsMap n
-emptyConsMap n "NIL"  = listConsMap n
+emptyConsMap :: Int -> Constructor -> ConsMap
+emptyConsMap n c = foldr insertConstr Map.empty (siblings c)
+  where 
+    insertConstr :: Constructor -> ConsMap -> ConsMap
+    insertConstr c' = Map.insert c' (mkFailRoot c')
 
-emptyConsMap n "PAIR" = pairMap n
-
-emptyConsMap n "LEAF"   = treeMap n
-emptyConsMap n "BRANCH" = treeMap n
-
-emptyConsMap _ c = error $ "Uknown constructor: " ++ show c
-
-listConsMap :: Int -> ConsMap
-listConsMap n = 
-  Map.fromList [
-    ("NIL",  Root [] MTFail),
-    ("CONS", Root (take 2 [n..]) MTFail)
-  ]
-
-pairMap :: Int -> ConsMap
-pairMap n = Map.singleton "PAIR" (Root (take 2 [n..]) MTFail)
-  
-treeMap :: Int -> ConsMap
-treeMap n =
-  Map.fromList [
-    ("LEAF",  Root [n] MTFail),
-    ("BRANCH", Root (take 2 [n..]) MTFail)
-  ]
+    mkFailRoot :: Constructor -> Root MatchTree
+    mkFailRoot c' = Root (take (arity c') [n..]) MTFail
 
 --------------------------------------------------------------------------------
 -- The 'numbering' monad
@@ -247,10 +229,10 @@ enrichConstantBranch ns i = Map.foldrWithKey' foldF (E.Pure $ S.mkConstant S.CFa
 consMapToClauses :: Names -> ConsMap -> [E.CaseClause]
 consMapToClauses ns = Map.foldrWithKey' foldrF []
   where 
-    foldrF :: E.Constructor -> Root MatchTree -> [E.CaseClause] -> [E.CaseClause]
+    foldrF :: Constructor -> Root MatchTree -> [E.CaseClause] -> [E.CaseClause]
     foldrF c_name rt clauses = consToClause ns c_name rt : clauses
 
-consToClause :: Names -> E.Constructor -> Root MatchTree -> E.CaseClause -- 
+consToClause :: Names -> Constructor -> Root MatchTree -> E.CaseClause -- 
 consToClause ns c_name (Root is t) = 
   ( E.PConstructor c_name (map (E.PVariable . numVar) is), 
     enrichMTree' ns t )

@@ -3,12 +3,14 @@ module Enriched.TransformSpec where
 import Test.Hspec
 import Lambda.ToLambda
 import qualified Lambda.Syntax as S
+import Lambda.Enriched
 import qualified Lambda.Enriched as E
 import qualified Lambda.Constructor as C
 
 spec :: Spec
 spec = do
-  describe "Enriched Transformations" $ do
+  describe "ConstanTransformations" $ do
+
     it "p105: transforms constant lambda expressions" $ do
       let enr = E.Lambda (E.PConstant (S.CNat 0)) (E.Pure (S.mkConstant (S.CNat 1)))
           lam = S.Lambda "_u1" (S.mkIf (S.mkApply [S.mkFunction S.FEq, 
@@ -17,6 +19,8 @@ spec = do
                                        (S.toConstantExp (1 :: Int))
                                        (S.mkConstant S.CFail))
       toLambda enr `shouldBe` lam
+  
+  describe "Constructor Transformations" $ do
     
     it "p106: transforms PAIR pattern lambda expressions" $ do
       -- \PAIR x y. + x y
@@ -60,4 +64,17 @@ spec = do
                                                           (S.mkVariable "t2"),
                                                   S.Apply (S.mkVariable "reflect") 
                                                           (S.mkVariable "t1")])] 
+      toLambda enr `shouldBe` lam
+  
+  describe "6.2.3 Transforming Simple Lets" $ do
+    it "p112: transforms simple let" $ do
+      -- let x = 4 in (+ x 6) => (\x.+ x 6) 4
+      let enr = Let [(PVariable "x", Pure (S.toConstantExp (4 :: Int)))] 
+                    (mkApply [Pure (S.mkFunction S.FPlus), 
+                              Pure (S.mkVariable "x"),
+                              Pure (S.toConstantExp (6 :: Int))])
+          lam = S.Apply (S.Lambda "x" (S.mkApply [S.mkFunction S.FPlus, 
+                                                  S.mkVariable "x",
+                                                  S.toConstantExp (6 :: Int)]))
+                        (S.toConstantExp (4 :: Int))
       toLambda enr `shouldBe` lam

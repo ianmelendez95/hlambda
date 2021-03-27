@@ -2,7 +2,6 @@ module Lambda.Enriched where
 
 import Prettyprinter
 import Data.List (foldl', foldl1', insert, nub)
-import Data.Foldable (foldr')
 
 import Lambda.Pretty
 import Lambda.Syntax (ToLambda (..))
@@ -28,6 +27,9 @@ data Pattern = PConstant S.Constant
              | PVariable S.Variable
              | PConstructor Constructor [Pattern]
              deriving Show
+
+data ConstructorType = CTSum Int Int -- tag arity
+                     | CTProduct Int -- arity
 
 --------------------------------------------------------------------------------
 -- Constructors
@@ -78,21 +80,32 @@ toLambdaLambda (PConstant c) body =
                                 (toLambda body)
                                 (S.mkConstant S.CFail))
 toLambdaLambda (PConstructor c ps) body = toLambdaConstructorLambda c ps body
-toLambdaLambda patt body = error $ "No support for reducing pattern lambdas: " ++ show patt ++ ", " ++ show body
 
 --------------------------------------------------------------------------------
 -- toLambda constructor patterns
 
 toLambdaConstructorLambda :: String -> [Pattern] -> Exp -> S.Exp
 toLambdaConstructorLambda c ps body =
-  S.mkApply [S.mkVariable (constructorLambdaFunc c),
+  S.mkApply [S.mkVariable (strConstrUnpackFunc c),
              toLambda (mkLambda ps body)]
 
-constructorLambdaFunc :: String -> String
-constructorLambdaFunc "PAIR"   = "UNPACK-PRODUCT-PAIR"
-constructorLambdaFunc "LEAF"   = "UNPACK-SUM-LEAF"
-constructorLambdaFunc "BRANCH" = "UNPACK-SUM-BRANCH"
-constructorLambdaFunc c = error $ "Unknown constructor: " ++ c 
+strConstrUnpackFunc :: String -> String
+strConstrUnpackFunc = constrUnpackFunc . strConstrType
+
+strConstrType :: String -> ConstructorType
+strConstrType "PAIR"   = CTProduct 2
+               
+strConstrType "LEAF"   = CTSum 1 1
+strConstrType "BRANCH" = CTSum 2 2
+
+strConstrType "NIL"    = CTSum 1 0
+strConstrType "CONS"   = CTSum 2 2
+
+strConstrType c = error $ "Unknown constructor: " ++ c
+
+constrUnpackFunc :: ConstructorType -> String
+constrUnpackFunc (CTSum tag arity) = "UNPACK-SUM-" ++ show tag ++ "-" ++ show arity
+constrUnpackFunc (CTProduct arity) = "UNPACK-PRODUCT-" ++ show arity
 
 --------------------------------------------------------------------------------
 -- toLambda let bindings

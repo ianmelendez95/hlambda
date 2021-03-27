@@ -24,7 +24,7 @@ spec = do
                          (E.mkApply [E.Pure (S.mkFunction S.FPlus), 
                                      E.Pure (S.mkVariable "x"),
                                      E.Pure (S.mkVariable "y")])
-          lam = S.mkApply [S.mkVariable "UNPACK-PRODUCT-PAIR", 
+          lam = S.mkApply [S.mkVariable "UNPACK-PRODUCT-2", 
                            S.mkLambda ["x", "y"] 
                                       (S.mkApply [S.mkFunction S.FPlus, 
                                                   S.mkVariable "x",
@@ -37,7 +37,7 @@ spec = do
       let enr = E.Lambda (E.PConstructor "LEAF" [E.PVariable "n"]) 
                          (E.mkApply [E.Pure (S.mkVariable "LEAF"), 
                                      E.Pure (S.mkVariable "n")]) 
-          lam = S.mkApply [S.mkVariable "UNPACK-SUM-LEAF", 
+          lam = S.mkApply [S.mkVariable "UNPACK-SUM-1-1", 
                            S.mkLambda ["n"] (S.mkApply [S.mkVariable "LEAF", 
                                                         S.mkVariable "n"])] 
       toLambda enr `shouldBe` lam
@@ -52,7 +52,7 @@ spec = do
                                              (E.Pure (S.mkVariable "t2")),
                                      E.Apply (E.Pure (S.mkVariable "reflect")) 
                                              (E.Pure (S.mkVariable "t1"))]) 
-          lam = S.mkApply [S.mkVariable "UNPACK-SUM-BRANCH", 
+          lam = S.mkApply [S.mkVariable "UNPACK-SUM-2-2", 
                            S.mkLambda ["t1", "t2"] 
                                       (S.mkApply [S.mkVariable "BRANCH", 
                                                   S.Apply (S.mkVariable "reflect") 

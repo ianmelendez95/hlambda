@@ -70,7 +70,6 @@ type PattEq = ([E.Pattern], E.Exp)
 --------------------------------------------------------------------------------
 -- Constructor Map
 
--- TODO: candidate for a lazy map, not all values inserted will be used
 type ConsMap = Map.Map Constructor (Root MatchTree)
 
 newConsMap :: Int -> Constructor -> Root MatchTree -> ConsMap

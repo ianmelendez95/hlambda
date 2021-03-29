@@ -105,7 +105,7 @@ letrecToLambda ((PConstructor constr ps, val) : bs) body =
            Just vs -> 
              let body' = letToLambda bs body
                  new_name = newName (S.freeVariables body')
-                 bindings = irrefutableProductBindings new_name constr vs
+                 bindings = constrArgBindings new_name constr vs
               in S.Letrec ((new_name, toLambda val) : bindings) body'
 letrecToLambda [(var, val)] body = toLambda $ 
   let applyY = Apply (Pure $ S.mkFunction S.FY) 
@@ -126,58 +126,18 @@ letToLambda ((PConstructor constr ps, val) : bs) body =
            Just vs -> 
              let body' = letToLambda bs body
                  new_name = newName (S.freeVariables body')
-                 bindings = irrefutableProductBindings new_name constr vs
-              in S.Let [(new_name, toLambda val)]
-                       (S.Let bindings body')
+                 bindings = constrArgBindings new_name constr vs
+              in S.Let [(new_name, toLambda val)] (S.Let bindings body')
 letToLambda ((pat, _):_) _ = error $ "letToLambda: no support for pattern: " ++ show pat
 
-irrefutableProductBindings :: String -> Constructor -> [String] -> [(String, S.Exp)]
-irrefutableProductBindings new_name constr constr_args = 
+constrArgBindings :: String -> Constructor -> [String] -> [(String, S.Exp)]
+constrArgBindings new_name constr constr_args = 
   let sel_exprs = 
         map (\sel -> S.Apply (S.mkVariable sel) (S.mkVariable new_name))
             (selectFunctions constr)
    in if length sel_exprs /= length constr_args
         then error $ "Constructor arity does not match number of arguments: " ++ show constr ++ " " ++ show constr_args
         else zip constr_args sel_exprs
-
-irrefutableProductLetrecToLambda :: Constructor 
-                                  -> [String]
-                                  -> Exp
-                                  -> S.Exp 
-                                  -> S.Exp
-irrefutableProductLetrecToLambda constr constr_args patt_value let_body =
-  let new_name = newName (S.freeVariables let_body)
-   in S.Letrec ((new_name, toLambda patt_value) : mkSelBindings new_name) let_body 
-  where 
-    mkSelBindings :: String -> [(String, S.Exp)]
-    mkSelBindings con_var =
-      let sel_exprs = 
-            map (\sel -> S.Apply (S.mkVariable sel) (S.mkVariable con_var))
-                (selectFunctions constr)
-                      
-       in if length sel_exprs /= length constr_args
-            then error $ "Constructor arity does not match number of arguments: " ++ show constr ++ " " ++ show constr_args
-            else zip constr_args sel_exprs
-
-irrefutableProductLetToLambda :: Constructor 
-                                  -> [String]
-                                  -> Exp
-                                  -> S.Exp 
-                                  -> S.Exp
-irrefutableProductLetToLambda constr constr_args patt_value let_body =
-  let new_name = newName (S.freeVariables let_body)
-   in S.Let [(new_name, toLambda patt_value)] 
-            (S.Let (mkSelBindings new_name) let_body)
-  where 
-    mkSelBindings :: String -> [(String, S.Exp)]
-    mkSelBindings con_var =
-      let sel_exprs = 
-            map (\sel -> S.Apply (S.mkVariable sel) (S.mkVariable con_var))
-                (selectFunctions constr)
-                      
-       in if length sel_exprs /= length constr_args
-            then error $ "Constructor arity does not match number of arguments: " ++ show constr ++ " " ++ show constr_args
-            else zip constr_args sel_exprs
 
 maybeAllVarPatterns :: [Pattern] -> Maybe [String]
 maybeAllVarPatterns = traverse maybeVarPattern

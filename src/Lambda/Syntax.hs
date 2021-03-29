@@ -261,7 +261,16 @@ freeVariables :: Exp -> [String]
 freeVariables = freeVariables' []
 
 freeVariables' :: [String] -> Exp -> [String]
+freeVariables' bound (Let binds expr) = freeVarsInLet bound binds expr
+freeVariables' bound (Letrec binds expr) = freeVarsInLet bound binds expr
 freeVariables' bound (Term (Variable var)) = [varName var | varName var `notElem` bound]
 freeVariables' _ (Term _) = []
 freeVariables' bound (Apply e1 e2)  = freeVariables' bound e1 ++ freeVariables' bound e2
 freeVariables' bound (Lambda v e) = freeVariables' (insert v bound) e
+
+freeVarsInLet :: [String] -> [(String, Exp)] -> Exp -> [String]
+freeVarsInLet bound binds expr = 
+  let binds_free = foldr (\(bound_var, e) vars -> 
+                             freeVariables' (bound_var : bound) e ++ vars) 
+                         [] binds
+   in freeVariables' bound expr ++ binds_free

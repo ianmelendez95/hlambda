@@ -2,7 +2,6 @@ module Lambda.Enriched where
 
 import Prettyprinter
 import Data.List (foldl', foldl1', insert, nub)
-import Data.Maybe (mapMaybe)
 
 import Lambda.Pretty
 import Lambda.Syntax (ToLambda (..))
@@ -246,5 +245,7 @@ boundVarsInPattern (PConstructor _ args) = concatMap boundVarsInPattern args
 
 freeVarsInLet :: [String] -> [LetBinding] -> Exp -> [String]
 freeVarsInLet bound binds expr = 
-  let binds_free = foldr (\(_, e) vars -> freeVariables' bound e ++ vars) [] binds
+  let binds_free = foldr (\(bound_patts, e) vars -> 
+                             freeVariables' (boundVarsInPattern bound_patts ++ bound) e ++ vars) 
+                         [] binds
    in freeVariables' bound expr ++ binds_free

@@ -28,6 +28,8 @@ reduceExp e =
 
 -- | reduce with only one (or otherwise minimal) transformation
 reduceOnce :: Exp -> Either Exp Exp
+reduceOnce l@(Let _ _) = error $ "Can't reduce let expressions: " ++ show l
+reduceOnce l@(Letrec _ _) = error $ "Can't reduce letrec expressions: " ++ show l
 reduceOnce t@(Term _) = Left t
 reduceOnce l@(Lambda var body) = maybe (Left l) Right $ etaReduceLambda var body
 reduceOnce s@(Apply _ _) = reduceApplyOnce . parseApplyChain $ s
@@ -105,16 +107,17 @@ reduceNEq = reduceTermPredicate (/=)
 reduceTermPredicate :: (Term -> Term -> Bool) -> [Exp] -> Either [Exp] [Exp]
 reduceTermPredicate predicate = reduceBinaryApplication (\e1 e2 -> toConstantExp <$> reduceTwoTerms e1 e2) 
   where 
-    reduceTwoTerms :: Exp -> Exp -> Either [Exp] Bool
-    reduceTwoTerms e1 e2 = 
+    withTerms :: (Term -> Term -> a) -> Exp -> Exp -> Either [Exp] a
+    withTerms term_f e1 e2 = 
       case reduceExp e1 of 
-        e1'@(Apply _ _)  -> Left [e1', e2]
-        e1'@(Lambda _ _) -> Left [e1', e2]
-        (Term t1) -> 
+        e1'@(Term t1) -> 
           case reduceExp e2 of 
-            e2'@(Apply _ _)  -> Left [e2', e2]
-            e2'@(Lambda _ _) -> Left [e2', e2]
-            (Term t2) -> Right $ predicate t1 t2
+            (Term t2) -> Right $ term_f t1 t2
+            e2' -> Left [e1', e2']
+        e1' -> Left [e1', e2]
+
+    reduceTwoTerms :: Exp -> Exp -> Either [Exp] Bool
+    reduceTwoTerms e1 e2 = withTerms predicate e1 e2
 
 reduceBinaryApplication :: (Exp -> Exp -> Either [Exp] Exp) -> [Exp] -> Either [Exp] [Exp]
 reduceBinaryApplication f [e1, e2] = 
@@ -190,6 +193,8 @@ reduceLambda var body val = replaceVarWithValInBody var val body
 -- | replaceVarWithValInBody is called when we are applying a lambda abstraction to an argument,
 -- | replacing instances of the parameter 'name' with the 'new_exp'
 replaceVarWithValInBody :: String -> Exp -> Exp -> Exp
+replaceVarWithValInBody _ _ l@(Let _ _) = error $ "Can't replace in let: " ++ show l
+replaceVarWithValInBody _ _ l@(Letrec _ _) = error $ "Can't replace in letrec: " ++ show l
 replaceVarWithValInBody name val v@(Term (Variable var)) = if varName var == name then val else v
 replaceVarWithValInBody _ _ t@(Term _) = t
 replaceVarWithValInBody name newExp (Apply e1 e2) = Apply (replaceVarWithValInBody name newExp e1) 
@@ -215,6 +220,8 @@ unsafeAlphaConvertRestricted taken_names var body
 -- | unsafe in that it makes no discernment for whether it is replacing the name with 
 -- | a variable that is also free in the expression
 unsafeAlphaConvert :: String -> String -> Exp -> Exp
+unsafeAlphaConvert _ _ l@(Let _ _) = error $ "Can't alpha convert let: " ++ show l
+unsafeAlphaConvert _ _ l@(Letrec _ _) = error $ "Can't alpha convert letrec: " ++ show l
 unsafeAlphaConvert old_name new_name (Term (Variable var)) = mkVariable $ mapVarName (\n -> if n == old_name then new_name else n) var
 unsafeAlphaConvert _ _ t@(Term _) = t
 unsafeAlphaConvert old_name new_name (Apply e1 e2) = Apply (unsafeAlphaConvert old_name new_name e1)

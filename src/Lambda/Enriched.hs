@@ -97,15 +97,8 @@ toLambdaConstructorLambda c ps body =
 letrecToLambda ::[LetBinding] -> Exp -> S.Exp
 letrecToLambda [] body = toLambda body
 letrecToLambda ((PConstructor constr ps, val) : bs) body = 
-  if isSum constr
-    then error $ "Only support irrefutable product constructors (is sum constructor): " ++ show constr
-    else case maybeAllVarPatterns ps of 
-           Nothing -> error $ "Only support irrefutable product constructors (args not all variables): " ++ show constr
-           Just vs -> 
-             let body' = letToLambda bs body
-                 new_name = newName (S.freeVariables body')
-                 bindings = constrArgBindings new_name constr vs
-              in S.Letrec ((new_name, toLambda val) : bindings) body'
+  let (new_name, bindings, body') = letLetrecProductConstructorToBindings constr ps bs body
+   in S.Letrec ((new_name, toLambda val) : bindings) body'
 letrecToLambda [(var, val)] body = toLambda $ 
   let applyY = Apply (Pure $ S.mkFunction S.FY) 
       new_val = applyY (Lambda var val)
@@ -118,16 +111,30 @@ letToLambda ((PVariable var, val):bs) body
   = let inner = Let bs body
      in S.Apply (S.Lambda var (toLambda inner)) (toLambda val) 
 letToLambda ((PConstructor constr ps, val) : bs) body = 
+  let (new_name, bindings, body') = letLetrecProductConstructorToBindings constr ps bs body
+   in S.Let [(new_name, toLambda val)] (S.Let bindings body')
+letToLambda ((pat, _):_) _ = error $ "letToLambda: no support for pattern: " ++ show pat
+
+-- | pattern constructor
+-- | -> constructor args
+-- | -> rest of let bindings
+-- | -> let body
+-- | -> (new name, arg bindings, transformed let body)
+letLetrecProductConstructorToBindings :: Constructor 
+                                      -> [Pattern] 
+                                      -> [LetBinding] 
+                                      -> Exp 
+                                      -> (String, [(String, S.Exp)], S.Exp) -- new_name, arg bindings, let body
+letLetrecProductConstructorToBindings constr constr_args rest_let_bindings let_body =
   if isSum constr
     then error $ "Only support irrefutable product constructors (is sum constructor): " ++ show constr
-    else case maybeAllVarPatterns ps of 
+    else case maybeAllVarPatterns constr_args of 
            Nothing -> error $ "Only support irrefutable product constructors (args not all variables): " ++ show constr
            Just vs -> 
-             let body' = letToLambda bs body
+             let body' = letToLambda rest_let_bindings let_body
                  new_name = newName (S.freeVariables body')
                  bindings = constrArgBindings new_name constr vs
-              in S.Let [(new_name, toLambda val)] (S.Let bindings body')
-letToLambda ((pat, _):_) _ = error $ "letToLambda: no support for pattern: " ++ show pat
+              in (new_name, bindings, body')
 
 constrArgBindings :: String -> Constructor -> [String] -> [(String, S.Exp)]
 constrArgBindings new_name constr constr_args = 

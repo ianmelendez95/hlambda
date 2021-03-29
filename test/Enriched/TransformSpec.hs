@@ -116,3 +116,41 @@ spec = do
                                          S.mkVariable "y"]))
 
       toLambda enr `shouldBe` lam
+
+  describe "6.2.5 Transforming Irrefutable Letrecs" $ do
+    it "p112: transforms pattern letrec" $ do
+      {-
+        letrec (PAIR x y) = PAIR 2 5 in + x y
+
+          =>
+
+        letrec _u1 = PAIR 2 5 
+               x = SEL-2-1 _u1
+               y = SEL-2-2 _u1
+            in + x y)
+      -}
+
+      let enr = Letrec [(PConstructor (C.fromString "PAIR") 
+                                    [PVariable "x", PVariable "y"], 
+                         mkApply [Pure (S.mkVariable "PAIR"),
+                                  Pure (S.toConstantExp (2 :: Int)),
+                                  Pure (S.toConstantExp (5 :: Int))])] 
+
+                       (mkApply [Pure (S.mkFunction S.FPlus), 
+                                 Pure (S.mkVariable "x"),
+                                 Pure (S.mkVariable "y")])
+
+          lam = S.Letrec [("_u1", 
+                           S.mkApply [S.mkVariable "PAIR",
+                                      S.toConstantExp (2 :: Int),
+                                      S.toConstantExp (5 :: Int)]),
+                          ("x", S.mkApply [S.mkVariable "SEL-2-1",
+                                           S.mkVariable "_u1"]),
+                          ("y", S.mkApply [S.mkVariable "SEL-2-2",
+                                           S.mkVariable "_u1"])]
+
+                         (S.mkApply [S.mkFunction S.FPlus,
+                                            S.mkVariable "x",
+                                            S.mkVariable "y"])
+
+      toLambda enr `shouldBe` lam

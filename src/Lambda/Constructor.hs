@@ -2,6 +2,7 @@ module Lambda.Constructor
   ( Constructor (..)
   , ConstructorType (..)
   , arity
+  , isSum
   , isProduct
   , selectFunctions
   , siblings
@@ -55,6 +56,9 @@ arity = arity' . constrType
 arity' :: ConstructorType -> Int 
 arity' (Sum _ a) = a
 arity' (Product a) = a
+
+isSum :: Constructor -> Bool 
+isSum = not . isProduct
 
 isProduct :: Constructor -> Bool
 isProduct = isProduct' . constrType

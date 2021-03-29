@@ -25,7 +25,7 @@ module Lambda.Syntax
   , freeVariables'
   ) where 
 
-import Prettyprinter ( (<+>), backslash, dot )
+import Prettyprinter ( (<+>), backslash, dot, vsep, align )
 import Prettyprinter.Render.Util.SimpleDocTree (treeForm, renderSimplyDecorated)
 import Data.Text (Text, unpack, pack)
 
@@ -221,6 +221,8 @@ instance PrettyLambda Exp where
 
 sPretty :: Exp -> PrettyParenS LambdaDoc
 sPretty (Term t) = sPrettyTerm t
+sPretty (Letrec bindings body) = prettyLet "letrec" bindings body
+sPretty (Let bindings body)    = prettyLet "let" bindings body
 sPretty (Lambda var e) = do wrapper <- getParenWrapper 5 
                             ePretty <- tempState (setPrec 0) (sPretty e)
                             pure $ wrapper $ backslash
@@ -231,7 +233,18 @@ sPretty (Apply e e') = do wrapper <- getParenWrapper 10
                           ePretty <- tempState (setPrec 6) (sPretty e)
                           ePretty' <- tempState (setPrec 11) (sPretty e')
                           pure $ wrapper $ ePretty <+> ePretty'
+
+-- let
                         
+prettyLet :: String -> [(String, Exp)] -> Exp -> PrettyParenS LambdaDoc
+prettyLet let_kw bindings body = pure $ 
+  align . vsep $ [pretty let_kw <+> (align . vsep $ map prettyBinding bindings), 
+                  pretty "in" <+> prettyDoc body]
+
+prettyBinding :: (String, Exp) -> LambdaDoc
+prettyBinding (pat, val) = pretty pat <+> pretty "=" <+> prettyDoc val
+
+-- terms
 
 sPrettyTerm :: Term -> PrettyParenS LambdaDoc
 sPrettyTerm (Constant c) = pure $ annStr AConstant (show c)

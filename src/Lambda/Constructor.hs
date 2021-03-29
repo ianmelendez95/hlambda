@@ -11,6 +11,7 @@ module Lambda.Constructor
   , unpackStr
   ) where 
 
+import Data.Maybe (fromMaybe)
 import GHC.Exts (IsString (..))
 import Lambda.Pretty
 import qualified Data.Map as Map
@@ -90,9 +91,8 @@ siblings c =
   case constrType c of 
     Product _ -> [c]
     Sum _ _   -> 
-      case Map.lookup (constrName c) builtinSums of 
-        Nothing -> error $ "Sum constructor has no siblings: " ++ show c
-        Just sibs -> sibs
+      fromMaybe (error $ "Sum constructor has no siblings: " ++ show c)
+                (Map.lookup (constrName c) builtinSums)
 
 builtinSums :: Map.Map String [Constructor]
 builtinSums = foldr foldF Map.empty [biTree, biList]

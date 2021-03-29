@@ -59,7 +59,7 @@ class PrettyLambda a where
   ansiPrettyDoc = lambdaToAnsi . prettyStream
 
 instance PrettyLambda String where 
-  prettyDoc' _ s = pretty s
+  prettyDoc' _ = pretty
 
 ----------
 -- Ansi --

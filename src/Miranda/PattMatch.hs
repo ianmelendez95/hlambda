@@ -150,7 +150,7 @@ pattToMatchTree (PTExp e) = MTExp e
 
 mergePRoots :: [Root PattTree] -> Root MatchTree
 mergePRoots [] = error "No pattern trees"
-mergePRoots all_ts@((Root nums _):ts) 
+mergePRoots all_ts@(Root nums _ : ts) 
   | all ((nums ==) . rootNums) ts = Root nums (mergePTrees (map rootTree all_ts))
   | otherwise = error "mismatched root numbers"
 

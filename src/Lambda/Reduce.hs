@@ -53,7 +53,7 @@ varFreeInExp expr = (`elem` freeVariables expr)
 -----------
 
 reduceApplyOnce :: [Exp] -> Either Exp Exp
-reduceApplyOnce ((Term (Function func)) : rest) 
+reduceApplyOnce (Term (Function func) : rest) 
   = case reduceFunctionApplication func rest of 
       Left args -> Left $ mkApply $ mkFunction func : args
       Right evaled -> Right $ mkApply evaled
@@ -107,6 +107,9 @@ reduceNEq = reduceTermPredicate (/=)
 reduceTermPredicate :: (Term -> Term -> Bool) -> [Exp] -> Either [Exp] [Exp]
 reduceTermPredicate predicate = reduceBinaryApplication (\e1 e2 -> toConstantExp <$> reduceTwoTerms e1 e2) 
   where 
+    reduceTwoTerms :: Exp -> Exp -> Either [Exp] Bool
+    reduceTwoTerms = withTerms predicate
+
     withTerms :: (Term -> Term -> a) -> Exp -> Exp -> Either [Exp] a
     withTerms term_f e1 e2 = 
       case reduceExp e1 of 
@@ -115,9 +118,6 @@ reduceTermPredicate predicate = reduceBinaryApplication (\e1 e2 -> toConstantExp
             (Term t2) -> Right $ term_f t1 t2
             e2' -> Left [e1', e2']
         e1' -> Left [e1', e2]
-
-    reduceTwoTerms :: Exp -> Exp -> Either [Exp] Bool
-    reduceTwoTerms e1 e2 = withTerms predicate e1 e2
 
 reduceBinaryApplication :: (Exp -> Exp -> Either [Exp] Exp) -> [Exp] -> Either [Exp] [Exp]
 reduceBinaryApplication f [e1, e2] = 

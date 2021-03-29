@@ -2,6 +2,8 @@ module Lambda.Constructor
   ( Constructor (..)
   , ConstructorType (..)
   , arity
+  , isProduct
+  , selectFunctions
   , siblings
   , nTuple
   , fromString
@@ -20,13 +22,6 @@ data Constructor = Constructor {
 data ConstructorType = Sum     Int Int -- tag arity
                      | Product     Int --     arity
                      deriving (Ord, Eq)
-
-arity :: Constructor -> Int
-arity = arity' . constrType
-
-arity' :: ConstructorType -> Int 
-arity' (Sum _ a) = a
-arity' (Product a) = a
 
 instance Show Constructor where 
   show = packStr
@@ -50,6 +45,31 @@ instance IsString ConstructorType where
 
 instance PrettyLambda Constructor where 
   prettyDoc' n c = prettyDoc' n (constrName c)
+
+--------------------------------------------------------------------------------
+-- properties
+
+arity :: Constructor -> Int
+arity = arity' . constrType
+
+arity' :: ConstructorType -> Int 
+arity' (Sum _ a) = a
+arity' (Product a) = a
+
+isProduct :: Constructor -> Bool
+isProduct = isProduct' . constrType
+
+isProduct' :: ConstructorType -> Bool
+isProduct' (Product _) = True
+isProduct' (Sum _ _) = False
+
+selectFunctions :: Constructor -> [String]
+selectFunctions = selectFunctions' . arity
+
+selectFunctions' :: Int -> [String]
+selectFunctions' arity_val = 
+  map (\n -> "SEL-" ++ show arity_val ++ "-" ++ show n) [1..arity_val]
+
 
 --------------------------------------------------------------------------------
 -- builtin

@@ -78,3 +78,41 @@ spec = do
                                                   S.toConstantExp (6 :: Int)]))
                         (S.toConstantExp (4 :: Int))
       toLambda enr `shouldBe` lam
+  
+  describe "6.2.4 Transforming Irrefutable Lets" $ do
+    it "p112: transforms pattern let" $ do
+      {-
+        let (PAIR x y) = PAIR 2 5 in + x y
+
+          =>
+
+        let _u1 = PAIR 2 5 in (let x = SEL-2-1 _u1
+                                   y = SEL-2-2 _u1
+                               in  + x y)
+      -}
+
+      let enr = Let [(PConstructor (C.fromString "PAIR") 
+                                   [PVariable "x", PVariable "y"], 
+                      mkApply [Pure (S.mkVariable "PAIR"),
+                               Pure (S.toConstantExp (2 :: Int)),
+                               Pure (S.toConstantExp (5 :: Int))])] 
+
+                    (mkApply [Pure (S.mkFunction S.FPlus), 
+                              Pure (S.mkVariable "x"),
+                              Pure (S.mkVariable "y")])
+
+          lam = S.Let [("_u1", 
+                        S.mkApply [S.mkVariable "PAIR",
+                                   S.toConstantExp (2 :: Int),
+                                   S.toConstantExp (5 :: Int)])]
+
+                      (S.Let [("x", S.mkApply [S.mkVariable "SEL-2-1",
+                                               S.mkVariable "_u1"]),
+                              ("y", S.mkApply [S.mkVariable "SEL-2-2",
+                                               S.mkVariable "_u1"])]
+
+                             (S.mkApply [S.mkFunction S.FPlus,
+                                         S.mkVariable "x",
+                                         S.mkVariable "y"]))
+
+      toLambda enr `shouldBe` lam

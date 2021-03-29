@@ -35,7 +35,9 @@ import Data.List (foldl1', insert)
 
 -- p13: Figure 2.1 - Syntax of a Lambda Expression
 
-data Exp = Term Term 
+data Exp = Let    [(Variable, Exp)] Exp
+         | Letrec [(Variable, Exp)] Exp
+         | Term Term 
          | Apply Exp Exp 
          | Lambda String Exp
          deriving Eq

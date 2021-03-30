@@ -154,3 +154,37 @@ spec = do
                                             S.mkVariable "y"])
 
       toLambda enr `shouldBe` lam
+
+  describe "6.2.6 Transforming Irrefutable Letrecs into Irrefutable Lets" $ do
+    it "p114: transforms patterns letrec" $ do
+      {-
+        letrec x = CONS 1 y
+               y = CONS 2 x
+        in x
+
+          =>
+
+        let _u1 = PAIR 2 5 
+            x = SEL-2-1 _u1
+            y = SEL-2-2 _u1
+            in + x y)
+      -}
+
+      let enr = Letrec [(PVariable "x", 
+                         mkApply [Pure (S.mkFunction S.FCons),
+                                  Pure (S.toConstantExp (1 :: Int)),
+                                  Pure (S.mkVariable "y")]),
+                        (PVariable "y", 
+                         mkApply [Pure (S.mkFunction S.FCons),
+                                  Pure (S.toConstantExp (2 :: Int)),
+                                  Pure (S.mkVariable "x")])] 
+
+                       (Pure (S.mkVariable "x"))
+
+          lam = init $ unlines 
+            [ "let _u1 = Y (UNPACK-PRODUCT-2 (\\x. \\y. PAIR (CONS 1 y) (CONS 2 x)))"
+            , "in let x = SEL-2-1 _u1"
+            , "       y = SEL-2-2 _u1"
+            , "   in x" ]
+
+      show (toLambda enr) `shouldBe` lam

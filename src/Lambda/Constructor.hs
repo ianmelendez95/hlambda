@@ -26,7 +26,7 @@ data ConstructorType = Sum     Int Int -- tag arity
                      deriving (Ord, Eq)
 
 instance Show Constructor where 
-  show = packStr
+  show = constrName
 
 instance IsString Constructor where 
   fromString c = Constructor c (fromString c)

@@ -1,3 +1,4 @@
+{-# LANGUAGE TupleSections #-}
 module Lambda.Enriched where 
 
 import Prettyprinter
@@ -10,6 +11,8 @@ import qualified Lambda.Syntax as S
 import Lambda.Constructor
 
 import Common.Name (newName)
+
+import Debug.Trace
 
 -- p40: Figure 3.2 - Syntax of Enriched Lambda Expressions
 
@@ -28,6 +31,10 @@ data Pattern = PConstant S.Constant
              | PVariable S.Variable
              | PConstructor Constructor [Pattern]
              deriving Show
+
+-- TODO seems like a case for GADTs (parameterize over whether it's irrefutable)
+data IrrefutablePattern = IPVariable S.Variable
+                        | IPConstructor Constructor [IrrefutablePattern]
 
 data ConstructorType = CTSum Int Int -- tag arity
                      | CTProduct Int -- arity
@@ -96,14 +103,32 @@ toLambdaConstructorLambda c ps body =
 -- | (letrec v = B in E) = (let v = Y (\v. B) in E) - p42
 letrecToLambda ::[LetBinding] -> Exp -> S.Exp
 letrecToLambda [] body = toLambda body
-letrecToLambda ((PConstructor constr ps, val) : bs) body = 
-  let (new_name, bindings, body') = letLetrecProductConstructorToBindings constr ps bs body
-   in S.Letrec ((new_name, toLambda val) : bindings) body'
+letrecToLambda [(PConstructor constr ps, val)] body = 
+  let (new_name, bindings, body') = letLetrecProductConstructorToBindings constr ps [] body
+   in trace "!!!WOAH DUDE!!!" $ S.Letrec ((new_name, toLambda val) : bindings) body'
 letrecToLambda [(var, val)] body = toLambda $ 
   let applyY = Apply (Pure $ S.mkFunction S.FY) 
       new_val = applyY (Lambda var val)
    in Let [(var, new_val)] body  
-letrecToLambda _ _ = error "letrec: no support for multiple bindings (yet)"
+letrecToLambda bs body = 
+  case traverse (\(p, v) -> (,v) <$> patternToIrrefutable p) bs of 
+    Nothing -> error $ "letrec: no support for non-irrefutable patterns: " ++ show bs ++ " " ++ show body
+    Just irr_bs -> 
+      let constr = nTuple $ length irr_bs
+          (irr_ps, vs) = foldr (\(p, v) (ps', vs') -> (p : ps', v : vs')) ([],[]) irr_bs
+          let_p = PConstructor constr (map irrefutableToPattern irr_ps) 
+          let_v = Pure $ S.mkApply (S.mkVariable (show constr) : map toLambda vs)
+       in letToLambda [(let_p, Apply (Pure $ S.mkFunction S.FY) (Lambda let_p let_v))] body
+
+-- | p110
+patternToIrrefutable :: Pattern -> Maybe IrrefutablePattern
+patternToIrrefutable (PVariable v) = Just $ IPVariable v
+patternToIrrefutable (PConstructor c ps) = IPConstructor c <$> traverse patternToIrrefutable ps
+patternToIrrefutable _ = Nothing
+
+irrefutableToPattern :: IrrefutablePattern -> Pattern
+irrefutableToPattern (IPVariable v) = PVariable v
+irrefutableToPattern (IPConstructor c ps) = PConstructor c (map irrefutableToPattern ps)
 
 letToLambda :: [LetBinding] -> Exp -> S.Exp
 letToLambda [] body = toLambda body

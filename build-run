@@ -1,0 +1,6 @@
+#!/usr/bin/env zsh
+
+set -e
+
+nix-shell --run "cabal2nix . > hlambda-cabal.nix"
+nix-build hlambda-release.nix

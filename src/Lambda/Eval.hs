@@ -3,7 +3,7 @@ module Lambda.Eval
   , Eval(..)
   ) where 
 
-import Prettyprinter
+import Data.Text.Prettyprint.Doc
 
 import Lambda.Reduce (reduce)
 import qualified Lambda.Enriched as E

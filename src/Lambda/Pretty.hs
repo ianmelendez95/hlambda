@@ -22,8 +22,8 @@ module Lambda.Pretty
 
 import Control.Monad.State.Lazy
     ( gets, modify, evalState, MonadState(put, get), State )
-import Prettyprinter
-import Prettyprinter.Render.Terminal
+import Data.Text.Prettyprint.Doc
+import Data.Text.Prettyprint.Doc.Render.Terminal
     ( color,
       AnsiStyle,
       Color(Cyan, Blue, Green, Red, Yellow, Magenta) )

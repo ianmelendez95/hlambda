@@ -1,7 +1,13 @@
+# stack
 .stack-work/
 *~
 hjs-history
 detailed-info
 
+# IDEA
 .idea
 *.iml
+
+# nix 
+result
+dist*

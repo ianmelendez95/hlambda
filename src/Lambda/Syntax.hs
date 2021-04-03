@@ -25,8 +25,8 @@ module Lambda.Syntax
   , freeVariables'
   ) where 
 
-import Prettyprinter ( (<+>), backslash, dot, vsep, align )
-import Prettyprinter.Render.Util.SimpleDocTree (treeForm, renderSimplyDecorated)
+import Data.Text.Prettyprint.Doc ( (<+>), backslash, dot, vsep, align )
+import Data.Text.Prettyprint.Doc.Render.Util.SimpleDocTree (treeForm, renderSimplyDecorated)
 import Data.Text (Text, unpack, pack)
 
 import qualified Lambda.Token as T

@@ -28,7 +28,7 @@ module Miranda.Syntax
   -- , showMarked
   ) where 
 
-import Prettyprinter
+import Data.Text.Prettyprint.Doc
 import Data.List (intersperse, foldl1', foldl')
 import Data.Maybe (mapMaybe)
 import qualified Data.Map as Map

@@ -1,6 +1,6 @@
 module Lambda.Enriched where 
 
-import Prettyprinter
+import Data.Text.Prettyprint.Doc
 import Data.List (foldl', foldl1', insert, nub)
 
 import Lambda.Pretty

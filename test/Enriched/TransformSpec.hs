@@ -14,8 +14,8 @@ spec = do
     it "p105: transforms constant lambda expressions" $ do
       let enr = E.Lambda (E.PConstant (S.CNat 0)) (E.Pure (S.mkConstant (S.CNat 1)))
           lam = S.Lambda "_u1" (S.mkIf (S.mkApply [S.mkFunction S.FEq, 
-                                                   S.toConstantExp (0 :: Int),
-                                                   S.mkVariable "_u1"])
+                                                   S.mkVariable "_u1",
+                                                   S.toConstantExp (0 :: Int)])
                                        (S.toConstantExp (1 :: Int))
                                        (S.mkConstant S.CFail))
       toLambda enr `shouldBe` lam

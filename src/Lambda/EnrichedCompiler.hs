@@ -41,8 +41,8 @@ compileToLambda (E.FatBar e1 e2) =
         E.Let [(new_var_patt, e1)]
               (E.Lambda new_var_patt 
                 (E.mkIf (E.mkApply [E.Pure $ S.mkFunction S.FEq, 
-                                    new_var_expr,
-                                    E.Pure $ S.mkConstant S.CFail])
+                                    E.Pure $ S.mkConstant S.CFail,
+                                    new_var_expr])
                         e2 new_var_expr))
    in compileToLambda let_expr
 

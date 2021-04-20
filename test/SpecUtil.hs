@@ -6,9 +6,9 @@ import Test.HUnit.Base (assertFailure)
 import Parse
 import Lambda.Pretty (PrettyLambda (..))
 import Lambda.Reduce (reduce)
-import Lambda.Syntax (ToLambda (..))
 import Lambda.Enriched (ToEnriched (..))
 import qualified Miranda.Syntax as M (Prog (..), Decl)
+import Lambda.ToLambda
 
 import Lambda.Eval 
 

@@ -46,8 +46,6 @@ import Lambda.Pretty
       getParenWrapper,
       mkPrettyDocFromParenS' )
 import Lambda.Enriched (ToEnriched (..))
-import Lambda.Syntax (ToLambda (..))
-import Lambda.Reduce (Reducible (..))
 import qualified Lambda.Enriched as E
 import qualified Lambda.Syntax as S
 import qualified Lambda.Constructor as C
@@ -169,18 +167,12 @@ funcPatternVars (PTuple ps) = concatMap funcPatternVars ps
 -- instance Show Exp where 
 --   show = pShow
 
---------------------------------------------------------------------------------
--- Reducible 
-
-instance Reducible Prog where 
-  reduce = reduce . toLambda
-
 ---------------------------
 -- ToEnriched (ToLambda) --
 ---------------------------
 
-instance ToLambda Prog where 
-  toLambda = toLambda . toEnriched
+-- instance ToLambda Prog where 
+--   toLambda = toLambda . toEnriched
 
 instance ToEnriched Prog where 
   toEnriched (Prog defs expr) = 

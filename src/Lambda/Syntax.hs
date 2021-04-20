@@ -4,7 +4,6 @@ module Lambda.Syntax
   , Function (..)
   , Constant (..)
   , Term (..)
-  , ToLambda (..)
   , ToConstant (..)
 
   -- builders
@@ -101,13 +100,6 @@ unApply expr = [expr]
 
 mkLambda :: [String] -> Exp -> Exp
 mkLambda vars expr = foldr Lambda expr vars
-
---------------
--- ToLambda --
---------------
-
-class ToLambda a where 
-  toLambda :: a -> Exp
 
 ----------------
 -- ToConstant --

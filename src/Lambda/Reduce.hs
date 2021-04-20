@@ -1,6 +1,5 @@
 module Lambda.Reduce 
-  ( Reducible (..),
-    unsafeAlphaConvert
+  ( Reducible (..)
   ) where 
 
 -- new reduction strategy that emulates laziness
@@ -8,11 +7,18 @@ module Lambda.Reduce
 import Data.List (union)
 
 import Lambda.Name (nextName)
+import qualified Miranda.Syntax as M
 import Lambda.Syntax
 import qualified Lambda.Enriched as E
+import Lambda.ToLambda
+
+import Lambda.AlphaConv (unsafeAlphaConvert)
 
 class Reducible a where 
   reduce :: a -> Exp
+
+instance Reducible M.Prog where 
+  reduce = reduce . toLambda
 
 instance Reducible E.Exp where 
   reduce = reduce . toLambda
@@ -212,23 +218,6 @@ unsafeAlphaConvertRestricted :: [String] -> String -> Exp -> (String, Exp)
 unsafeAlphaConvertRestricted taken_names var body 
   = let new_name = nextName taken_names var 
      in (new_name, unsafeAlphaConvert var new_name body)
-
--- | rather unsafely converts instances of the old name with the new name
--- | only scrutinizing on formal parameters (that is, if encounter a lambda with the formal parameter 
--- | matching the old name, it doesn't continue)
--- | 
--- | unsafe in that it makes no discernment for whether it is replacing the name with 
--- | a variable that is also free in the expression
-unsafeAlphaConvert :: String -> String -> Exp -> Exp
-unsafeAlphaConvert _ _ l@(Let _ _) = error $ "Can't alpha convert let: " ++ show l
-unsafeAlphaConvert _ _ l@(Letrec _ _) = error $ "Can't alpha convert letrec: " ++ show l
-unsafeAlphaConvert old_name new_name (Term (Variable var)) = mkVariable $ mapVarName (\n -> if n == old_name then new_name else n) var
-unsafeAlphaConvert _ _ t@(Term _) = t
-unsafeAlphaConvert old_name new_name (Apply e1 e2) = Apply (unsafeAlphaConvert old_name new_name e1)
-                                                     (unsafeAlphaConvert old_name new_name e2)
-unsafeAlphaConvert old_name new_name l@(Lambda v e)
-  | old_name == v = l -- name is already bound, doesn't matter
-  | otherwise = Lambda v (unsafeAlphaConvert old_name new_name e)
 
 -- freeVariables :: [String] -> Exp -> [String]
 -- freeVariables _ (Constant _) = []

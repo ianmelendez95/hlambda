@@ -9,6 +9,7 @@ import Lambda.Syntax (ToLambda (..))
 import qualified Lambda.Syntax as S
 
 import Lambda.Constructor
+import qualified Lambda.Constructor as C
 
 import Common.Name (newName)
 
@@ -51,12 +52,23 @@ mkLambda ps e = foldr Lambda e ps
 mkApply :: [Exp] -> Exp
 mkApply = foldl1' Apply
 
+mkVariable :: S.Variable -> Exp
+mkVariable = Pure . S.mkVariable
+
+mkConstant :: S.Constant -> Exp
+mkConstant = Pure . S.mkConstant
+
 mkIf :: Exp -> Exp -> Exp -> Exp
 mkIf cond true_clause false_clause = 
   mkApply [mkFunction S.FIf, cond, true_clause, false_clause]
 
 mkFunction :: S.Function -> Exp
 mkFunction = Pure . S.mkFunction
+
+fromPattern :: Pattern -> Exp
+fromPattern (PVariable v) = mkVariable v
+fromPattern (PConstant c) = mkConstant c
+fromPattern (PConstructor c ps) = mkApply (mkVariable (show c) : map fromPattern ps) 
 
 ----------------
 -- ToEnriched --
@@ -105,7 +117,7 @@ letrecToLambda ::[LetBinding] -> Exp -> S.Exp
 letrecToLambda [] body = toLambda body
 letrecToLambda [(PConstructor constr ps, val)] body = 
   let (new_name, bindings, body') = letLetrecProductConstructorToBindings constr ps [] body
-   in trace "!!!WOAH DUDE!!!" $ S.Letrec ((new_name, toLambda val) : bindings) body'
+   in S.Letrec ((new_name, toLambda val) : bindings) body'
 letrecToLambda [(var, val)] body = toLambda $ 
   let applyY = Apply (Pure $ S.mkFunction S.FY) 
       new_val = applyY (Lambda var val)
@@ -139,6 +151,22 @@ letToLambda ((PConstructor constr ps, val) : bs) body =
   let (new_name, bindings, body') = letLetrecProductConstructorToBindings constr ps bs body
    in S.Let [(new_name, toLambda val)] (S.Let bindings body')
 letToLambda ((pat, _):_) _ = error $ "letToLambda: no support for pattern: " ++ show pat
+
+letLetrecConstructorToBindings :: Constructor 
+                               -> [Pattern] 
+                               -> [LetBinding] 
+                               -> Exp 
+                               -> (String, [(String, S.Exp)], S.Exp) -- new_name, arg bindings, let body 
+letLetrecConstructorToBindings constr constr_args rest_let_bindings let_body 
+  | isProduct constr = letLetrecProductConstructorToBindings constr constr_args rest_let_bindings let_body
+  | otherwise =  -- handle sum
+    let arg_tuple_constr = C.nTuple (C.arity constr)
+        coercion_func = Lambda (PConstructor (C.fromString "CONS") [PVariable "y", PVariable "ys"])
+                               (mkApply [Pure $ S.mkVariable $ show arg_tuple_constr, 
+                                         Pure $ S.mkVariable "y",
+                                         Pure $ S.mkVariable "ys"])
+        coercion_appl = FatBar (Apply coercion_func undefined)
+     in undefined 
 
 -- | pattern constructor
 -- | -> constructor args

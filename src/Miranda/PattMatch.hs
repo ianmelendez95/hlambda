@@ -25,7 +25,6 @@ patternEquationsToEnriched patt_eqs
     allEqual [] = True
     allEqual (x:xs) = all (== x) xs 
 
-
 eqsToMTree :: [([E.Pattern], E.Exp)] -> Root MatchTree
 eqsToMTree = mergePRoots . map (uncurry mkTree)
 

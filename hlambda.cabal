@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.2.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e1c467769ace02dea46945c1a902d7ecbc7abc697e15f78e016d57aaa9306567
+-- hash: c680d8b96dbc0234b1ac362aadc14721d720d223d00ea5b615080195d4d58f50
 
 name:           hlambda
 version:        0.1.0.0
@@ -32,7 +32,9 @@ library
       Lambda.AlphaConv
       Lambda.Constructor
       Lambda.Enriched
+      Lambda.EnrichedCompiler
       Lambda.Eval
+      Lambda.LetLetrec
       Lambda.Name
       Lambda.Pretty
       Lambda.Reduce

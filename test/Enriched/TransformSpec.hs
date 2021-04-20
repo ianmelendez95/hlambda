@@ -188,3 +188,19 @@ spec = do
             , "   in x" ]
 
       show (toLambda enr) `shouldBe` lam
+
+  describe "6.2.7 Transforming general let(rec)s into irrefutable let(rec)s" $ do
+    it "p116 transforms lazy cons" $ do 
+      let enr = Let [(PConstructor (C.fromString "CONS") 
+                                   [PVariable "y",
+                                    PVariable "ys"], 
+                      Pure $ S.mkVariable "NIL")] 
+                    (Pure $ S.toConstantExp (6 :: Int))
+
+          lam = init $ unlines 
+            [ "let _u1 = Y (UNPACK-PRODUCT-2 (\\x. \\y. PAIR (CONS 1 y) (CONS 2 x)))"
+            , "in let x = SEL-2-1 _u1"
+            , "       y = SEL-2-2 _u1"
+            , "   in x" ]
+
+      show (toLambda enr) `shouldBe` lam

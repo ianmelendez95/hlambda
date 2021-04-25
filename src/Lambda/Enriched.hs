@@ -25,7 +25,7 @@ import qualified Lambda.Syntax as S
 
 import Lambda.Constructor
 
--- import Debug.Trace
+import Debug.Trace
 
 -- p40: Figure 3.2 - Syntax of Enriched Lambda Expressions
 
@@ -109,8 +109,14 @@ sPretty :: Exp -> PrettyParenS LambdaDoc
 sPretty (Pure expr) = 
   do curPrec <- getPrec
      pure $ prettyDoc' curPrec expr
-sPretty (Letrec bindings body) = prettyLet "letrec" bindings body
-sPretty (Let bindings body)    = prettyLet "let" bindings body
+sPretty (Letrec bindings body) = 
+  do wrapper <- getParenWrapper 10
+     wrapper <$> prettyLet "letrec" bindings body
+sPretty (Let bindings body)    =
+  do wrapper <- getParenWrapper 10
+     cur_prec <- getPrec
+     trace ("TRACE: Making let, prec: " ++ show cur_prec) $
+       wrapper <$> prettyLet "let" bindings body
 sPretty (FatBar e1 e2) = do p1 <- sPretty e1
                             p2 <- sPretty e2
                             return $ align . vsep $ [p1, pipe <+> p2]

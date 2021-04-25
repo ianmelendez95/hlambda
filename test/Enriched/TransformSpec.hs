@@ -36,14 +36,15 @@ spec = do
 
     it "p107: transforma TREE (LEAF) pattern lambda expresssions" $ do 
       -- \LEAF n. LEAF n
-      -- UNPACK-SUM-LEAF (\n. LEAF n)
       let enr = E.Lambda (E.PConstructor (C.fromString "LEAF") [E.PVariable "n"]) 
                          (E.mkApply [E.Pure (S.mkVariable "LEAF"), 
                                      E.Pure (S.mkVariable "n")]) 
-          lam = S.mkApply [S.mkVariable "UNPACK-SUM-1-1", 
-                           S.mkLambda ["n"] (S.mkApply [S.mkVariable "LEAF", 
-                                                        S.mkVariable "n"])] 
-      toLambda enr `shouldBe` lam
+          lam = init $ unlines 
+            [ "\\_u1. CASE-2 _u1 (let _u2 = SEL-1-1 _u1",
+              "                  in LEAF _u2) (let _u2 = SEL-2-1 _u1",
+              "                                in let _u3 = SEL-2-2 _u1", 
+              "                                   in FAIL)" ]
+      show (toLambda enr) `shouldBe` lam
 
     it "p107: transforma TREE (BRANCH) pattern lambda expresssions" $ do 
       -- \BRANCH t1 t2. BRANCH (reflect t2) (reflect t1)

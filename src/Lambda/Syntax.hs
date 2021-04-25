@@ -32,6 +32,8 @@ import qualified Lambda.Token as T
 import Lambda.Pretty
 import Data.List (foldl1', insert)
 
+import Debug.Trace (trace)
+
 -- p13: Figure 2.1 - Syntax of a Lambda Expression
 
 data Exp = Let    [(Variable, Exp)] Exp
@@ -213,8 +215,14 @@ instance PrettyLambda Exp where
 
 sPretty :: Exp -> PrettyParenS LambdaDoc
 sPretty (Term t) = sPrettyTerm t
-sPretty (Letrec bindings body) = prettyLet "letrec" bindings body
-sPretty (Let bindings body)    = prettyLet "let" bindings body
+sPretty (Letrec bindings body) = 
+  do wrapper <- getParenWrapper 10
+     wrapper <$> prettyLet "letrec" bindings body
+sPretty (Let bindings body)    =
+  do wrapper <- getParenWrapper 10
+     cur_prec <- getPrec
+     trace ("TRACE: Making let, prec: " ++ show cur_prec) $
+       wrapper <$> prettyLet "let" bindings body
 sPretty (Lambda var e) = do wrapper <- getParenWrapper 5 
                             ePretty <- tempState (setPrec 0) (sPretty e)
                             pure $ wrapper $ backslash

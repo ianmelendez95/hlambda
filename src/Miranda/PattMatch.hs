@@ -20,7 +20,7 @@ import Lambda.Constructor
 -- | Guarantees about Case:
 -- |   all case expressions are _complete_, meaning all constructors of the type
 -- |   have a corresponding clause, and all clauses are constructors of the same type
--- |   TODO - find out how to prove this by construction
+-- |   TODO: - find out how to prove this by construction
 patternEquationsToEnriched :: [([E.Pattern], E.Exp)] -> E.Exp
 patternEquationsToEnriched patt_eqs 
   | not . allEqual $ map (length . fst) patt_eqs = 

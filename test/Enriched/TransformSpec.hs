@@ -56,14 +56,12 @@ spec = do
                                              (E.Pure (S.mkVariable "t2")),
                                      E.Apply (E.Pure (S.mkVariable "reflect")) 
                                              (E.Pure (S.mkVariable "t1"))]) 
-          lam = S.mkApply [S.mkVariable "UNPACK-SUM-2-2", 
-                           S.mkLambda ["t1", "t2"] 
-                                      (S.mkApply [S.mkVariable "BRANCH", 
-                                                  S.Apply (S.mkVariable "reflect") 
-                                                          (S.mkVariable "t2"),
-                                                  S.Apply (S.mkVariable "reflect") 
-                                                          (S.mkVariable "t1")])] 
-      toLambda enr `shouldBe` lam
+          lam = init $ unlines 
+            [ "\\_u1. CASE-2 _u1 (let _u2 = SEL-1-1 _u1",
+              "                  in FAIL) (let _u2 = SEL-2-1 _u1",
+              "                            in let _u3 = SEL-2-2 _u1", 
+              "                               in BRANCH (reflect _u3) (reflect _u2))" ]
+      show (toLambda enr) `shouldBe` lam
   
   describe "6.2.3 Transforming Simple Lets" $ do
     it "p112: transforms simple let" $ do

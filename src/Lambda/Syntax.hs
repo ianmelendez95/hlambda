@@ -32,7 +32,7 @@ import qualified Lambda.Token as T
 import Lambda.Pretty
 import Data.List (foldl1', insert)
 
-import Debug.Trace (trace)
+-- import Debug.Trace (trace)
 
 -- p13: Figure 2.1 - Syntax of a Lambda Expression
 
@@ -215,14 +215,8 @@ instance PrettyLambda Exp where
 
 sPretty :: Exp -> PrettyParenS LambdaDoc
 sPretty (Term t) = sPrettyTerm t
-sPretty (Letrec bindings body) = 
-  do wrapper <- getParenWrapper 10
-     wrapper <$> prettyLet "letrec" bindings body
-sPretty (Let bindings body)    =
-  do wrapper <- getParenWrapper 10
-     cur_prec <- getPrec
-     trace ("TRACE: Making let, prec: " ++ show cur_prec) $
-       wrapper <$> prettyLet "let" bindings body
+sPretty (Letrec bindings body) = prettyLet "letrec" bindings body
+sPretty (Let bindings body)    = prettyLet "let" bindings body
 sPretty (Lambda var e) = do wrapper <- getParenWrapper 5 
                             ePretty <- tempState (setPrec 0) (sPretty e)
                             pure $ wrapper $ backslash
@@ -237,9 +231,10 @@ sPretty (Apply e e') = do wrapper <- getParenWrapper 10
 -- let
                         
 prettyLet :: String -> [(String, Exp)] -> Exp -> PrettyParenS LambdaDoc
-prettyLet let_kw bindings body = pure $ 
-  align . vsep $ [pretty let_kw <+> (align . vsep $ map prettyBinding bindings), 
-                  pretty "in" <+> prettyDoc body]
+prettyLet let_kw bindings body = 
+  do wrapper <- getParenWrapper 10
+     pure $ wrapper $ align . vsep $ [pretty let_kw <+> (align . vsep $ map prettyBinding bindings), 
+                            pretty "in" <+> prettyDoc body]
 
 prettyBinding :: (String, Exp) -> LambdaDoc
 prettyBinding (pat, val) = pretty pat <+> pretty "=" <+> prettyDoc val

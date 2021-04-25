@@ -23,7 +23,7 @@ enrConv old new = go
     go (E.Apply e1 e2) = E.Apply (go e1) (go e2)
     go (E.Lambda p e) = E.Lambda (goPatt p) (go e)
     go (E.FatBar e1 e2) = E.FatBar (go e1) (go e2)
-    go (E.Case v cs) = E.Case v (map (go <$>) cs)
+    go (E.Case v cs) = E.Case v (map (E.mapCaseExpr go) cs)
 
     goVar :: S.Variable -> S.Variable
     goVar v = if v == old then new else v

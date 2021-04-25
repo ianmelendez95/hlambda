@@ -231,9 +231,8 @@ consMapToClauses ns = Map.foldrWithKey' foldrF []
     foldrF c_name rt clauses = consToClause ns c_name rt : clauses
 
 consToClause :: Names -> Constructor -> Root MatchTree -> E.CaseClause -- 
-consToClause ns c_name (Root is t) = 
-  ( E.PConstructor c_name (map (E.PVariable . numVar) is), 
-    enrichMTree' ns t )
+consToClause ns c (Root is t) = 
+  E.Clause c (map (E.PVariable . numVar) is) (enrichMTree' ns t)
 
 -- TODO: PERFORMANCE - unsafeAlphaConv in batch, instead of traversing for each rename
 alphaConvExp :: Names -> E.Exp -> E.Exp

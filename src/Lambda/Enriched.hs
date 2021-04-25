@@ -24,7 +24,7 @@ data Exp = Let [LetBinding] Exp
          | Case S.Variable [CaseClause]
         
 type LetBinding = (Pattern, Exp)
-type CaseClause = (Pattern, Exp)
+data CaseClause = Clause Constructor [Pattern] Exp
 
 data Pattern = PConstant S.Constant
              | PVariable S.Variable
@@ -67,6 +67,12 @@ fromPattern :: Pattern -> Exp
 fromPattern (PVariable v) = mkVariable v
 fromPattern (PConstant c) = mkConstant c
 fromPattern (PConstructor c ps) = mkApply (mkVariable (show c) : map fromPattern ps) 
+
+--------------------------------------------------------------------------------
+-- Mutators
+
+mapCaseExpr :: (Exp -> Exp) -> CaseClause -> CaseClause
+mapCaseExpr f (Clause c ps e) = Clause c ps (f e)
 
 ----------------
 -- ToEnriched --
@@ -113,8 +119,8 @@ sPretty (Apply e e') = do wrapper <- getParenWrapper 10
 sPretty (Case var clauses) = 
   do wrapper <- getParenWrapper 10
      let pvar = pretty var
-         pClause (patt, expr) = 
-           do ppatt <- sPrettyPattern patt
+         pClause (Clause c ps expr) = 
+           do ppatt <- sPrettyPattern (PConstructor c ps)
               setPrec 10
               pexpr <- sPretty expr
               pure $ ppatt <+> pretty "=>" <+> pexpr
@@ -153,8 +159,8 @@ freeVariables' bound (Pure expr) = S.freeVariables' bound expr
 freeVariables' bound (Apply e1 e2) = concatMap (freeVariables' bound) [e1, e2]
 freeVariables' bound (FatBar e1 e2) = concatMap (freeVariables' bound) [e1, e2]
 freeVariables' bound (Case var clauses) = 
-  let inClause (patt, expr) = 
-        freeVariables' (insertAll (boundVarsInPattern patt) bound) expr 
+  let inClause (Clause _ ps expr) = 
+        freeVariables' (insertAll (concatMap boundVarsInPattern ps) bound) expr 
       in_clauses = concatMap inClause clauses
    in if var `elem` bound
         then in_clauses

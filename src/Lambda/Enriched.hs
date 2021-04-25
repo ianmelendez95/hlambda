@@ -1,5 +1,22 @@
 {-# LANGUAGE TupleSections #-}
-module Lambda.Enriched where 
+module Lambda.Enriched
+ ( Exp (..)
+ , LetBinding
+ , CaseClause (..)
+ , Pattern (..)
+
+ , ToEnriched (..)
+
+ , mkApply
+ , mkPattConstr
+ , mkLambda
+ , mkIf
+
+ , mapCaseExpr
+ , fromPattern
+ , freeVariables
+ , boundVarsInPattern
+ ) where 
 
 import Prettyprinter
 import Data.List (foldl', foldl1', insert, nub)
@@ -7,11 +24,8 @@ import Lambda.Pretty
 import qualified Lambda.Syntax as S
 
 import Lambda.Constructor
-import qualified Lambda.Constructor as C
 
-import Common.Name (newName)
-
-import Debug.Trace
+-- import Debug.Trace
 
 -- p40: Figure 3.2 - Syntax of Enriched Lambda Expressions
 
@@ -30,13 +44,6 @@ data Pattern = PConstant S.Constant
              | PVariable S.Variable
              | PConstructor Constructor [Pattern]
              deriving Show
-
--- TODO seems like a case for GADTs (parameterize over whether it's irrefutable)
-data IrrefutablePattern = IPVariable S.Variable
-                        | IPConstructor Constructor [IrrefutablePattern]
-
-data ConstructorType = CTSum Int Int -- tag arity
-                     | CTProduct Int -- arity
 
 --------------------------------------------------------------------------------
 -- Constructors

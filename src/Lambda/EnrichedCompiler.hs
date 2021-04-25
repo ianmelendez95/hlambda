@@ -9,6 +9,10 @@ import qualified Lambda.Syntax as S
 
 import qualified Miranda.PattMatch as PMC
 import qualified Lambda.LetLetrec as LLC
+import Lambda.CaseCompiler 
+  ( CaseExpr (..), 
+    compileCase, 
+    getLambdaFunction )
 
 -- | converts all let(rec)s into simple let(rec)s
 compileToLambda :: E.Exp -> S.Exp
@@ -46,4 +50,7 @@ compileToLambda (E.FatBar e1 e2) =
                         e2 new_var_expr))
    in compileToLambda let_expr
 
-compileToLambda (E.Case _ _) = error "About to learn how to compile case exprs"
+compileToLambda (E.Case v cs) = 
+  let case_expr@(CaseExpr case_v exprs) = compileCase v cs
+      lambda_func = getLambdaFunction case_expr
+   in S.mkApply (lambda_func : S.mkVariable case_v : map compileToLambda exprs)

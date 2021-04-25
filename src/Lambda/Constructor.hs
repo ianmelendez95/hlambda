@@ -3,6 +3,7 @@ module Lambda.Constructor
   , ConstructorType (..)
   , Sum (..)
   , Product (..)
+  , structTag
   , arity
   , arity'
   , isSum
@@ -79,6 +80,10 @@ tupleForProduct (CProduct arty) = nProduct arty
 
 --------------------------------------------------------------------------------
 -- properties
+
+structTag :: Constructor -> Int
+structTag Constructor { constrType = (Product _) } = 0
+structTag Constructor { constrType = (Sum (CSum t _)) } = t
 
 arity :: Constructor -> Int
 arity = arity' . constrType

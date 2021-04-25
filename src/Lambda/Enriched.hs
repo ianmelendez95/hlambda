@@ -35,10 +35,13 @@ data Exp = Let [LetBinding] Exp
          | Apply Exp Exp 
          | Lambda Pattern Exp
          | FatBar Exp Exp
-         | Case S.Variable [CaseClause]
+
+         -- TODO: carries various implicit invariants, see Lambda.PattMatch
+         | Case S.Variable [CaseClause] 
         
 type LetBinding = (Pattern, Exp)
-data CaseClause = Clause Constructor [Pattern] Exp
+data CaseClause = Clause Constructor [S.Variable] Exp
+                deriving Show
 
 data Pattern = PConstant S.Constant
              | PVariable S.Variable
@@ -126,8 +129,8 @@ sPretty (Apply e e') = do wrapper <- getParenWrapper 10
 sPretty (Case var clauses) = 
   do wrapper <- getParenWrapper 10
      let pvar = pretty var
-         pClause (Clause c ps expr) = 
-           do ppatt <- sPrettyPattern (PConstructor c ps)
+         pClause (Clause c vs expr) = 
+           do ppatt <- sPrettyPattern (PConstructor c (map PVariable vs))
               setPrec 10
               pexpr <- sPretty expr
               pure $ ppatt <+> pretty "=>" <+> pexpr
@@ -166,8 +169,8 @@ freeVariables' bound (Pure expr) = S.freeVariables' bound expr
 freeVariables' bound (Apply e1 e2) = concatMap (freeVariables' bound) [e1, e2]
 freeVariables' bound (FatBar e1 e2) = concatMap (freeVariables' bound) [e1, e2]
 freeVariables' bound (Case var clauses) = 
-  let inClause (Clause _ ps expr) = 
-        freeVariables' (insertAll (concatMap boundVarsInPattern ps) bound) expr 
+  let inClause (Clause _ vs expr) = 
+        freeVariables' (insertAll vs bound) expr 
       in_clauses = concatMap inClause clauses
    in if var `elem` bound
         then in_clauses

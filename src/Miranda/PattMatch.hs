@@ -18,9 +18,12 @@ import Lambda.Constructor
 -- | Compiles pattern equations to enriched expressions
 -- |
 -- | Guarantees about Case:
--- |   all case expressions are _complete_, meaning all constructors of the type
--- |   have a corresponding clause, and all clauses are constructors of the same type
--- |   TODO: - find out how to prove this by construction
+-- |   1. all case expressions are _complete_, meaning all constructors of the type
+-- |      have a corresponding clause, and all clauses are constructors of the same type
+-- |      TODO: - find out how to prove this by construction
+-- |   2. all case constructors are _simple_, meaning all constructors have only 
+-- |      named variable arguments (as opposed to a complex constructor, which 
+-- |      can have constructors and constants as arguments)
 patternEquationsToEnriched :: [([E.Pattern], E.Exp)] -> E.Exp
 patternEquationsToEnriched patt_eqs 
   | not . allEqual $ map (length . fst) patt_eqs = 
@@ -238,7 +241,7 @@ consMapToClauses ns = Map.foldrWithKey' foldrF []
 
 consToClause :: Names -> Constructor -> Root MatchTree -> E.CaseClause -- 
 consToClause ns c (Root is t) = 
-  E.Clause c (map (E.PVariable . numVar) is) (enrichMTree' ns t)
+  E.Clause c (map numVar is) (enrichMTree' ns t)
 
 -- TODO: PERFORMANCE - unsafeAlphaConv in batch, instead of traversing for each rename
 alphaConvExp :: Names -> E.Exp -> E.Exp

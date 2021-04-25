@@ -150,41 +150,23 @@ spec = do
 
       toLambda enr `shouldBe` lam
 
-  describe "6.2.6 Transforming Irrefutable Letrecs into Irrefutable Lets" $ do
-    it "p114: transforms patterns letrec" $ do
-      {-
-        letrec x = CONS 1 y
-               y = CONS 2 x
-        in x
-
-          =>
-
-        let _u1 = PAIR 2 5 
-            x = SEL-2-1 _u1
-            y = SEL-2-2 _u1
-            in + x y)
-      -}
-
-      let enr = Letrec [(PVariable "x", 
-                         mkApply [Pure (S.mkFunction S.FCons),
-                                  Pure (S.toConstantExp (1 :: Int)),
-                                  Pure (S.mkVariable "y")]),
-                        (PVariable "y", 
-                         mkApply [Pure (S.mkFunction S.FCons),
-                                  Pure (S.toConstantExp (2 :: Int)),
-                                  Pure (S.mkVariable "x")])] 
-
-                       (Pure (S.mkVariable "x"))
-
-          lam = init $ unlines 
-            [ "let _u1 = Y (UNPACK-PRODUCT-2 (\\x. \\y. PAIR (CONS 1 y) (CONS 2 x)))"
-            , "in let x = SEL-2-1 _u1"
-            , "       y = SEL-2-2 _u1"
-            , "   in x" ]
-
-      show (toLambda enr) `shouldBe` lam
-
   describe "6.2.7 Transforming general let(rec)s into irrefutable let(rec)s" $ do
+    {-
+    let (CONS y ys) = NIL
+    in 6
+    =>
+    let _u1 = let _u1 = NIL
+              in (\CONS y ys. PAIR y ys) _u1
+
+    let _u1 = let _u1 = NIL
+              in (\\_u1. CASE-2 _u1 FAIL (let _u2 = SEL-2-1 _u1
+                                          in let _u3 = SEL-2-2 _u1
+                                             in PAIR _u2 _u3)) 
+                 _u1
+    in let y = SEL-2-1 _u1
+       in let ys = SEL-2-2 _u1
+          in 6
+    -}
     it "p116 transforms lazy cons" $ do 
       let enr = Let [(PConstructor (C.fromString "CONS") 
                                    [PVariable "y",
@@ -193,9 +175,12 @@ spec = do
                     (Pure $ S.toConstantExp (6 :: Int))
 
           lam = init $ unlines 
-            [ "let _u1 = Y (UNPACK-PRODUCT-2 (\\x. \\y. PAIR (CONS 1 y) (CONS 2 x)))"
-            , "in let x = SEL-2-1 _u1"
-            , "       y = SEL-2-2 _u1"
-            , "   in x" ]
+            [ "let _u1 = let _u1 = NIL",
+              "          in (\\_u1. CASE-2 _u1 FAIL (let _u2 = SEL-2-1 _u1",
+              "                                     in let _u3 = SEL-2-2 _u1",
+              "                                        in PAIR _u2 _u3)) _u1",
+              "in let y = SEL-2-1 _u1",
+              "   in let ys = SEL-2-2 _u1",
+              "      in 6" ]
 
       show (toLambda enr) `shouldBe` lam

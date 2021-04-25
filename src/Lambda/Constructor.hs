@@ -3,14 +3,19 @@ module Lambda.Constructor
   , ConstructorType (..)
   , Sum (..)
   , Product (..)
+
   , structTag
+
   , arity
   , arity'
+
   , isSum
   , isProduct
+
   , selectFunction
   , selectFunctions
   , selectFunctions'
+
   , siblings
   , nProduct
   , tupleForProduct

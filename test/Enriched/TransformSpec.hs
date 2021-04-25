@@ -23,18 +23,16 @@ spec = do
   describe "Constructor Transformations" $ do
     
     it "p106: transforms PAIR pattern lambda expressions" $ do
-      -- \PAIR x y. + x y
-      -- UNPACK-PRODUCT-PAIR (\_u1. \_u2. + _u1 _u2)
+          -- \PAIR x y. + x y
       let enr = E.Lambda (E.PConstructor (C.fromString "PAIR") [E.PVariable "x", E.PVariable "y"]) 
                          (E.mkApply [E.Pure (S.mkFunction S.FPlus), 
                                      E.Pure (S.mkVariable "x"),
                                      E.Pure (S.mkVariable "y")])
-          lam = S.mkApply [S.mkVariable "UNPACK-PRODUCT-2", 
-                           S.mkLambda ["x", "y"] 
-                                      (S.mkApply [S.mkFunction S.FPlus, 
-                                                  S.mkVariable "x",
-                                                  S.mkVariable "y"])]
-      toLambda enr `shouldBe` lam
+          lam = init $ unlines 
+            [ "\\_u1. let _u2 = SEL-2-1 _u1",
+              "      in let _u3 = SEL-2-2 _u1",
+              "         in + _u2 _u3" ]
+      show (toLambda enr) `shouldBe` lam
 
     it "p107: transforma TREE (LEAF) pattern lambda expresssions" $ do 
       -- \LEAF n. LEAF n

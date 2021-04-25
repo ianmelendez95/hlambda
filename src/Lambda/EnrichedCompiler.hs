@@ -52,5 +52,8 @@ compileToLambda (E.FatBar e1 e2) =
 
 compileToLambda (E.Case v cs) = 
   let case_expr@(CaseExpr case_v exprs) = compileCase v cs
-      lambda_func = getLambdaFunction case_expr
-   in S.mkApply (lambda_func : S.mkVariable case_v : map compileToLambda exprs)
+   in case exprs of 
+        [expr] -> compileToLambda expr
+        _ -> S.mkApply ( getLambdaFunction case_expr : 
+                         S.mkVariable case_v : 
+                         map compileToLambda exprs)

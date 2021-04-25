@@ -70,11 +70,10 @@ spec = do
                     (mkApply [Pure (S.mkFunction S.FPlus), 
                               Pure (S.mkVariable "x"),
                               Pure (S.toConstantExp (6 :: Int))])
-          lam = S.Apply (S.Lambda "x" (S.mkApply [S.mkFunction S.FPlus, 
-                                                  S.mkVariable "x",
-                                                  S.toConstantExp (6 :: Int)]))
-                        (S.toConstantExp (4 :: Int))
-      toLambda enr `shouldBe` lam
+          lam = init $ unlines 
+            [ "let x = 4",
+              "in + x 6" ]
+      show (toLambda enr) `shouldBe` lam
   
   describe "6.2.4 Transforming Irrefutable Lets" $ do
     it "p112: transforms pattern let" $ do
@@ -104,13 +103,12 @@ spec = do
                                    S.toConstantExp (5 :: Int)])]
 
                       (S.Let [("x", S.mkApply [S.mkVariable "SEL-2-1",
-                                               S.mkVariable "_u1"]),
-                              ("y", S.mkApply [S.mkVariable "SEL-2-2",
                                                S.mkVariable "_u1"])]
-
-                             (S.mkApply [S.mkFunction S.FPlus,
-                                         S.mkVariable "x",
-                                         S.mkVariable "y"]))
+                             (S.Let [("y", S.mkApply [S.mkVariable "SEL-2-2",
+                                                      S.mkVariable "_u1"])]
+                              (S.mkApply [S.mkFunction S.FPlus,
+                                          S.mkVariable "x",
+                                          S.mkVariable "y"])))
 
       toLambda enr `shouldBe` lam
 

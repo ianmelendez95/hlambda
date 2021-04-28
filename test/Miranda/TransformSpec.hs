@@ -160,3 +160,15 @@ spec = do
       mcontent <- readMiranda "reflect"
       elcontent <- readEnriched "reflect"
       showEnrichedMiranda mcontent `ioShouldBe` elcontent
+
+  describe "Dependendy Analysis" $ do
+    it "transforms simple bindings" $ do
+      mcontent <- readMiranda "x_fac_z_sum"
+      elcontent <- readEnriched "x_fac_z_sum"
+      -- lcontent <- readLambda "x_fac_z_sum"
+
+      el_result <- showEnrichedMiranda mcontent
+      el_result `shouldBe` elcontent
+
+      -- l_result <- showLambdadMiranda el_result
+      -- l_result `shouldBe` lcontent

@@ -29,7 +29,7 @@ module Miranda.Syntax
   ) where 
 
 import Prettyprinter
-import Data.List (intersperse, foldl1', foldl')
+import Data.List (intersperse, foldl1', foldl', sortBy)
 import Data.Maybe (mapMaybe)
 import qualified Data.Map as Map
 import Miranda.PattMatch (PattEq, patternEquationsToEnriched)
@@ -242,12 +242,25 @@ clausesToExpression (CondClause body cond : rest) =
       if_cond_then_body_else_rest = E.Apply if_cond_then_body (clausesToExpression rest)
   in if_cond_then_body_else_rest
 
+-- TODO: doesn't preserver order
 groupFuncDefs :: [FuncDef] -> [(String, [DefSpec])]
-groupFuncDefs = Map.toList . foldl' insertDef Map.empty
+groupFuncDefs defs = map (\n -> (n, lookupDefsByName n)) def_names
   where 
     insertDef :: FuncDefMap -> FuncDef -> FuncDefMap
     insertDef m (FDef name spec) = 
       Map.insertWith (flip (++)) name [spec] m
+
+    mapped_defs :: Map.Map String [DefSpec]
+    mapped_defs = foldl' insertDef Map.empty defs
+
+    def_names :: [String]
+    def_names = map (\(FDef n _) -> n) defs
+    
+    lookupDefsByName :: String -> [DefSpec]
+    lookupDefsByName n = 
+      case Map.lookup n mapped_defs of
+        Nothing -> error $ "function definition name not in map: " ++ n
+        Just def -> def
 
 wrapLambda :: [Pattern] -> E.Exp -> E.Exp
 wrapLambda ps expr = foldr (E.Lambda . funcPatternToPattern) expr ps

@@ -242,7 +242,6 @@ clausesToExpression (CondClause body cond : rest) =
       if_cond_then_body_else_rest = E.Apply if_cond_then_body (clausesToExpression rest)
   in if_cond_then_body_else_rest
 
--- TODO: doesn't preserver order
 groupFuncDefs :: [FuncDef] -> [(String, [DefSpec])]
 groupFuncDefs defs = map (\n -> (n, lookupDefsByName n)) def_names
   where 

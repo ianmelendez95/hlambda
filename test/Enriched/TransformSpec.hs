@@ -29,8 +29,8 @@ spec = do
                                      E.Pure (S.mkVariable "x"),
                                      E.Pure (S.mkVariable "y")])
           lam = init $ unlines 
-            [ "\\_u1. let _u2 = SEL-2-1 _u1",
-              "      in let _u3 = SEL-2-2 _u1",
+            [ "\\_u1. let _u3 = SEL-2-2 _u1",
+              "      in let _u2 = SEL-2-1 _u1",
               "         in + _u2 _u3" ]
       show (toLambda enr) `shouldBe` lam
 
@@ -41,8 +41,8 @@ spec = do
                                      E.Pure (S.mkVariable "n")]) 
           lam = init $ unlines 
             [ "\\_u1. CASE-2 _u1 (let _u2 = SEL-1-1 _u1",
-              "                  in LEAF _u2) (let _u2 = SEL-2-1 _u1",
-              "                                in let _u3 = SEL-2-2 _u1", 
+              "                  in LEAF _u2) (let _u3 = SEL-2-2 _u1",
+              "                                in let _u2 = SEL-2-1 _u1", 
               "                                   in FAIL)" ]
       show (toLambda enr) `shouldBe` lam
 
@@ -58,8 +58,8 @@ spec = do
                                              (E.Pure (S.mkVariable "t1"))]) 
           lam = init $ unlines 
             [ "\\_u1. CASE-2 _u1 (let _u2 = SEL-1-1 _u1",
-              "                  in FAIL) (let _u2 = SEL-2-1 _u1",
-              "                            in let _u3 = SEL-2-2 _u1", 
+              "                  in FAIL) (let _u3 = SEL-2-2 _u1",
+              "                            in let _u2 = SEL-2-1 _u1", 
               "                               in BRANCH (reflect _u3) (reflect _u2))" ]
       show (toLambda enr) `shouldBe` lam
   
@@ -135,20 +135,25 @@ spec = do
                                  Pure (S.mkVariable "x"),
                                  Pure (S.mkVariable "y")])
 
-          lam = S.Letrec [("_u1", 
-                           S.mkApply [S.mkVariable "PAIR",
-                                      S.toConstantExp (2 :: Int),
-                                      S.toConstantExp (5 :: Int)]),
-                          ("x", S.mkApply [S.mkVariable "SEL-2-1",
-                                           S.mkVariable "_u1"]),
-                          ("y", S.mkApply [S.mkVariable "SEL-2-2",
-                                           S.mkVariable "_u1"])]
+          lam = init $ unlines 
+            [ "let _u1 = PAIR 2 5",
+              "in let x = SEL-2-1 _u1",
+              "   in let y = SEL-2-2 _u1",
+              "      in + x y" ]
+          -- lam = S.Letrec [("_u1", 
+          --                  S.mkApply [S.mkVariable "PAIR",
+          --                             S.toConstantExp (2 :: Int),
+          --                             S.toConstantExp (5 :: Int)]),
+          --                 ("x", S.mkApply [S.mkVariable "SEL-2-1",
+          --                                  S.mkVariable "_u1"]),
+          --                 ("y", S.mkApply [S.mkVariable "SEL-2-2",
+          --                                  S.mkVariable "_u1"])]
 
-                         (S.mkApply [S.mkFunction S.FPlus,
-                                            S.mkVariable "x",
-                                            S.mkVariable "y"])
+          --                (S.mkApply [S.mkFunction S.FPlus,
+          --                                   S.mkVariable "x",
+          --                                   S.mkVariable "y"])
 
-      toLambda enr `shouldBe` lam
+      show (toLambda enr) `shouldBe` lam
 
   describe "6.2.7 Transforming general let(rec)s into irrefutable let(rec)s" $ do
     {-
@@ -176,8 +181,8 @@ spec = do
 
           lam = init $ unlines 
             [ "let _u1 = let _u1 = NIL",
-              "          in (\\_u1. CASE-2 _u1 FAIL (let _u2 = SEL-2-1 _u1",
-              "                                     in let _u3 = SEL-2-2 _u1",
+              "          in (\\_u1. CASE-2 _u1 FAIL (let _u3 = SEL-2-2 _u1",
+              "                                     in let _u2 = SEL-2-1 _u1",
               "                                        in PAIR _u2 _u3)) _u1",
               "in let y = SEL-2-1 _u1",
               "   in let ys = SEL-2-2 _u1",

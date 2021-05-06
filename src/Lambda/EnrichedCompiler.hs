@@ -9,24 +9,27 @@ import qualified Lambda.Syntax as S
 
 import qualified Miranda.PattMatch as PMC
 import qualified Lambda.LetLetrec as LLC
+import Lambda.DepAnalysis (depAnalysis)
 import Lambda.CaseCompiler 
   ( CaseExpr (..), 
     compileCase, 
     getLambdaFunction )
 
--- | converts all let(rec)s into simple let(rec)s
 compileToLambda :: E.Exp -> S.Exp
 compileToLambda (E.Pure e) = e
 
-compileToLambda (E.Let bs expr) = 
-  let simple_bs :: [[(S.Variable, S.Exp)]]
-      simple_bs = (map . map) (second compileToLambda) (LLC.compileBindings bs)
-      expr' = compileToLambda expr
-   in foldr S.Let expr' simple_bs
-compileToLambda (E.Letrec bs expr) =
-  let simple_bs = (map . map) (second compileToLambda) (LLC.compileBindings bs)
-      expr' = compileToLambda expr
-   in S.Letrec (concat simple_bs) expr'
+-- compileToLambda (E.Let bs expr) = 
+--   let simple_bs :: [[(S.Variable, S.Exp)]]
+--       simple_bs = (map . map) (second compileToLambda) (LLC.compileBindings bs)
+--       expr' = compileToLambda expr
+--    in foldr S.Let expr' simple_bs
+-- compileToLambda (E.Letrec bs expr) =
+--   let simple_bs = (map . map) (second compileToLambda) (LLC.compileBindings bs)
+--       expr' = compileToLambda expr
+--    in S.Letrec (concat simple_bs) expr'
+
+compileToLambda (E.Let bs expr) = compileLetLetrec bs expr
+compileToLambda (E.Letrec bs expr) = compileLetLetrec bs expr
 
 compileToLambda (E.Apply e1 e2) = S.Apply (compileToLambda e1) (compileToLambda e2)
 
@@ -57,3 +60,11 @@ compileToLambda (E.Case v cs) =
         _ -> S.mkApply ( getLambdaFunction case_expr : 
                          S.mkVariable case_v : 
                          map compileToLambda exprs)
+
+compileLetLetrec :: [E.LetBinding] -> E.Exp -> S.Exp
+compileLetLetrec bs expr = 
+  let simple_bs :: [[(S.Variable, S.Exp)]]
+      simple_bs = (map . map) (second compileToLambda) (LLC.compileBindings bs)
+
+      expr' = compileToLambda expr
+   in depAnalysis (concat simple_bs) expr'

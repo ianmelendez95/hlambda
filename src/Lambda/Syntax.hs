@@ -265,7 +265,7 @@ freeVariables' bound (Lambda v e) = freeVariables' (insert v bound) e
 
 freeVarsInLet :: [String] -> [(String, Exp)] -> Exp -> [String]
 freeVarsInLet bound binds expr = 
-  let binds_free = foldr (\(bound_var, e) vars -> 
-                             freeVariables' (bound_var : bound) e ++ vars) 
-                         [] binds
-   in freeVariables' bound expr ++ binds_free
+  let bind_vars = map fst binds
+      bound' = bind_vars ++ bound
+      binds_free = concatMap (\(_, e) -> freeVariables' bound' e) binds
+   in freeVariables' bound' expr ++ binds_free

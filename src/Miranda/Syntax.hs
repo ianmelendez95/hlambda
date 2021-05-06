@@ -29,7 +29,7 @@ module Miranda.Syntax
   ) where 
 
 import Prettyprinter
-import Data.List (intersperse, foldl1', foldl', sortBy)
+import Data.List (intersperse, foldl1', foldl', nub)
 import Data.Maybe (mapMaybe)
 import qualified Data.Map as Map
 import Miranda.PattMatch (PattEq, patternEquationsToEnriched)
@@ -253,7 +253,7 @@ groupFuncDefs defs = map (\n -> (n, lookupDefsByName n)) def_names
     mapped_defs = foldl' insertDef Map.empty defs
 
     def_names :: [String]
-    def_names = map (\(FDef n _) -> n) defs
+    def_names = nub $ map (\(FDef n _) -> n) defs
     
     lookupDefsByName :: String -> [DefSpec]
     lookupDefsByName n = 

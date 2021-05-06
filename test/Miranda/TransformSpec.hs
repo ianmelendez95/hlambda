@@ -106,7 +106,9 @@ spec = do
       let test_file_base = "mult-const-patterns"
       mcontent <- readMiranda test_file_base
       elcontent <- readEnriched test_file_base
-      showEnrichedMiranda mcontent `ioShouldBe` elcontent
+
+      e_result <- showEnrichedMiranda mcontent
+      e_result `shouldBe` elcontent
     
     it "p63: [conditional-no-default] translates conditional equation" $ do 
       mcontent <- readMiranda "conditional-no-default"

@@ -1,5 +1,8 @@
 module ATypeChecker where
 
+--------------------------------------------------------------------------------
+-- PROGRAMS
+
 type VName = String
 
 data VExp = Var VName
@@ -8,6 +11,31 @@ data VExp = Var VName
           | Let [VName] [VExp] VExp
           | Letrec [VName] [VExp] VExp
           deriving Show
+
+--------------------------------------------------------------------------------
+-- TYPE EXPRESSIONS
+
+type TVName = String 
+
+data TypeExp = TVar TVName 
+             | TCons String [TypeExp]
+             deriving Show
+
+arrow :: TypeExp -> TypeExp -> TypeExp
+arrow t1 t2 = TCons "arrow" [t1, t2]
+
+int :: TypeExp
+int = TCons "int" []
+
+cross :: TypeExp -> TypeExp -> TypeExp
+cross t1 t2 = TCons "cross" [t1, t2]
+
+list :: TypeExp -> TypeExp
+list t = TCons "list" [t]
+
+tvarsIn :: TypeExp -> [TVName]
+tvarsIn (TVar n) = [n]
+tvarsIn (TCons _ es) = concatMap tvarsIn es
 
 {-
 example =

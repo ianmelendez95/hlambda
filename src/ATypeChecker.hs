@@ -37,6 +37,31 @@ tvarsIn :: TypeExp -> [TVName]
 tvarsIn (TVar n) = [n]
 tvarsIn (TCons _ es) = concatMap tvarsIn es
 
+--------------------------------------------------------------------------------
+-- Success and Failure
+
+type Reply = Maybe
+
+--------------------------------------------------------------------------------
+-- Substitution
+
+type Subst = TVName -> TypeExp
+
+subType :: Subst -> TypeExp -> TypeExp
+subType phi (TVar n) = phi n
+subType phi (TCons n vs) = TCons n (map (subType phi) vs)
+
+sComp :: Subst -> Subst -> Subst
+sComp s2 s1 = subType s1 . s2
+
+idSubst :: Subst
+idSubst = TVar
+
+delta :: TVName -> TypeExp -> Subst 
+delta n t n' 
+  | n == n' = t
+  | otherwise = TVar n'
+
 {-
 example =
 

@@ -5,7 +5,7 @@ import qualified Lambda.Syntax as S
 import Data.Foldable (toList)
 import Data.Graph (Vertex, graphFromEdges, scc, path)
 
-import Debug.Trace (trace)
+-- import Debug.Trace (trace)
 
 -- terminology borrowed from GHC Core: https://gitlab.haskell.org/ghc/ghc/-/wikis/commentary/compiler/core-syn-type
 data Bind = NonRec Binding
@@ -17,7 +17,7 @@ type Binding = (S.Variable, S.Exp)
 depAnalysis :: [Binding] -> S.Exp -> S.Exp
 depAnalysis bs expr = 
   let analyzed = depAnalysis' bs
-   in foldr foldrF expr (trace (show analyzed) analyzed) 
+   in foldr foldrF expr analyzed 
   where 
     foldrF :: Bind -> S.Exp -> S.Exp
     foldrF (NonRec b') e' = S.Let [b'] e'

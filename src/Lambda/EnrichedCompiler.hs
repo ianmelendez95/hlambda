@@ -40,18 +40,9 @@ compileToLambda (E.Lambda comp_patt expr) =
         (E.Lambda (E.PVariable v) e) -> S.Lambda v (compileToLambda e)
         _ -> error $ "Expected pattern match compiler to return single var lambda: " ++ show enr_func
 
+-- TODO: this is not covered in tests
 compileToLambda (E.FatBar e1 e2) = 
-  let new_name = newName (E.freeVariables e1 ++ E.freeVariables e2)
-      new_var_patt = E.PVariable new_name
-      new_var_expr = E.Pure $ S.mkVariable new_name
-      let_expr = 
-        E.Let [(new_var_patt, e1)]
-              (E.Lambda new_var_patt 
-                (E.mkIf (E.mkApply [E.Pure $ S.mkFunction S.FEq, 
-                                    E.Pure $ S.mkConstant S.CFail,
-                                    new_var_expr])
-                        e2 new_var_expr))
-   in compileToLambda let_expr
+  S.mkApply [S.mkVariable "FATBAR", compileToLambda e1, compileToLambda e2]
 
 compileToLambda (E.Case v cs) = 
   let case_expr@(CaseExpr case_v exprs) = compileCase v cs

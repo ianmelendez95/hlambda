@@ -179,6 +179,7 @@ spec = do
                       Pure $ S.mkVariable "NIL")] 
                     (Pure $ S.toConstantExp (6 :: Int))
 
+          -- TODO: prevent dep analysis from reordering let bindings
           lam = init $ unlines 
             [ "let _u1 = let _u1 = NIL",
               "          in (\\_u1. CASE-2 _u1 FAIL (let _u3 = SEL-2-2 _u1",

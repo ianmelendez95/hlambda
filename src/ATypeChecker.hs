@@ -19,7 +19,7 @@ data VExp = Var VName
 --------------------------------------------------------------------------------
 -- TYPE EXPRESSIONS
 
-type TVName = String 
+type TVName = [Int] 
 
 data TypeExp = TVar TVName 
              | TCons String [TypeExp]
@@ -169,3 +169,21 @@ unknownsTE gamma = concatMap unknownsScheme (rng gamma)
 
 subTE :: Subst -> TypeEnv -> TypeEnv
 subTE phi = Map.map (subScheme phi)
+
+--------------------------------------------------------------------------------
+-- New Variables
+
+type NameSupply = TVName
+
+nextName :: NameSupply -> TVName
+nextName = id
+
+deplete :: NameSupply -> NameSupply
+deplete [] = error "Empty name"
+deplete (n:ns) = n+2 : ns
+
+split :: NameSupply -> (NameSupply, NameSupply)
+split ns = (0:ns, 1:ns)
+
+nameSequence :: NameSupply -> [TVName]
+nameSequence ns = nextName ns : nameSequence (deplete ns)

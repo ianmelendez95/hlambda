@@ -1,6 +1,8 @@
 module ATypeChecker where
 
 import Data.List ((\\))
+import Data.Maybe (fromMaybe)
+import qualified Data.Map as Map
 
 --------------------------------------------------------------------------------
 -- PROGRAMS
@@ -143,3 +145,27 @@ subScheme phi (Scheme scvs t) =
     exclude tvn
       | tvn `elem` scvs = TVar tvn
       | otherwise       = phi tvn
+
+--------------------------------------------------------------------------------
+-- Maps
+
+type TypeEnv = Map.Map VName TypeScheme
+
+dom :: TypeEnv -> [VName] 
+dom = Map.keys
+
+val :: TypeEnv -> VName -> TypeScheme
+val m n = fromMaybe (error $ "Variable is not in type environment: " ++ n) 
+                    (Map.lookup n m)
+
+install :: TypeEnv -> VName -> TypeScheme -> TypeEnv
+install env n s = Map.insert n s env
+
+rng :: TypeEnv -> [TypeScheme]
+rng = Map.elems
+
+unknownsTE :: TypeEnv -> [TVName]
+unknownsTE gamma = concatMap unknownsScheme (rng gamma)
+
+subTE :: Subst -> TypeEnv -> TypeEnv
+subTE phi = Map.map (subScheme phi)

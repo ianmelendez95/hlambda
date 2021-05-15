@@ -147,7 +147,7 @@ subScheme phi (Scheme scvs t) =
       | otherwise       = phi tvn
 
 --------------------------------------------------------------------------------
--- Maps
+-- Type Expressions
 
 type TypeEnv = Map.Map VName TypeScheme
 

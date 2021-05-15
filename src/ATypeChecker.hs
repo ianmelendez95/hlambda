@@ -187,3 +187,44 @@ split ns = (0:ns, 1:ns)
 
 nameSequence :: NameSupply -> [TVName]
 nameSequence ns = nextName ns : nameSequence (deplete ns)
+
+--------------------------------------------------------------------------------
+-- The Type Checker
+
+tc :: TypeEnv -> NameSupply -> VExp -> Maybe (Subst, TypeExp)
+tc gamma ns (Var x)          = tcvar    gamma ns x
+tc gamma ns (Ap e1 e2)       = tcap     gamma ns e1 e2
+tc gamma ns (Lambda x e)     = tclambda gamma ns x e
+tc gamma ns (Let xs es e)    = tclet    gamma ns xs es e
+tc gamma ns (Letrec xs es e) = tcletrec gamma ns xs es e
+
+tcl :: TypeEnv -> NameSupply -> [VExp] -> Maybe (Subst, [TypeExp])
+tcl _     _  []     = Just (idSubst, [])
+tcl gamma ns (e:es) = tcl1 gamma ns0 es (tc gamma ns1 e)
+  where 
+    (ns0, ns1) = split ns
+
+tcl1 :: TypeEnv -> NameSupply -> [VExp] -> Maybe (Subst, TypeExp) -> Maybe (Subst, [TypeExp])
+tcl1 _     _  _  Nothing = Nothing
+tcl1 gamma ns es (Just (phi, t)) = tcl2 phi t (tcl gamma' ns es)
+  where 
+    gamma' = subTE phi gamma
+
+tcl2 :: Subst -> TypeExp -> Maybe (Subst, [TypeExp]) -> Maybe (Subst, [TypeExp])
+tcl2 _   _ Nothing = Nothing
+tcl2 phi t (Just (psi, ts)) = Just (psi `sComp` phi, subType psi t : ts)
+
+tcvar :: a
+tcvar    = undefined
+
+tcap :: a
+tcap     = undefined
+
+tclambda :: a
+tclambda = undefined
+
+tclet :: a
+tclet    = undefined
+
+tcletrec :: a
+tcletrec = undefined

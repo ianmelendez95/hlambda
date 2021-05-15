@@ -1,6 +1,6 @@
 module ATypeChecker where
 
-import Control.Monad (join)
+import Data.List ((\\))
 
 --------------------------------------------------------------------------------
 -- PROGRAMS
@@ -122,3 +122,24 @@ unifyl' phi [] = Just phi
 unifyl' phi (eqn : eqns) = 
   do phi' <- unifyl' phi eqns
      unify phi' eqn
+
+--------------------------------------------------------------------------------
+-- Keeping Track of Types
+
+data TypeScheme = Scheme [TVName] TypeExp
+                deriving Show
+
+-- | gets unknowns in the type scheme
+-- | where 'unknown' is a name in t that doesn't occur in scvs
+unknownsScheme :: TypeScheme -> [TVName]
+unknownsScheme (Scheme scvs t) = tvarsIn t \\ scvs
+
+subScheme :: Subst -> TypeScheme -> TypeScheme
+subScheme phi (Scheme scvs t) =
+  Scheme scvs (subType exclude t)
+  where
+    -- neuter the substition for schematic variables, since
+    -- they are 'locally bound' (analogy to lambda abstractions)
+    exclude tvn
+      | tvn `elem` scvs = TVar tvn
+      | otherwise       = phi tvn

@@ -1,5 +1,7 @@
 module ATypeChecker where
 
+import Control.Monad (join)
+
 --------------------------------------------------------------------------------
 -- PROGRAMS
 
@@ -19,7 +21,7 @@ type TVName = String
 
 data TypeExp = TVar TVName 
              | TCons String [TypeExp]
-             deriving Show
+             deriving (Eq, Show)
 
 arrow :: TypeExp -> TypeExp -> TypeExp
 arrow t1 t2 = TCons "arrow" [t1, t2]
@@ -57,6 +59,8 @@ sComp s2 s1 = subType s1 . s2
 idSubst :: Subst
 idSubst = TVar
 
+-- | produce a substitution that will replace all instances of 
+-- | the var with the expression
 delta :: TVName -> TypeExp -> Subst 
 delta n t n' 
   | n == n' = t
@@ -83,3 +87,38 @@ example = Let ["S", "K"] [rhs_S, rhs_K] main
     body_S = Ap (Ap var_x var_z) (Ap var_y var_z)
     body_K = var_x
     plambda vs e = foldr Lambda e vs
+
+--------------------------------------------------------------------------------
+-- Unification
+
+-- | extend: handle the case where TVar tvn = t
+-- | so we 'extend' the substition to have tvn -> t
+extend :: Subst -> TVName -> TypeExp -> Maybe Subst
+extend phi tvn t 
+  | t == TVar tvn = Just phi
+  | tvn `elem` tvarsIn t = Nothing -- why, if the type var exists in t, do we not extend phi with it? To avoid non-termination?
+  | otherwise = Just (delta tvn t `sComp` phi)
+
+unify :: Subst -> (TypeExp, TypeExp) -> Maybe Subst
+unify phi (TVar tvn, t) 
+  | phi tvn == TVar tvn = extend phi tvn (subType phi t)
+  | otherwise           = unify phi (phitvn, phit)
+  where 
+    phitvn = phi tvn
+    phit = subType phi t
+
+unify phi (TCons tcn ts, TVar tvn) = 
+  unify phi (TVar tvn, TCons tcn ts)
+
+unify phi (TCons tcn ts, TCons tcn' ts') 
+  | tcn == tcn' = unifyl phi (ts `zip` ts')
+  | otherwise = Nothing
+
+unifyl :: Subst -> [(TypeExp, TypeExp)] -> Maybe Subst
+unifyl phi = foldr (\eqn -> (>>= (`unify` eqn))) (Just phi)
+
+unifyl' :: Subst -> [(TypeExp, TypeExp)] -> Maybe Subst
+unifyl' phi [] = Just phi
+unifyl' phi (eqn : eqns) = 
+  do phi' <- unifyl' phi eqns
+     unify phi' eqn

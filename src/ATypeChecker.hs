@@ -198,9 +198,6 @@ tc gamma ns (Lambda x e)     = tclambda gamma ns x e
 tc gamma ns (Let xs es e)    = tclet    gamma ns xs es e
 tc gamma ns (Letrec xs es e) = tcletrec gamma ns xs es e
 
-tclambda :: a
-tclambda = undefined
-
 tclet :: a
 tclet    = undefined
 
@@ -249,3 +246,16 @@ tcap gamma ns e1 e2 =
    in do (phi, [t1, t2]) <- tcl gamma ns' [e1, e2]
          phi'            <- unify phi (t1, t2 `arrow` TVar tvn)
          pure (phi', phi' tvn)
+
+--------------------------------------------------------------------------------
+-- Type Checking Lambda
+
+tclambda :: TypeEnv -> NameSupply -> VName -> VExp -> Maybe (Subst, TypeExp)
+tclambda gamma ns x e = 
+  let ns'    = deplete ns
+      tvn    = nextName ns
+
+      -- gamma' = gamma with a 'bound' x (x is now a type scheme with no vars)  
+      gamma' = Map.insert x (Scheme [] (TVar tvn)) gamma
+   in do (phi, t) <- tc gamma' ns' e
+         pure (phi, phi tvn `arrow` t)

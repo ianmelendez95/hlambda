@@ -198,21 +198,15 @@ tc gamma ns (Lambda x e)     = tclambda gamma ns x e
 tc gamma ns (Let xs es e)    = tclet    gamma ns xs es e
 tc gamma ns (Letrec xs es e) = tcletrec gamma ns xs es e
 
+-- | type check across the expressions, using the 'learned' context
+-- | in later expressions
 tcl :: TypeEnv -> NameSupply -> [VExp] -> Maybe (Subst, [TypeExp])
 tcl _     _  []     = Just (idSubst, [])
-tcl gamma ns (e:es) = tcl1 gamma ns0 es (tc gamma ns1 e)
-  where 
-    (ns0, ns1) = split ns
-
-tcl1 :: TypeEnv -> NameSupply -> [VExp] -> Maybe (Subst, TypeExp) -> Maybe (Subst, [TypeExp])
-tcl1 _     _  _  Nothing = Nothing
-tcl1 gamma ns es (Just (phi, t)) = tcl2 phi t (tcl gamma' ns es)
-  where 
-    gamma' = subTE phi gamma
-
-tcl2 :: Subst -> TypeExp -> Maybe (Subst, [TypeExp]) -> Maybe (Subst, [TypeExp])
-tcl2 _   _ Nothing = Nothing
-tcl2 phi t (Just (psi, ts)) = Just (psi `sComp` phi, subType psi t : ts)
+tcl gamma ns (e:es) = 
+  let (ns0, ns1) = split ns
+   in do (phi, t)  <- tc gamma ns1 e
+         (psi, ts) <- tcl (subTE phi gamma) ns0 es
+         return (psi `sComp` phi, subType psi t : ts)
 
 tcvar :: a
 tcvar    = undefined

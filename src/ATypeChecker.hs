@@ -226,14 +226,18 @@ tcl gamma ns (e:es) =
 --------------------------------------------------------------------------------
 -- Type Checking Variables
 
+-- | get a new instance of the schematic related to the variable
+-- | (assumes the type variable has an associated schematic)
 tcvar :: TypeEnv -> NameSupply -> VName -> Maybe (Subst, TypeExp)
 tcvar gamma ns x = Just (idSubst, newInstance ns (val gamma x))
 
+-- | substitute all scheme variables (scvs) in type expression (t)
+-- | with new names according to name supply (ns)
 newInstance :: NameSupply -> TypeScheme -> TypeExp
 newInstance ns (Scheme scvs t) = 
   subType (mapToSubst $ Map.fromList (scvs `zip` nameSequence ns)) t
 
+-- | create a Subst from a mapping of var names
 mapToSubst :: Map.Map TVName TVName -> Subst
-mapToSubst al tvn 
-  | tvn `elem` dom al = TVar (val al tvn)
-  | otherwise         = TVar tvn
+mapToSubst var_map tvn =
+  TVar $ fromMaybe tvn (Map.lookup tvn var_map)

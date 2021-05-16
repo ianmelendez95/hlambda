@@ -198,9 +198,6 @@ tc gamma ns (Lambda x e)     = tclambda gamma ns x e
 tc gamma ns (Let xs es e)    = tclet    gamma ns xs es e
 tc gamma ns (Letrec xs es e) = tcletrec gamma ns xs es e
 
-tcap :: a
-tcap     = undefined
-
 tclambda :: a
 tclambda = undefined
 
@@ -221,7 +218,7 @@ tcl gamma ns (e:es) =
   let (ns0, ns1) = split ns
    in do (phi, t)  <- tc gamma ns1 e
          (psi, ts) <- tcl (subTE phi gamma) ns0 es
-         return (psi `sComp` phi, subType psi t : ts)
+         pure (psi `sComp` phi, subType psi t : ts)
 
 --------------------------------------------------------------------------------
 -- Type Checking Variables
@@ -241,3 +238,14 @@ newInstance ns (Scheme scvs t) =
 mapToSubst :: Map.Map TVName TVName -> Subst
 mapToSubst var_map tvn =
   TVar $ fromMaybe tvn (Map.lookup tvn var_map)
+
+--------------------------------------------------------------------------------
+-- Type Checking Application
+
+tcap :: TypeEnv -> NameSupply -> VExp -> VExp -> Maybe (Subst, TypeExp)
+tcap gamma ns e1 e2 = 
+  let tvn = nextName ns
+      ns' = deplete ns
+   in do (phi, [t1, t2]) <- tcl gamma ns' [e1, e2]
+         phi'            <- unify phi (t1, t2 `arrow` TVar tvn)
+         pure (phi', phi' tvn)

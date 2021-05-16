@@ -1,6 +1,6 @@
 module ATypeChecker where
 
-import Data.List ((\\))
+import Data.List ((\\), nub)
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
 
@@ -55,8 +55,8 @@ subType :: Subst -> TypeExp -> TypeExp
 subType phi (TVar n) = phi n
 subType phi (TCons n vs) = TCons n (map (subType phi) vs)
 
-sComp :: Subst -> Subst -> Subst
-sComp s2 s1 = subType s1 . s2
+scomp :: Subst -> Subst -> Subst
+scomp s2 s1 = subType s1 . s2
 
 idSubst :: Subst
 idSubst = TVar
@@ -99,7 +99,7 @@ extend :: Subst -> TVName -> TypeExp -> Maybe Subst
 extend phi tvn t 
   | t == TVar tvn = Just phi
   | tvn `elem` tvarsIn t = Nothing -- why, if the type var exists in t, do we not extend phi with it? To avoid non-termination?
-  | otherwise = Just (delta tvn t `sComp` phi)
+  | otherwise = Just (delta tvn t `scomp` phi)
 
 unify :: Subst -> (TypeExp, TypeExp) -> Maybe Subst
 unify phi (TVar tvn, t) 
@@ -198,9 +198,6 @@ tc gamma ns (Lambda x e)     = tclambda gamma ns x e
 tc gamma ns (Let xs es e)    = tclet    gamma ns xs es e
 tc gamma ns (Letrec xs es e) = tcletrec gamma ns xs es e
 
-tclet :: a
-tclet    = undefined
-
 tcletrec :: a
 tcletrec = undefined
 
@@ -215,7 +212,7 @@ tcl gamma ns (e:es) =
   let (ns0, ns1) = split ns
    in do (phi, t)  <- tc gamma ns1 e
          (psi, ts) <- tcl (subTE phi gamma) ns0 es
-         pure (psi `sComp` phi, subType psi t : ts)
+         pure (psi `scomp` phi, subType psi t : ts)
 
 --------------------------------------------------------------------------------
 -- Type Checking Variables
@@ -229,7 +226,10 @@ tcvar gamma ns x = Just (idSubst, newInstance ns (val gamma x))
 -- | with new names according to name supply (ns)
 newInstance :: NameSupply -> TypeScheme -> TypeExp
 newInstance ns (Scheme scvs t) = 
-  subType (mapToSubst $ Map.fromList (scvs `zip` nameSequence ns)) t
+  subType (alToSubst (scvs `zip` nameSequence ns)) t
+
+alToSubst :: [(TVName, TVName)] -> Subst
+alToSubst = mapToSubst . Map.fromList
 
 -- | create a Subst from a mapping of var names
 mapToSubst :: Map.Map TVName TVName -> Subst
@@ -259,3 +259,43 @@ tclambda gamma ns x e =
       gamma' = Map.insert x (Scheme [] (TVar tvn)) gamma
    in do (phi, t) <- tc gamma' ns' e
          pure (phi, phi tvn `arrow` t)
+
+--------------------------------------------------------------------------------
+-- Type Checking Let
+
+tclet :: TypeEnv -> NameSupply -> [VName] -> [VExp] -> VExp -> Maybe (Subst, TypeExp)
+tclet gamma ns xs es e = 
+  let (ns0, ns1, ns2) = split3 ns
+   in do (phi, ts) <- tcl gamma ns2 es
+         let gamma'  = subTE phi gamma
+             gamma'' = addDecls gamma' ns0 xs ts
+         (phi', t) <- tc gamma'' ns1 e
+         pure (phi' `scomp` phi, t)
+        --  tclet1 gamma ns0 xs e (tcl gamma ns1 es)
+
+split3 :: NameSupply -> (NameSupply, NameSupply, NameSupply)
+split3 ns = let (ns0, ns1) = split ns
+                (ns2, ns3) = split ns0
+             in (ns2, ns3, ns1)
+
+-- | add the declarations [VName] => [TypeExp]
+-- | to the type environment
+addDecls :: TypeEnv -> NameSupply -> [VName] -> [TypeExp] -> TypeEnv
+addDecls gamma ns xs ts = 
+  let unknowns = unknownsTE gamma
+      schemes = map (genbar unknowns ns) ts
+   in foldr (uncurry Map.insert) gamma (xs `zip` schemes)
+
+-- | identify the type scheme from the unknowns and type expresssion
+-- | 
+-- | unknowns = the unknowns in the greater type environment
+-- | (which may be bound so they are not to be messed with, hence
+-- |  not being schematic vars (?))
+-- | further, all the schematic type vars are then given 
+-- | a new name in the final schematic to avoid clashing
+genbar :: [TVName] -> NameSupply -> TypeExp -> TypeScheme
+genbar unknowns ns t = 
+  let scvs = nub (tvarsIn t) \\ unknowns
+      al   = scvs `zip` nameSequence ns
+      t'   = subType (alToSubst al) t
+   in Scheme (map snd al) t'

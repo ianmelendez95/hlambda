@@ -151,11 +151,11 @@ subScheme phi (Scheme scvs t) =
 
 type TypeEnv = Map.Map VName TypeScheme
 
-dom :: TypeEnv -> [VName] 
+dom :: Map.Map a b -> [a]
 dom = Map.keys
 
-val :: TypeEnv -> VName -> TypeScheme
-val m n = fromMaybe (error $ "Variable is not in type environment: " ++ n) 
+val :: (Ord a, Show a) => Map.Map a b -> a -> b
+val m n = fromMaybe (error $ "Variable is not in type environment: " ++ show n) 
                     (Map.lookup n m)
 
 install :: TypeEnv -> VName -> TypeScheme -> TypeEnv
@@ -198,19 +198,6 @@ tc gamma ns (Lambda x e)     = tclambda gamma ns x e
 tc gamma ns (Let xs es e)    = tclet    gamma ns xs es e
 tc gamma ns (Letrec xs es e) = tcletrec gamma ns xs es e
 
--- | type check across the expressions, using the 'learned' context
--- | in later expressions
-tcl :: TypeEnv -> NameSupply -> [VExp] -> Maybe (Subst, [TypeExp])
-tcl _     _  []     = Just (idSubst, [])
-tcl gamma ns (e:es) = 
-  let (ns0, ns1) = split ns
-   in do (phi, t)  <- tc gamma ns1 e
-         (psi, ts) <- tcl (subTE phi gamma) ns0 es
-         return (psi `sComp` phi, subType psi t : ts)
-
-tcvar :: a
-tcvar    = undefined
-
 tcap :: a
 tcap     = undefined
 
@@ -222,3 +209,31 @@ tclet    = undefined
 
 tcletrec :: a
 tcletrec = undefined
+
+--------------------------------------------------------------------------------
+-- Type Checking List of Expressions
+
+-- | type check across the expressions, using the 'learned' context
+-- | in later expressions
+tcl :: TypeEnv -> NameSupply -> [VExp] -> Maybe (Subst, [TypeExp])
+tcl _     _  []     = Just (idSubst, [])
+tcl gamma ns (e:es) = 
+  let (ns0, ns1) = split ns
+   in do (phi, t)  <- tc gamma ns1 e
+         (psi, ts) <- tcl (subTE phi gamma) ns0 es
+         return (psi `sComp` phi, subType psi t : ts)
+
+--------------------------------------------------------------------------------
+-- Type Checking Variables
+
+tcvar :: TypeEnv -> NameSupply -> VName -> Maybe (Subst, TypeExp)
+tcvar gamma ns x = Just (idSubst, newInstance ns (val gamma x))
+
+newInstance :: NameSupply -> TypeScheme -> TypeExp
+newInstance ns (Scheme scvs t) = 
+  subType (mapToSubst $ Map.fromList (scvs `zip` nameSequence ns)) t
+
+mapToSubst :: Map.Map TVName TVName -> Subst
+mapToSubst al tvn 
+  | tvn `elem` dom al = TVar (val al tvn)
+  | otherwise         = TVar tvn

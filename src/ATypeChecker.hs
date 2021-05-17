@@ -198,9 +198,6 @@ tc gamma ns (Lambda x e)     = tclambda gamma ns x e
 tc gamma ns (Let xs es e)    = tclet    gamma ns xs es e
 tc gamma ns (Letrec xs es e) = tcletrec gamma ns xs es e
 
-tcletrec :: a
-tcletrec = undefined
-
 --------------------------------------------------------------------------------
 -- Type Checking List of Expressions
 
@@ -299,3 +296,43 @@ genbar unknowns ns t =
       al   = scvs `zip` nameSequence ns
       t'   = subType (alToSubst al) t
    in Scheme (map snd al) t'
+
+--------------------------------------------------------------------------------
+-- Type Checking Letrec
+
+tcletrec :: TypeEnv -> NameSupply -> [VName] -> [VExp] -> VExp -> Maybe (Subst, TypeExp)
+tcletrec gamma ns xs es e = 
+  do let (ns0, ns') = split ns
+         (ns1, ns2) = split ns'
+         nbvs       = newBVars xs ns2
+
+     -- phi, ts of type checking the declaration expressions (with bound binding vars)
+     (phi, ts) <- tcl (Map.union nbvs gamma) ns1 es
+
+     -- perform substitutions derived from above type checking
+     -- on the environment and bound vars
+     -- then unify the type expressions with and without these substitutions
+     let gamma' = subTE phi gamma
+         nbvs'  = subTE phi nbvs
+         ts'    = map oldBVar (Map.elems nbvs')
+
+     -- phi' = substitutions after unification of original typechecking and 
+     --        application of substitutions from original typechecking
+     phi' <- unifyl phi (ts `zip` ts')
+
+     -- further propogate the new substitutions after unification
+     -- into the new bound variables
+     let (ns3, ns4) = split ns0
+         nbvs''     = subTE phi' nbvs'
+         ts''       = map oldBVar (Map.elems nbvs'')
+         gamma'''   = addDecls (subTE phi' gamma') ns3 (Map.keys nbvs') ts''
+
+     (phi'', t) <- tc gamma''' ns4 e
+     pure (phi'' `scomp` phi', t)
+
+newBVars :: [VName] -> NameSupply -> TypeEnv
+newBVars xs ns = Map.fromList $ zip xs (map (Scheme [] . TVar) (nameSequence ns))
+
+oldBVar :: TypeScheme -> TypeExp
+oldBVar (Scheme [] t) = t
+oldBVar s = error $ "Not a b-var scheme" ++ show s

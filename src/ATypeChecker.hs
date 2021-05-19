@@ -72,11 +72,6 @@ tvarsIn (TVar n) = [n]
 tvarsIn (TCons _ es) = concatMap tvarsIn es
 
 --------------------------------------------------------------------------------
--- Success and Failure
-
-type Reply = Maybe
-
---------------------------------------------------------------------------------
 -- Substitution
 
 type Subst = TVName -> TypeExp

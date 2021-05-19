@@ -19,23 +19,43 @@ data VExp = Var VName
 --------------------------------------------------------------------------------
 -- TYPE EXPRESSIONS
 
-type TVName = [Int] 
+newtype TVName = TVName [Int] 
+               deriving (Eq, Ord)
+
+instance Show TVName where
+  show (TVName ns) = concatMap show ns
 
 data TypeExp = TVar TVName 
              | TCons String [TypeExp]
-             deriving (Eq, Show)
+             deriving (Eq)
+
+instance Show TypeExp where
+  showsPrec d (TVar n) = showsPrec d n
+
+  showsPrec d (TCons "Arrow" [t1, t2]) = showParen (d > 10) $
+    showsPrec 11 t1    .
+    showString " -> " .
+    showsPrec 9 t2
+
+  showsPrec d (TCons "List" [t]) = 
+    showString "[" . showsPrec d t . showString "]"
+
+  showsPrec d (TCons type_str []) = showsPrec d type_str
+
+  showsPrec _ (TCons type_str _) = error $ "Don't know how to show compound type: " ++ type_str
+
 
 arrow :: TypeExp -> TypeExp -> TypeExp
-arrow t1 t2 = TCons "arrow" [t1, t2]
+arrow t1 t2 = TCons "Arrow" [t1, t2]
 
 int :: TypeExp
-int = TCons "int" []
+int = TCons "Int" []
 
-cross :: TypeExp -> TypeExp -> TypeExp
-cross t1 t2 = TCons "cross" [t1, t2]
+-- cross :: TypeExp -> TypeExp -> TypeExp
+-- cross t1 t2 = TCons "Cross" [t1, t2]
 
 list :: TypeExp -> TypeExp
-list t = TCons "list" [t]
+list t = TCons "List" [t]
 
 tvarsIn :: TypeExp -> [TVName]
 tvarsIn (TVar n) = [n]
@@ -179,11 +199,11 @@ nextName :: NameSupply -> TVName
 nextName = id
 
 deplete :: NameSupply -> NameSupply
-deplete [] = error "Empty name"
-deplete (n:ns) = n+2 : ns
+deplete (TVName []) = error "Empty name"
+deplete (TVName (n:ns)) = TVName (n+2 : ns)
 
 split :: NameSupply -> (NameSupply, NameSupply)
-split ns = (0:ns, 1:ns)
+split (TVName ns) = (TVName (0:ns), TVName (1:ns))
 
 nameSequence :: NameSupply -> [TVName]
 nameSequence ns = nextName ns : nameSequence (deplete ns)
@@ -336,3 +356,24 @@ newBVars xs ns = Map.fromList $ zip xs (map (Scheme [] . TVar) (nameSequence ns)
 oldBVar :: TypeScheme -> TypeExp
 oldBVar (Scheme [] t) = t
 oldBVar s = error $ "Not a b-var scheme" ++ show s
+
+--------------------------------------------------------------------------------
+-- Examples
+
+-- simple case, p151
+vexp1 :: VExp 
+vexp1 = Lambda "x" (Lambda "y" (Lambda "z" 
+          (Ap (Ap (Var "x") (Var "z")) 
+              (Ap (Var "y") (Var "z")))))
+
+vexp_var :: VExp
+vexp_var = Lambda "x" (Var "x")
+
+test_tc :: VExp -> IO ()
+test_tc vexp = 
+  let type_env = Map.empty
+      name_sup = TVName [0]
+      checked = tc type_env name_sup vexp
+   in case checked of 
+        Nothing -> error "Did not type check"
+        Just (_, t) -> print t

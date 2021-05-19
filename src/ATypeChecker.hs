@@ -1,6 +1,6 @@
 module ATypeChecker where
 
-import Data.List ((\\), nub)
+import Data.List ((\\), nub, foldl')
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
 
@@ -15,6 +15,10 @@ data VExp = Var VName
           | Let [VName] [VExp] VExp
           | Letrec [VName] [VExp] VExp
           deriving Show
+
+mkAp :: [VExp] -> VExp
+mkAp [] = error "Empty ap"
+mkAp (e:es) = foldl' Ap e es
 
 --------------------------------------------------------------------------------
 -- TYPE EXPRESSIONS
@@ -48,8 +52,14 @@ instance Show TypeExp where
 arrow :: TypeExp -> TypeExp -> TypeExp
 arrow t1 t2 = TCons "Arrow" [t1, t2]
 
-int :: TypeExp
-int = TCons "Int" []
+int_type :: TypeExp
+int_type = TCons "Int" []
+
+text_type :: TypeExp
+text_type = TCons "Text" []
+
+char_type :: TypeExp
+char_type = TCons "Char" []
 
 -- cross :: TypeExp -> TypeExp -> TypeExp
 -- cross t1 t2 = TCons "Cross" [t1, t2]
@@ -366,8 +376,35 @@ vexp1 = Lambda "x" (Lambda "y" (Lambda "z"
           (Ap (Ap (Var "x") (Var "z")) 
               (Ap (Var "y") (Var "z")))))
 
-vexp_var :: VExp
-vexp_var = Lambda "x" (Var "x")
+test_vexp1 :: IO ()
+test_vexp1 = 
+  let t_env = Map.fromList [("x", Scheme [] $ arrow (arrow int_type text_type) char_type),
+                            ("y", Scheme [] $ arrow int_type text_type),
+                            ("z", Scheme [] text_type)]
+   in test_tc_env t_env vexp1
+
+vexp_var :: (TypeEnv, VExp)
+vexp_var = 
+  ( Map.fromList [("x", Scheme [] int_type)],
+    Var "x")
+
+vexp_simple_ap :: (TypeEnv, VExp)
+vexp_simple_ap =
+  ( Map.fromList [("f", Scheme [] (arrow int_type int_type)),
+                  ("x", Scheme [] text_type)],
+    Ap (Var "f") (Var "x") ) 
+
+vexp_lambda_ap :: (TypeEnv, VExp)
+vexp_lambda_ap = 
+  ( Map.fromList [("a", Scheme [] $ arrow int_type (arrow text_type char_type)),
+                  ("b", Scheme [] $ arrow int_type text_type),
+                  ("c", Scheme [] int_type)],
+    mkAp [ Lambda "x" (Lambda "y" (Lambda "z" 
+             (Ap (Ap (Var "x") (Var "z")) 
+                 (Ap (Var "y") (Var "z"))))),
+           Var "a",
+           Var "b",
+           Var "c" ] )
 
 test_tc :: VExp -> IO ()
 test_tc vexp = 
@@ -377,3 +414,11 @@ test_tc vexp =
    in case checked of 
         Nothing -> error "Did not type check"
         Just (_, t) -> print t
+
+test_tc_env :: TypeEnv -> VExp -> IO ()
+test_tc_env type_env vexp = 
+  let name_sup = TVName [0]
+      checked = tc type_env name_sup vexp
+   in case checked of 
+        Nothing -> error "Did not type check"
+        Just (s, t) -> print (subType s t)

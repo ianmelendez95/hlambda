@@ -104,3 +104,25 @@ newSchemeInstance (Scheme scheme_vars type_exp) =
 
 id_subst :: Subst 
 id_subst = []
+
+--------------------------------------------------------------------------------
+-- Examples
+
+int_type :: TypeExp
+int_type = TCons "Int" []
+
+vexp_var :: (TypeEnv, VExp)
+vexp_var = 
+  ( Map.fromList [("x", Scheme [] int_type)],
+    Var "x")
+
+test_tc :: TypeEnv -> VExp -> IO ()
+test_tc tenv vexp = 
+  let check_env = CheckerEnv {
+        cenvNextNameNum = 0,
+        cenvTypeEnv = tenv
+      }
+      checked = evalStateT (tc vexp) check_env
+   in case checked of 
+        Nothing -> error "Did not type check"
+        Just (_, t) -> print t

@@ -1,4 +1,4 @@
-module ATypeChecker where
+module ATypeChecker () where
 
 import Data.List ((\\), nub, foldl')
 import Data.Maybe (fromMaybe)

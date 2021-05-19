@@ -1,4 +1,4 @@
-module ATypeChecker () where
+module ATypeChecker where
 
 import Data.List ((\\), nub, foldl')
 import Data.Maybe (fromMaybe)
@@ -382,6 +382,11 @@ vexp_var :: (TypeEnv, VExp)
 vexp_var = 
   ( Map.fromList [("x", Scheme [] int_type)],
     Var "x")
+
+vexp_lambda_var :: (TypeEnv, VExp)
+vexp_lambda_var = 
+  ( Map.empty,
+    Lambda "x" (Var "x"))
 
 vexp_simple_ap :: (TypeEnv, VExp)
 vexp_simple_ap =

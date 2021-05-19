@@ -53,13 +53,26 @@ type CheckerS = StateT CheckerEnv Maybe
 --------------------------------------------------------------------------------
 -- Type Checking
 
--- TODO: add simple test and commit
 tc :: VExp -> CheckerS (Subst, TypeExp)
 tc (Var v_name) = (id_subst,) <$> tcVar v_name 
+tc (Lambda var body) = tcLambda var body
 tc e = error $ "tc: not impl: " ++ show e
 
 tcVar :: VName -> CheckerS TypeExp
 tcVar = getTypeInstance
+
+tcLambda :: VName -> VExp -> CheckerS (Subst, TypeExp)
+tcLambda lvar lbody = 
+  do new_name <- getNextName
+     putSimpleVarBinding lvar new_name
+     (subst, new_t) <- tc lbody
+     pure (subst, arrow_type (applySubst subst new_name) new_t)
+
+--------------------------------------------------------------------------------
+-- Type Checker Environment
+
+modifyTypeEnv :: (TypeEnv -> TypeEnv) -> CheckerS ()
+modifyTypeEnv f = modify (\cenv -> cenv { cenvTypeEnv = f (cenvTypeEnv cenv) })
 
 --------------------------------------------------------------------------------
 -- TypeExps
@@ -88,6 +101,13 @@ _getNextNameNum =
      pure next_n_num
 
 --------------------------------------------------------------------------------
+-- Type Environments
+
+putSimpleVarBinding :: TVName -> TVName -> CheckerS ()
+putSimpleVarBinding orig_name new_name = 
+  modifyTypeEnv $ Map.insert orig_name (Scheme [] (TVar new_name))
+
+--------------------------------------------------------------------------------
 -- TypeSchemes
 
 getTypeInstance :: VName -> CheckerS TypeExp
@@ -102,11 +122,23 @@ newSchemeInstance (Scheme scheme_vars type_exp) =
      let lookupVar v = TVar $ fromMaybe v (Map.lookup v scheme_to_instance_vars)
      pure $ mapTVars lookupVar type_exp
 
+--------------------------------------------------------------------------------
+-- Substitutions
+
+applySubst :: Subst -> TVName -> TypeExp
+applySubst [] n = TVar n
+applySubst (m:ms) n = 
+  let n_subst = fromMaybe (TVar n) (Map.lookup n m)
+   in mapTVars (applySubst ms) n_subst
+
 id_subst :: Subst 
 id_subst = []
 
 --------------------------------------------------------------------------------
 -- Examples
+
+arrow_type :: TypeExp -> TypeExp -> TypeExp 
+arrow_type t1 t2 = TCons "Arrow" [t1, t2]
 
 int_type :: TypeExp
 int_type = TCons "Int" []
@@ -115,6 +147,11 @@ vexp_var :: (TypeEnv, VExp)
 vexp_var = 
   ( Map.fromList [("x", Scheme [] int_type)],
     Var "x")
+
+vexp_lambda_var :: (TypeEnv, VExp)
+vexp_lambda_var = 
+  ( Map.empty,
+    Lambda "x" (Var "x"))
 
 test_tc :: TypeEnv -> VExp -> IO ()
 test_tc tenv vexp = 

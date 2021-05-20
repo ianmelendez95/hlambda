@@ -36,7 +36,7 @@ instance Show TypeExp where
 
   showsPrec _ (TCons type_str _) = error $ "Don't know how to show compound type: " ++ type_str
 
-type Subst = [Map.Map TVName TypeExp]
+type SubstEnv = Map.Map TVName TypeExp
 
 data TypeScheme = Scheme [TVName] TypeExp
                 deriving Show
@@ -45,7 +45,7 @@ type TypeEnv = Map.Map VName TypeScheme
 
 data CheckerEnv = CheckerEnv {
   cenvNextNameNum :: Int,
-  cenvTypeEnv :: TypeEnv
+  cenvSubstEnv :: SubstEnv
 }
 
 type CheckerS = StateT CheckerEnv Maybe
@@ -53,26 +53,23 @@ type CheckerS = StateT CheckerEnv Maybe
 --------------------------------------------------------------------------------
 -- Type Checking
 
-tc :: VExp -> CheckerS (Subst, TypeExp)
-tc (Var v_name) = (id_subst,) <$> tcVar v_name 
-tc (Lambda var body) = tcLambda var body
-tc e = error $ "tc: not impl: " ++ show e
+tc :: TypeEnv -> VExp -> CheckerS TypeExp
+tc env (Var v_name) = tcVar env v_name 
+tc env (Lambda var body) = tcLambda env var body
+tc env (Ap e1 e2) = tcAp e1 e2
+tc _ e = error $ "tc: not impl: " ++ show e
 
-tcVar :: VName -> CheckerS TypeExp
+tcVar :: TypeEnv -> VName -> CheckerS TypeExp
 tcVar = getTypeInstance
 
-tcLambda :: VName -> VExp -> CheckerS (Subst, TypeExp)
-tcLambda lvar lbody = 
-  do new_name <- getNextName
-     putSimpleVarBinding lvar new_name
-     (subst, new_t) <- tc lbody
-     pure (subst, arrow_type (applySubst subst new_name) new_t)
+tcLambda :: TypeEnv -> VName -> VExp -> CheckerS TypeExp
+tcLambda env lvar lbody = 
+  do (bound_name, new_env) <- bindTVar lvar env
+     body_t <- tc new_env lbody
+     arrow_type (TVar bound_name) body_t
 
---------------------------------------------------------------------------------
--- Type Checker Environment
-
-modifyTypeEnv :: (TypeEnv -> TypeEnv) -> CheckerS ()
-modifyTypeEnv f = modify (\cenv -> cenv { cenvTypeEnv = f (cenvTypeEnv cenv) })
+tcAp :: VExp -> VExp -> CheckerS TypeExp
+tcAp = undefined
 
 --------------------------------------------------------------------------------
 -- TypeExps
@@ -103,17 +100,26 @@ _getNextNameNum =
 --------------------------------------------------------------------------------
 -- Type Environments
 
-putSimpleVarBinding :: TVName -> TVName -> CheckerS ()
+-- | 'binds' the type variable in the type environment, making it a 
+-- | bound scheme var and returning the generated name for the var
+-- |
+-- | returns (gen'd scheme name, env with bound var)
+bindTVar :: TVName -> TypeEnv -> CheckerS (TVName, TypeEnv)
+bindTVar v env = 
+  do scheme_name <- getNextName
+     let new_env = putSimpleVarBinding v scheme_name env
+     pure (scheme_name, new_env)
+
+putSimpleVarBinding :: TVName -> TVName -> TypeEnv -> TypeEnv
 putSimpleVarBinding orig_name new_name = 
-  modifyTypeEnv $ Map.insert orig_name (Scheme [] (TVar new_name))
+  Map.insert orig_name (Scheme [] (TVar new_name))
 
 --------------------------------------------------------------------------------
 -- TypeSchemes
 
-getTypeInstance :: VName -> CheckerS TypeExp
-getTypeInstance name =
-  do tenv <- gets cenvTypeEnv
-     tscheme <- lift $ Map.lookup name tenv
+getTypeInstance :: TypeEnv -> VName -> CheckerS TypeExp
+getTypeInstance tenv name =
+  do tscheme <- lift $ Map.lookup name tenv
      newSchemeInstance tscheme
 
 newSchemeInstance :: TypeScheme -> CheckerS TypeExp
@@ -125,20 +131,34 @@ newSchemeInstance (Scheme scheme_vars type_exp) =
 --------------------------------------------------------------------------------
 -- Substitutions
 
-applySubst :: Subst -> TVName -> TypeExp
-applySubst [] n = TVar n
-applySubst (m:ms) n = 
-  let n_subst = fromMaybe (TVar n) (Map.lookup n m)
-   in mapTVars (applySubst ms) n_subst
+getSubst :: TVName -> CheckerS TypeExp
+getSubst n = 
+  do subst <- getSubstEnv
+     pure $ applySubst subst n
 
-id_subst :: Subst 
-id_subst = []
+getExpSubst :: TypeExp -> CheckerS TypeExp
+getExpSubst (TVar v) = getSubst v
+getExpSubst (TCons c_name es) = 
+  do es' <- mapM getExpSubst es
+     pure $ TCons c_name es'
+
+getSubstEnv :: CheckerS SubstEnv
+getSubstEnv = gets cenvSubstEnv
+
+applySubst :: SubstEnv -> TVName -> TypeExp
+applySubst env n = fromMaybe (TVar n) (Map.lookup n env)
+
+id_subst :: SubstEnv
+id_subst = Map.empty
 
 --------------------------------------------------------------------------------
 -- Examples
 
-arrow_type :: TypeExp -> TypeExp -> TypeExp 
-arrow_type t1 t2 = TCons "Arrow" [t1, t2]
+arrow_type :: TypeExp -> TypeExp -> CheckerS TypeExp 
+arrow_type t1 t2 = 
+  do t1' <- getExpSubst t1
+     t2' <- getExpSubst t2
+     pure $ TCons "Arrow" [t1', t2']
 
 int_type :: TypeExp
 int_type = TCons "Int" []
@@ -157,9 +177,9 @@ test_tc :: TypeEnv -> VExp -> IO ()
 test_tc tenv vexp = 
   let check_env = CheckerEnv {
         cenvNextNameNum = 0,
-        cenvTypeEnv = tenv
+        cenvSubstEnv = id_subst
       }
-      checked = evalStateT (tc vexp) check_env
+      checked = evalStateT (tc tenv vexp) check_env
    in case checked of 
         Nothing -> error "Did not type check"
-        Just (_, t) -> print t
+        Just t -> print t

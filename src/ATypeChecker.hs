@@ -16,6 +16,9 @@ data VExp = Var VName
           | Letrec [VName] [VExp] VExp
           deriving Show
 
+mkLambda :: [VName] -> VExp -> VExp
+mkLambda vs e = foldr Lambda e vs
+
 mkAp :: [VExp] -> VExp
 mkAp [] = error "Empty ap"
 mkAp (e:es) = foldl' Ap e es
@@ -405,6 +408,12 @@ vexp_lambda_ap =
            Var "a",
            Var "b",
            Var "c" ] )
+
+vexp_inf :: (TypeEnv, VExp)
+vexp_inf = 
+  ( Map.empty,
+    mkLambda ["n", "a", "b"]
+      (mkAp [Var "b", Var "n", mkAp [Var "n", Var "a", Var "b"]]) )
 
 test_tc :: VExp -> IO ()
 test_tc vexp = 

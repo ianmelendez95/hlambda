@@ -126,7 +126,7 @@ example = Let ["S", "K"] [rhs_S, rhs_K] main
 extend :: Subst -> TVName -> TypeExp -> Maybe Subst
 extend phi tvn t 
   | t == TVar tvn = Just phi
-  | tvn `elem` tvarsIn t = Nothing -- why, if the type var exists in t, do we not extend phi with it? To avoid non-termination?
+  | tvn `elem` tvarsIn t = error $ "var substituting exists in type expression: " ++ show tvn
   | otherwise = Just (delta tvn t `scomp` phi)
 
 unify :: Subst -> (TypeExp, TypeExp) -> Maybe Subst
@@ -414,6 +414,12 @@ vexp_inf =
   ( Map.empty,
     mkLambda ["n", "a", "b"]
       (mkAp [Var "b", Var "n", mkAp [Var "n", Var "a", Var "b"]]) )
+
+vexp_inferenced :: (TypeEnv, VExp)
+vexp_inferenced = 
+  ( Map.fromList [("f", Scheme [] $ TCons "Arrow" [TCons "Int" [], TCons "String" []]),
+                  ("x", Scheme [TVName [50]] $ TVar (TVName [50]))],
+    Ap (Var "f") (Var "x"))
 
 test_tc :: VExp -> IO ()
 test_tc vexp = 

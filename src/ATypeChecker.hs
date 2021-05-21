@@ -374,13 +374,6 @@ vexp1 = Lambda "x" (Lambda "y" (Lambda "z"
           (Ap (Ap (Var "x") (Var "z")) 
               (Ap (Var "y") (Var "z")))))
 
-test_vexp1 :: IO ()
-test_vexp1 = 
-  let t_env = Map.fromList [("x", Scheme [] $ arrow (arrow int_type text_type) char_type),
-                            ("y", Scheme [] $ arrow int_type text_type),
-                            ("z", Scheme [] text_type)]
-   in test_tc_env t_env vexp1
-
 vexp_var :: (TypeEnv, VExp)
 vexp_var = 
   ( Map.fromList [("x", Scheme [] int_type)],
@@ -394,7 +387,7 @@ vexp_lambda_var =
 vexp_simple_ap :: (TypeEnv, VExp)
 vexp_simple_ap =
   ( Map.fromList [("f", Scheme [] (arrow int_type int_type)),
-                  ("x", Scheme [] text_type)],
+                  ("x", Scheme [] int_type)],
     Ap (Var "f") (Var "x") ) 
 
 vexp_lambda_ap :: (TypeEnv, VExp)
@@ -421,8 +414,8 @@ vexp_inferenced =
                   ("x", Scheme [TVName [50]] $ TVar (TVName [50]))],
     Ap (Var "f") (Var "x"))
 
-test_tc :: VExp -> IO ()
-test_tc vexp = 
+testTC :: VExp -> IO ()
+testTC vexp = 
   let type_env = Map.empty
       name_sup = TVName [0]
       checked = tc type_env name_sup vexp
@@ -437,3 +430,22 @@ test_tc_env type_env vexp =
    in case checked of 
         Nothing -> error "Did not type check"
         Just (s, t) -> print (subType s t)
+
+{- 
+(4 -> 18) -> (4 -> 108) -> 4 -> 6
+"Int"
+0 -> 0
+"Int"
+"Char"
+"String"
+-}
+test_examples :: IO ()
+test_examples = 
+  do let testTCEnv' = uncurry test_tc_env 
+     testTC vexp1 
+     testTCEnv' vexp_var
+     testTCEnv' vexp_lambda_var
+     testTCEnv' vexp_simple_ap
+     testTCEnv' vexp_lambda_ap
+     -- testTCEnv' vexp_inf
+     testTCEnv' vexp_inferenced

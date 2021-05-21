@@ -236,8 +236,8 @@ tcl _     _  []     = Just (idSubst, [])
 tcl gamma ns (e:es) = 
   let (ns0, ns1) = split ns
    in do (phi, t)  <- tc gamma ns1 e
-         (psi, ts) <- tcl (subTE phi gamma) ns0 es
-         pure (psi `scomp` phi, subType psi t : ts)
+         (psi, ts) <- tcl gamma ns0 es
+         pure (psi `scomp` phi, t : ts)
 
 --------------------------------------------------------------------------------
 -- Type Checking Variables
@@ -270,7 +270,7 @@ tcap gamma ns e1 e2 =
       ns' = deplete ns
    in do (phi, [t1, t2]) <- tcl gamma ns' [e1, e2]
          phi'            <- unify phi (t1, t2 `arrow` TVar tvn)
-         pure (phi', phi' tvn)
+         pure (phi', TVar tvn)
 
 --------------------------------------------------------------------------------
 -- Type Checking Lambda
@@ -283,7 +283,7 @@ tclambda gamma ns x e =
       -- gamma' = gamma with a 'bound' x (x is now a type scheme with no vars)  
       gamma' = Map.insert x (Scheme [] (TVar tvn)) gamma
    in do (phi, t) <- tc gamma' ns' e
-         pure (phi, phi tvn `arrow` t)
+         pure (phi, TVar tvn `arrow` t)
 
 --------------------------------------------------------------------------------
 -- Type Checking Let

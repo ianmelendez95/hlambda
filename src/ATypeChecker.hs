@@ -26,13 +26,13 @@ mkAp (e:es) = foldl' Ap e es
 --------------------------------------------------------------------------------
 -- TYPE EXPRESSIONS
 
-newtype TVName = TVName [Int] 
+newtype TVName = TVName [Int]
                deriving (Eq, Ord)
 
 instance Show TVName where
   show (TVName ns) = concatMap show ns
 
-data TypeExp = TVar TVName 
+data TypeExp = TVar TVName
              | TCons String [TypeExp]
              deriving (Eq)
 
@@ -44,7 +44,7 @@ instance Show TypeExp where
     showString " -> " .
     showsPrec 9 t2
 
-  showsPrec d (TCons "List" [t]) = 
+  showsPrec d (TCons "List" [t]) =
     showString "[" . showsPrec d t . showString "]"
 
   showsPrec d (TCons type_str []) = showsPrec d type_str
@@ -91,8 +91,8 @@ idSubst = TVar
 
 -- | produce a substitution that will replace all instances of 
 -- | the var with the expression
-delta :: TVName -> TypeExp -> Subst 
-delta n t n' 
+delta :: TVName -> TypeExp -> Subst
+delta n t n'
   | n == n' = t
   | otherwise = TVar n'
 
@@ -112,8 +112,8 @@ example = Let ["S", "K"] [rhs_S, rhs_K] main
     var_y = Var "y"
     var_z = Var "z"
     main = Ap (Ap var_S var_K) var_K
-    rhs_S = plambda ["x", "y", "z"] body_S  
-    rhs_K = plambda ["x", "y"]      body_K  
+    rhs_S = plambda ["x", "y", "z"] body_S
+    rhs_K = plambda ["x", "y"]      body_K
     body_S = Ap (Ap var_x var_z) (Ap var_y var_z)
     body_K = var_x
     plambda vs e = foldr Lambda e vs
@@ -124,23 +124,23 @@ example = Let ["S", "K"] [rhs_S, rhs_K] main
 -- | extend: handle the case where TVar tvn = t
 -- | so we 'extend' the substition to have tvn -> t
 extend :: Subst -> TVName -> TypeExp -> Maybe Subst
-extend phi tvn t 
+extend phi tvn t
   | t == TVar tvn = Just phi
   | tvn `elem` tvarsIn t = error $ "var substituting exists in type expression: " ++ show tvn
   | otherwise = Just (delta tvn t `scomp` phi)
 
 unify :: Subst -> (TypeExp, TypeExp) -> Maybe Subst
-unify phi (TVar tvn, t) 
+unify phi (TVar tvn, t)
   | phi tvn == TVar tvn = extend phi tvn (subType phi t)
   | otherwise           = unify phi (phitvn, phit)
-  where 
+  where
     phitvn = phi tvn
     phit = subType phi t
 
-unify phi (TCons tcn ts, TVar tvn) = 
+unify phi (TCons tcn ts, TVar tvn) =
   unify phi (TVar tvn, TCons tcn ts)
 
-unify phi (TCons tcn ts, TCons tcn' ts') 
+unify phi (TCons tcn ts, TCons tcn' ts')
   | tcn == tcn' = unifyl phi (ts `zip` ts')
   | otherwise = Nothing
 
@@ -149,7 +149,7 @@ unifyl phi = foldr (\eqn -> (>>= (`unify` eqn))) (Just phi)
 
 unifyl' :: Subst -> [(TypeExp, TypeExp)] -> Maybe Subst
 unifyl' phi [] = Just phi
-unifyl' phi (eqn : eqns) = 
+unifyl' phi (eqn : eqns) =
   do phi' <- unifyl' phi eqns
      unify phi' eqn
 
@@ -183,7 +183,7 @@ dom :: Map.Map a b -> [a]
 dom = Map.keys
 
 val :: (Ord a, Show a) => Map.Map a b -> a -> b
-val m n = fromMaybe (error $ "Variable is not in type environment: " ++ show n) 
+val m n = fromMaybe (error $ "Variable is not in type environment: " ++ show n)
                     (Map.lookup n m)
 
 install :: TypeEnv -> VName -> TypeScheme -> TypeEnv
@@ -233,7 +233,7 @@ tc gamma ns (Letrec xs es e) = tcletrec gamma ns xs es e
 -- | in later expressions
 tcl :: TypeEnv -> NameSupply -> [VExp] -> Maybe (Subst, [TypeExp])
 tcl _     _  []     = Just (idSubst, [])
-tcl gamma ns (e:es) = 
+tcl gamma ns (e:es) =
   let (ns0, ns1) = split ns
    in do (phi, t)  <- tc gamma ns1 e
          (psi, ts) <- tcl gamma ns0 es
@@ -250,7 +250,7 @@ tcvar gamma ns x = Just (idSubst, newInstance ns (val gamma x))
 -- | substitute all scheme variables (scvs) in type expression (t)
 -- | with new names according to name supply (ns)
 newInstance :: NameSupply -> TypeScheme -> TypeExp
-newInstance ns (Scheme scvs t) = 
+newInstance ns (Scheme scvs t) =
   subType (alToSubst (scvs `zip` nameSequence ns)) t
 
 alToSubst :: [(TVName, TVName)] -> Subst
@@ -265,7 +265,7 @@ mapToSubst var_map tvn =
 -- Type Checking Application
 
 tcap :: TypeEnv -> NameSupply -> VExp -> VExp -> Maybe (Subst, TypeExp)
-tcap gamma ns e1 e2 = 
+tcap gamma ns e1 e2 =
   let tvn = nextName ns
       ns' = deplete ns
    in do (phi, [t1, t2]) <- tcl gamma ns' [e1, e2]
@@ -276,7 +276,7 @@ tcap gamma ns e1 e2 =
 -- Type Checking Lambda
 
 tclambda :: TypeEnv -> NameSupply -> VName -> VExp -> Maybe (Subst, TypeExp)
-tclambda gamma ns x e = 
+tclambda gamma ns x e =
   let ns'    = deplete ns
       tvn    = nextName ns
 
@@ -289,7 +289,7 @@ tclambda gamma ns x e =
 -- Type Checking Let
 
 tclet :: TypeEnv -> NameSupply -> [VName] -> [VExp] -> VExp -> Maybe (Subst, TypeExp)
-tclet gamma ns xs es e = 
+tclet gamma ns xs es e =
   let (ns0, ns1, ns2) = split3 ns
    in do (phi, ts) <- tcl gamma ns2 es
          let gamma'  = subTE phi gamma
@@ -306,7 +306,7 @@ split3 ns = let (ns0, ns1) = split ns
 -- | add the declarations [VName] => [TypeExp]
 -- | to the type environment
 addDecls :: TypeEnv -> NameSupply -> [VName] -> [TypeExp] -> TypeEnv
-addDecls gamma ns xs ts = 
+addDecls gamma ns xs ts =
   let unknowns = unknownsTE gamma
       schemes = map (genbar unknowns ns) ts
    in foldr (uncurry Map.insert) gamma (xs `zip` schemes)
@@ -319,7 +319,7 @@ addDecls gamma ns xs ts =
 -- | further, all the schematic type vars are then given 
 -- | a new name in the final schematic to avoid clashing
 genbar :: [TVName] -> NameSupply -> TypeExp -> TypeScheme
-genbar unknowns ns t = 
+genbar unknowns ns t =
   let scvs = nub (tvarsIn t) \\ unknowns
       al   = scvs `zip` nameSequence ns
       t'   = subType (alToSubst al) t
@@ -329,7 +329,7 @@ genbar unknowns ns t =
 -- Type Checking Letrec
 
 tcletrec :: TypeEnv -> NameSupply -> [VName] -> [VExp] -> VExp -> Maybe (Subst, TypeExp)
-tcletrec gamma ns xs es e = 
+tcletrec gamma ns xs es e =
   do let (ns0, ns') = split ns
          (ns1, ns2) = split ns'
          nbvs       = newBVars xs ns2
@@ -369,18 +369,18 @@ oldBVar s = error $ "Not a b-var scheme" ++ show s
 -- Examples
 
 -- simple case, p151
-vexp1 :: VExp 
-vexp1 = Lambda "x" (Lambda "y" (Lambda "z" 
-          (Ap (Ap (Var "x") (Var "z")) 
+vexp1 :: VExp
+vexp1 = Lambda "x" (Lambda "y" (Lambda "z"
+          (Ap (Ap (Var "x") (Var "z"))
               (Ap (Var "y") (Var "z")))))
 
 vexp_var :: (TypeEnv, VExp)
-vexp_var = 
+vexp_var =
   ( Map.fromList [("x", Scheme [] int_type)],
     Var "x")
 
 vexp_lambda_var :: (TypeEnv, VExp)
-vexp_lambda_var = 
+vexp_lambda_var =
   ( Map.empty,
     Lambda "x" (Var "x"))
 
@@ -388,46 +388,46 @@ vexp_simple_ap :: (TypeEnv, VExp)
 vexp_simple_ap =
   ( Map.fromList [("f", Scheme [] (arrow int_type int_type)),
                   ("x", Scheme [] int_type)],
-    Ap (Var "f") (Var "x") ) 
+    Ap (Var "f") (Var "x") )
 
 vexp_lambda_ap :: (TypeEnv, VExp)
-vexp_lambda_ap = 
+vexp_lambda_ap =
   ( Map.fromList [("a", Scheme [] $ arrow int_type (arrow text_type char_type)),
                   ("b", Scheme [] $ arrow int_type text_type),
                   ("c", Scheme [] int_type)],
-    mkAp [ Lambda "x" (Lambda "y" (Lambda "z" 
-             (Ap (Ap (Var "x") (Var "z")) 
+    mkAp [ Lambda "x" (Lambda "y" (Lambda "z"
+             (Ap (Ap (Var "x") (Var "z"))
                  (Ap (Var "y") (Var "z"))))),
            Var "a",
            Var "b",
            Var "c" ] )
 
 vexp_inf :: (TypeEnv, VExp)
-vexp_inf = 
+vexp_inf =
   ( Map.empty,
     mkLambda ["n", "a", "b"]
       (mkAp [Var "b", Var "n", mkAp [Var "n", Var "a", Var "b"]]) )
 
 vexp_inferenced :: (TypeEnv, VExp)
-vexp_inferenced = 
+vexp_inferenced =
   ( Map.fromList [("f", Scheme [] $ TCons "Arrow" [TCons "Int" [], TCons "String" []]),
                   ("x", Scheme [TVName [50]] $ TVar (TVName [50]))],
     Ap (Var "f") (Var "x"))
 
 testTC :: VExp -> IO ()
-testTC vexp = 
+testTC vexp =
   let type_env = Map.empty
       name_sup = TVName [0]
       checked = tc type_env name_sup vexp
-   in case checked of 
+   in case checked of
         Nothing -> error "Did not type check"
         Just (_, t) -> print t
 
 test_tc_env :: TypeEnv -> VExp -> IO ()
-test_tc_env type_env vexp = 
+test_tc_env type_env vexp =
   let name_sup = TVName [0]
       checked = tc type_env name_sup vexp
-   in case checked of 
+   in case checked of
         Nothing -> error "Did not type check"
         Just (s, t) -> print (subType s t)
 
@@ -440,9 +440,9 @@ test_tc_env type_env vexp =
 "String"
 -}
 test_examples :: IO ()
-test_examples = 
-  do let testTCEnv' = uncurry test_tc_env 
-     testTC vexp1 
+test_examples =
+  do let testTCEnv' = uncurry test_tc_env
+     testTC vexp1
      testTCEnv' vexp_var
      testTCEnv' vexp_lambda_var
      testTCEnv' vexp_simple_ap

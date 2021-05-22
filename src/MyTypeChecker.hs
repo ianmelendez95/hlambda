@@ -69,6 +69,9 @@ tc env (Ap e1 e2) = tcAp env e1 e2
 tc env (Let b_var b_expr body) = tcLet env b_var b_expr body
 tc _ e = error $ "tc: not impl: " ++ show e
 
+tcl :: TypeEnv -> [VExp] -> CheckerS [TypeExp]
+tcl env = mapM (tc env)
+
 tcVar :: TypeEnv -> VName -> CheckerS TypeExp
 tcVar = getTypeInstance
 
@@ -93,6 +96,17 @@ tcLet :: TypeEnv -> VName -> VExp -> VExp -> CheckerS TypeExp
 tcLet env b_var b_expr body = 
   do b_ty <- tc env b_expr
      let env' = insertVarBinding b_var b_ty env
+     tc env' body
+
+tcLetrec :: TypeEnv -> [VName] -> [VExp] -> VExp -> CheckerS TypeExp
+tcLetrec env b_vars b_exprs body = 
+  do env' <- bindTVars b_vars env
+
+     b_tvars  <- mapM (getTypeInstance env') b_vars 
+     b_texprs <- tcl env' b_exprs
+
+     mapM_ (uncurry unify) (zip b_tvars b_texprs)
+
      tc env' body
 
 --------------------------------------------------------------------------------
@@ -143,6 +157,11 @@ _getNextNameNum =
 --------------------------------------------------------------------------------
 -- Type Environments
 
+bindTVars :: [VName] -> TypeEnv -> CheckerS TypeEnv
+bindTVars vars env = 
+  do bound_vars <- mapM (\v -> getNextName >>= \tv -> pure (v, Scheme [] (TVar tv))) vars
+     pure $ Map.union (Map.fromList bound_vars) env
+
 -- | 'binds' the type variable in the type environment, making it a 
 -- | bound scheme var and returning the generated name for the var
 -- |
@@ -150,11 +169,11 @@ _getNextNameNum =
 bindTVar :: TVName -> TypeEnv -> CheckerS (TVName, TypeEnv)
 bindTVar v env = 
   do scheme_name <- getNextName
-     let new_env = putSimpleVarBinding v scheme_name env
+     let new_env = Map.insert v (Scheme [] (TVar scheme_name)) env
      pure (scheme_name, new_env)
 
-putSimpleVarBinding :: TVName -> TVName -> TypeEnv -> TypeEnv
-putSimpleVarBinding orig_name = insertVarBinding orig_name . TVar
+insertSimpleVarBinding :: TVName -> TVName -> TypeEnv -> TypeEnv
+insertSimpleVarBinding orig_name = insertVarBinding orig_name . TVar
 
 insertVarBinding :: TVName -> TypeExp -> TypeEnv -> TypeEnv
 insertVarBinding n expr env = Map.insert n (Scheme (tvarsIn expr \\ findUnknowns env) expr) env

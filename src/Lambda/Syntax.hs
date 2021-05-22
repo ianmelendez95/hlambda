@@ -36,7 +36,7 @@ import Data.List (foldl1', insert)
 
 -- p13: Figure 2.1 - Syntax of a Lambda Expression
 
-data Exp = Let    [(Variable, Exp)] Exp
+data Exp = Let    (Variable, Exp) Exp
          | Letrec [(Variable, Exp)] Exp
          | Term Term 
          | Apply Exp Exp 
@@ -216,7 +216,7 @@ instance PrettyLambda Exp where
 sPretty :: Exp -> PrettyParenS LambdaDoc
 sPretty (Term t) = sPrettyTerm t
 sPretty (Letrec bindings body) = prettyLet "letrec" bindings body
-sPretty (Let bindings body)    = prettyLet "let" bindings body
+sPretty (Let binding body)    = prettyLet "let" [binding] body
 sPretty (Lambda var e) = do wrapper <- getParenWrapper 5 
                             ePretty <- tempState (setPrec 0) (sPretty e)
                             pure $ wrapper $ backslash
@@ -256,7 +256,7 @@ freeVariables :: Exp -> [String]
 freeVariables = freeVariables' []
 
 freeVariables' :: [String] -> Exp -> [String]
-freeVariables' bound (Let binds expr) = freeVarsInLet bound binds expr
+freeVariables' bound (Let bind expr) = freeVarsInLet bound [bind] expr
 freeVariables' bound (Letrec binds expr) = freeVarsInLet bound binds expr
 freeVariables' bound (Term (Variable var)) = [varName var | varName var `notElem` bound]
 freeVariables' _ (Term _) = []

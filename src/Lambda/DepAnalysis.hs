@@ -3,7 +3,7 @@ module Lambda.DepAnalysis (depAnalysis) where
 import qualified Lambda.Syntax as S
 
 import Data.Foldable (toList)
-import Data.Graph (Vertex, graphFromEdges, scc, path)
+import Data.Graph (Vertex, graphFromEdges, scc)
 
 -- import Debug.Trace (trace)
 
@@ -20,7 +20,7 @@ depAnalysis bs expr =
    in foldr foldrF expr analyzed 
   where 
     foldrF :: Bind -> S.Exp -> S.Exp
-    foldrF (NonRec b') e' = S.Let [b'] e'
+    foldrF (NonRec b') e' = S.Let b' e'
     foldrF (Rec bs') e' =   S.Letrec bs' e'
 
 depAnalysis' :: [Binding] -> [Bind]

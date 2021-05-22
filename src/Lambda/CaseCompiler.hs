@@ -42,4 +42,4 @@ compileClause case_var clause@(E.Clause c vs e) =
    in if length sel_funcs /= length vs
         then error $ "Malformed case clause. Argument vars differ in number to constructor arity: "
                       ++ show clause
-        else E.Let let_binds e
+        else foldr E.Let e let_binds

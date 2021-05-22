@@ -124,7 +124,7 @@ coerceToIrrefutable patt@E.PConstructor{} e =
           irr_constr = IPConstructor (C.CProduct (length patt_vars)) (map IPVariable patt_vars)
           new_name = newName (patt_vars ++ E.freeVariables e)
        in ( irr_constr
-          , E.Let [(E.PVariable new_name, e)]
+          , E.Let (E.PVariable new_name, e)
                   (E.Apply (E.Lambda patt (irrefutableToEnriched irr_constr)) 
                            (E.Pure $ S.mkVariable new_name))
           )

@@ -28,7 +28,7 @@ compileToLambda (E.Pure e) = e
 --       expr' = compileToLambda expr
 --    in S.Letrec (concat simple_bs) expr'
 
-compileToLambda (E.Let bs expr) = compileLetLetrec bs expr
+compileToLambda (E.Let b expr) = compileLetLetrec [b] expr
 compileToLambda (E.Letrec bs expr) = compileLetLetrec bs expr
 
 compileToLambda (E.Apply e1 e2) = S.Apply (compileToLambda e1) (compileToLambda e2)

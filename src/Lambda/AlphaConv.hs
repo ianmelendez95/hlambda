@@ -18,7 +18,7 @@ enrConv old new = go
   where 
     go :: E.Exp -> E.Exp
     go (E.Pure e) = E.Pure (unsafeAlphaConv old new e)
-    go (E.Let bs e) = E.Let (map goBinding bs) (go e)
+    go (E.Let b e) = E.Let (goBinding b) (go e)
     go (E.Letrec bs e) = E.Letrec (map goBinding bs) (go e)
     go (E.Apply e1 e2) = E.Apply (go e1) (go e2)
     go (E.Lambda p e) = E.Lambda (goPatt p) (go e)

@@ -12,7 +12,7 @@ type VName = String
 data VExp = Var VName
           | Lambda VName VExp
           | Ap VExp VExp
-          | Let [VName] [VExp] VExp
+          | Let VName VExp VExp
           | Letrec [VName] [VExp] VExp
           deriving Show
     
@@ -65,6 +65,7 @@ tc :: TypeEnv -> VExp -> CheckerS TypeExp
 tc env (Var v_name) = tcVar env v_name 
 tc env (Lambda var body) = tcLambda env var body
 tc env (Ap e1 e2) = tcAp env e1 e2
+tc env (Let b_var b_expr body) = tcLet env b_var b_expr body
 tc _ e = error $ "tc: not impl: " ++ show e
 
 tcVar :: TypeEnv -> VName -> CheckerS TypeExp
@@ -86,6 +87,9 @@ tcAp env e1 e2 =
      unify e1_te e1_te'
 
      pure $ TVar res_type
+
+tcLet :: TypeEnv -> VName -> VExp -> VExp -> CheckerS TypeExp
+tcLet env b_var b_expr body = undefined
 
 --------------------------------------------------------------------------------
 -- Unification

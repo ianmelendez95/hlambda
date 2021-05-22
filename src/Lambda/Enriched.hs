@@ -29,7 +29,7 @@ import Lambda.Constructor
 
 -- p40: Figure 3.2 - Syntax of Enriched Lambda Expressions
 
-data Exp = Let [LetBinding] Exp
+data Exp = Let LetBinding Exp
          | Letrec [LetBinding] Exp
          | Pure S.Exp
          | Apply Exp Exp 
@@ -110,7 +110,7 @@ sPretty (Pure expr) =
   do curPrec <- getPrec
      pure $ prettyDoc' curPrec expr
 sPretty (Letrec bindings body) = prettyLet "letrec" bindings body
-sPretty (Let bindings body)    = prettyLet "let" bindings body
+sPretty (Let binding body)    = prettyLet "let" [binding] body
 sPretty (FatBar e1 e2) = do p1 <- sPretty e1
                             p2 <- sPretty e2
                             return $ align . vsep $ [p1, pipe <+> p2]
@@ -164,7 +164,7 @@ freeVariables :: Exp -> [String]
 freeVariables = nub . freeVariables' []
 
 freeVariables' :: [String] -> Exp -> [String]
-freeVariables' bound (Let binds expr) = freeVarsInLet bound binds expr
+freeVariables' bound (Let bind expr) = freeVarsInLet bound [bind] expr
 freeVariables' bound (Letrec binds expr) = freeVarsInLet bound binds expr
 freeVariables' bound (Pure expr) = S.freeVariables' bound expr
 freeVariables' bound (Apply e1 e2) = concatMap (freeVariables' bound) [e1, e2]

@@ -3,6 +3,7 @@
 module MyTypeChecker where
 
 import Control.Monad.State.Lazy
+import Data.List ((\\))
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 import Data.Maybe (fromMaybe)
@@ -89,7 +90,10 @@ tcAp env e1 e2 =
      pure $ TVar res_type
 
 tcLet :: TypeEnv -> VName -> VExp -> VExp -> CheckerS TypeExp
-tcLet env b_var b_expr body = undefined
+tcLet env b_var b_expr body = 
+  do b_ty <- tc env b_expr
+     let env' = insertVarBinding b_var b_ty env
+     tc env' body
 
 --------------------------------------------------------------------------------
 -- Unification
@@ -150,8 +154,15 @@ bindTVar v env =
      pure (scheme_name, new_env)
 
 putSimpleVarBinding :: TVName -> TVName -> TypeEnv -> TypeEnv
-putSimpleVarBinding orig_name new_name = 
-  Map.insert orig_name (Scheme [] (TVar new_name))
+putSimpleVarBinding orig_name = insertVarBinding orig_name . TVar
+
+insertVarBinding :: TVName -> TypeExp -> TypeEnv -> TypeEnv
+insertVarBinding n expr env = Map.insert n (Scheme (tvarsIn expr \\ findUnknowns env) expr) env
+
+findUnknowns :: TypeEnv -> [TVName]
+findUnknowns env = concatMap inScheme (Map.elems env)
+  where
+    inScheme (Scheme scvs expr) = tvarsIn expr \\ scvs
 
 --------------------------------------------------------------------------------
 -- TypeSchemes

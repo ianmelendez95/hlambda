@@ -29,8 +29,8 @@ spec = do
                                      E.Pure (S.mkVariable "x"),
                                      E.Pure (S.mkVariable "y")])
           lam = init $ unlines 
-            [ "\\_u1. let _u3 = SEL-2-2 _u1",
-              "      in let _u2 = SEL-2-1 _u1",
+            [ "\\_u1. let _u2 = SEL-2-1 _u1",
+              "      in let _u3 = SEL-2-2 _u1",
               "         in + _u2 _u3" ]
       show (toLambda enr) `shouldBe` lam
 
@@ -41,8 +41,8 @@ spec = do
                                      E.Pure (S.mkVariable "n")]) 
           lam = init $ unlines 
             [ "\\_u1. CASE-2 _u1 (let _u2 = SEL-1-1 _u1",
-              "                  in LEAF _u2) (let _u3 = SEL-2-2 _u1",
-              "                                in let _u2 = SEL-2-1 _u1", 
+              "                  in LEAF _u2) (let _u2 = SEL-2-1 _u1",
+              "                                in let _u3 = SEL-2-2 _u1", 
               "                                   in FAIL)" ]
       show (toLambda enr) `shouldBe` lam
 
@@ -58,15 +58,15 @@ spec = do
                                              (E.Pure (S.mkVariable "t1"))]) 
           lam = init $ unlines 
             [ "\\_u1. CASE-2 _u1 (let _u2 = SEL-1-1 _u1",
-              "                  in FAIL) (let _u3 = SEL-2-2 _u1",
-              "                            in let _u2 = SEL-2-1 _u1", 
+              "                  in FAIL) (let _u2 = SEL-2-1 _u1",
+              "                            in let _u3 = SEL-2-2 _u1", 
               "                               in BRANCH (reflect _u3) (reflect _u2))" ]
       show (toLambda enr) `shouldBe` lam
   
   describe "6.2.3 Transforming Simple Lets" $ do
     it "p112: transforms simple let" $ do
       -- let x = 4 in (+ x 6) => (\x.+ x 6) 4
-      let enr = Let [(PVariable "x", Pure (S.toConstantExp (4 :: Int)))] 
+      let enr = Let (PVariable "x", Pure (S.toConstantExp (4 :: Int))) 
                     (mkApply [Pure (S.mkFunction S.FPlus), 
                               Pure (S.mkVariable "x"),
                               Pure (S.toConstantExp (6 :: Int))])
@@ -87,25 +87,25 @@ spec = do
                                in  + x y)
       -}
 
-      let enr = Let [(PConstructor (C.fromString "PAIR") 
+      let enr = Let (PConstructor (C.fromString "PAIR") 
                                    [PVariable "x", PVariable "y"], 
-                      mkApply [Pure (S.mkVariable "PAIR"),
-                               Pure (S.toConstantExp (2 :: Int)),
-                               Pure (S.toConstantExp (5 :: Int))])] 
+                     mkApply [Pure (S.mkVariable "PAIR"),
+                              Pure (S.toConstantExp (2 :: Int)),
+                              Pure (S.toConstantExp (5 :: Int))])
 
                     (mkApply [Pure (S.mkFunction S.FPlus), 
                               Pure (S.mkVariable "x"),
                               Pure (S.mkVariable "y")])
 
-          lam = S.Let [("_u1", 
-                        S.mkApply [S.mkVariable "PAIR",
-                                   S.toConstantExp (2 :: Int),
-                                   S.toConstantExp (5 :: Int)])]
+          lam = S.Let ("_u1", 
+                       S.mkApply [S.mkVariable "PAIR",
+                                  S.toConstantExp (2 :: Int),
+                                  S.toConstantExp (5 :: Int)])
 
-                      (S.Let [("x", S.mkApply [S.mkVariable "SEL-2-1",
-                                               S.mkVariable "_u1"])]
-                             (S.Let [("y", S.mkApply [S.mkVariable "SEL-2-2",
-                                                      S.mkVariable "_u1"])]
+                      (S.Let ("x", S.mkApply [S.mkVariable "SEL-2-1",
+                                              S.mkVariable "_u1"])
+                             (S.Let ("y", S.mkApply [S.mkVariable "SEL-2-2",
+                                                     S.mkVariable "_u1"])
                               (S.mkApply [S.mkFunction S.FPlus,
                                           S.mkVariable "x",
                                           S.mkVariable "y"])))
@@ -173,17 +173,17 @@ spec = do
           in 6
     -}
     it "p116 transforms lazy cons" $ do 
-      let enr = Let [(PConstructor (C.fromString "CONS") 
-                                   [PVariable "y",
-                                    PVariable "ys"], 
-                      Pure $ S.mkVariable "NIL")] 
+      let enr = Let (PConstructor (C.fromString "CONS") 
+                                  [PVariable "y",
+                                   PVariable "ys"], 
+                     Pure $ S.mkVariable "NIL")
                     (Pure $ S.toConstantExp (6 :: Int))
 
           -- TODO: prevent dep analysis from reordering let bindings
           lam = init $ unlines 
             [ "let _u1 = let _u1 = NIL",
-              "          in (\\_u1. CASE-2 _u1 FAIL (let _u3 = SEL-2-2 _u1",
-              "                                     in let _u2 = SEL-2-1 _u1",
+              "          in (\\_u1. CASE-2 _u1 FAIL (let _u2 = SEL-2-1 _u1",
+              "                                     in let _u3 = SEL-2-2 _u1",
               "                                        in PAIR _u2 _u3)) _u1",
               "in let y = SEL-2-1 _u1",
               "   in let ys = SEL-2-2 _u1",

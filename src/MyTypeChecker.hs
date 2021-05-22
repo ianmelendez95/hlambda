@@ -4,6 +4,7 @@ module MyTypeChecker where
 
 import Control.Monad.State.Lazy
 import qualified Data.Map as Map
+import qualified Data.Set as Set
 import Data.Maybe (fromMaybe)
 
 type VName = String
@@ -51,12 +52,19 @@ data CheckerEnv = CheckerEnv {
 type CheckerS = StateT CheckerEnv Maybe
 
 --------------------------------------------------------------------------------
+-- Type Expressions
+
+tvarsIn :: TypeExp -> [TVName]
+tvarsIn (TVar n) = [n]
+tvarsIn (TCons _ es) = concatMap tvarsIn es
+
+--------------------------------------------------------------------------------
 -- Type Checking
 
 tc :: TypeEnv -> VExp -> CheckerS TypeExp
 tc env (Var v_name) = tcVar env v_name 
 tc env (Lambda var body) = tcLambda env var body
-tc env (Ap e1 e2) = tcAp e1 e2
+tc env (Ap e1 e2) = tcAp env e1 e2
 tc _ e = error $ "tc: not impl: " ++ show e
 
 tcVar :: TypeEnv -> VName -> CheckerS TypeExp
@@ -68,8 +76,35 @@ tcLambda env lvar lbody =
      body_t <- tc new_env lbody
      arrow_type (TVar bound_name) body_t
 
-tcAp :: VExp -> VExp -> CheckerS TypeExp
-tcAp = undefined
+tcAp :: TypeEnv -> VExp -> VExp -> CheckerS TypeExp
+tcAp env e1 e2 = 
+  do e1_te <- tc env e1
+     e2_te <- tc env e2
+
+     res_type <- getNextName
+     e1_te'   <- arrow_type e2_te (TVar res_type)
+     unify e1_te e1_te'
+
+     pure $ TVar res_type
+
+--------------------------------------------------------------------------------
+-- Unification
+
+-- | TODO: fixpoint check requires full comparison
+unify :: TypeExp -> TypeExp -> CheckerS ()
+unify e1@(TVar v) e2 =
+  do e1' <- getSubst v
+     if e1 == e1'
+       then insertSubst v e2
+       else unify e1' e2
+
+unify e1 e2@(TVar _) = unify e2 e1
+
+unify e1@(TCons c1 tes1) e2@(TCons c2 tes2)
+  | c1 /= c2         = error $ "Type Constructors don't match: " ++ show e1 ++ " /= " ++ show e2
+  | length tes1 
+      /= length tes2 = error $ "Number of type vars don't match: " ++ show e1 ++ " /= " ++ show e2
+  | otherwise        = mapM_ (uncurry unify) (zip tes1 tes2)
 
 --------------------------------------------------------------------------------
 -- TypeExps
@@ -89,7 +124,7 @@ getNextNamesMapped xs =
                         xs
 
 getNextName :: CheckerS String
-getNextName = ('T':) . show <$> _getNextNameNum
+getNextName = ("_T" ++) . show <$> _getNextNameNum
 
 _getNextNameNum :: CheckerS Int
 _getNextNameNum = 
@@ -142,11 +177,36 @@ getExpSubst (TCons c_name es) =
   do es' <- mapM getExpSubst es
      pure $ TCons c_name es'
 
+getAppliedSubst :: (SubstEnv -> a -> b) -> a -> CheckerS b
+getAppliedSubst substF x = 
+  do subst <- getSubstEnv
+     pure $ substF subst x
+
 getSubstEnv :: CheckerS SubstEnv
 getSubstEnv = gets cenvSubstEnv
 
+insertSubst :: TVName -> TypeExp -> CheckerS ()
+insertSubst n e
+  | TVar n == e = pure ()
+  | n `elem` tvarsIn e = error $ "Cannot construct infinite type: " ++ n ++ " -> " ++ show e
+  | otherwise = 
+    do s_env <- getSubstEnv
+       modify (\cenv -> cenv { cenvSubstEnv = Map.insert n e s_env })
+
 applySubst :: SubstEnv -> TVName -> TypeExp
 applySubst env n = fromMaybe (TVar n) (Map.lookup n env)
+
+applySubstTExp :: SubstEnv -> TypeExp -> TypeExp
+applySubstTExp subst (TVar v) = applySubst subst v
+applySubstTExp subst (TCons c_name es) = TCons c_name (map (applySubstTExp subst) es)
+
+applySubstTScheme :: SubstEnv -> TypeScheme -> TypeScheme
+applySubstTScheme subst (Scheme s_vars s_exp) = 
+  let temp_subst = Map.withoutKeys subst (Set.fromList s_vars)
+   in Scheme s_vars $ applySubstTExp temp_subst s_exp 
+
+applySubstTEnv :: SubstEnv -> TypeEnv -> TypeEnv
+applySubstTEnv subst = Map.map (applySubstTScheme subst)
 
 id_subst :: SubstEnv
 id_subst = Map.empty

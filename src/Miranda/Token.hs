@@ -4,6 +4,7 @@ module Miranda.Token
   , InfixOp (..)
   , Constant (..)
   , constantToLambda
+  , unVariable
   ) where 
 
 import Lambda.Pretty
@@ -24,6 +25,8 @@ data Token = Constant Constant
            | If
            | Where
            | TypeEq
+           | DblColon
+           | Arrow
            | VertBar
            | Dot 
 
@@ -82,12 +85,6 @@ instance E.ToEnriched Constant where
   toEnriched (CChar c) = E.Pure . S.toConstantExp $ c
   toEnriched (CBool b) = E.Pure . S.toConstantExp $ b
 
-constantToLambda :: Constant -> S.Constant 
-constantToLambda (CNat x)  = S.CNat x
-constantToLambda (CChar c) = S.CChar c
-constantToLambda (CBool b) = S.CBool b
-
-
 instance E.ToEnriched InfixOp where 
   toEnriched IPlus    = E.Pure . S.mkFunction $ S.FPlus
   toEnriched IMinus   = E.Pure . S.mkFunction $ S.FMinus
@@ -99,3 +96,11 @@ instance E.ToEnriched InfixOp where
   toEnriched IGt      = E.Pure . S.mkFunction $ S.FGt
   toEnriched (IVar v) = E.Pure . S.mkVariable $ v
 
+constantToLambda :: Constant -> S.Constant 
+constantToLambda (CNat x)  = S.CNat x
+constantToLambda (CChar c) = S.CChar c
+constantToLambda (CBool b) = S.CBool b
+
+unVariable :: Token -> String
+unVariable (Variable v) = v
+unVariable t = error $ "Not a variable token: " ++ show t

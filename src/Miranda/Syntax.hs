@@ -3,6 +3,8 @@ module Miranda.Syntax
   , Decl (..)
   , AssignDef (..)
   , TypeDef (..)
+  , TypeSpec (..)
+  , TypeExpr (..)
   , FuncDef (..)
   , DefSpec (..)
   , PattDef (..)
@@ -60,6 +62,7 @@ data Prog = Prog [Decl] Exp
 -- p48: Figure 3.3
 data Decl = AssignDef AssignDef
           | TypeDef TypeDef
+          | TypeSpec TypeSpec
           deriving Show
 
 data AssignDef = FuncDef FuncDef 
@@ -70,6 +73,14 @@ data AssignDef = FuncDef FuncDef
 
 data TypeDef = TDef String [GenTypeVar] [Constr]
              deriving Show
+
+-- Type Spec
+data TypeSpec = TSpec String TypeExpr
+              deriving Show
+
+data TypeExpr = TypeVar String 
+              | TypeCons String [TypeExpr]
+              deriving Show
 
 -- Function Definition
 

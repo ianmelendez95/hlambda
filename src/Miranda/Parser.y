@@ -30,6 +30,8 @@ import Debug.Trace
 
   '='         { T.Equal             }
   '::='       { T.TypeEq            }
+  '::'        { T.DblColon          }
+  '->'        { T.Arrow             }
   '('         { T.LP                }
   ')'         { T.RP                }
   '['         { T.LB                }
@@ -68,6 +70,7 @@ stmts : stmts ';' stmt   { $3 : $1 }
 
 stmt :: { Stmt }
 stmt : exp '::=' constructors    { Right $ checkTypeDef $1 (reverse $3) }
+     | var '::'  typeExpr        { Right $ S.TypeSpec (S.TSpec $1 $3) }
      | assignDef                 { Right $ S.AssignDef $1 }
      | exp                       { Left  $1 }
 
@@ -100,6 +103,20 @@ maybeWhere : 'where' whereDefs   { Just $2 }
 
 whereDefs :: { [S.AssignDef] }
 whereDefs : '{' assignDefs '}'     { reverse $2 }
+
+--------------------------------------------------------------------------------
+-- Type Expressions
+
+typeExpr :: { S.TypeExpr }
+typeExpr : var                      { S.TypeVar  $1 }
+         | constr typeExprs         { S.TypeCons $1 (reverse $2)  }
+         | typeExpr '->' typeExpr   { S.TypeCons "Arrow" [$1, $3] }
+         | '(' typeExpr ')'         { $2 }
+
+typeExprs :: { [S.TypeExpr] }
+typeExprs : typeExprs typeExpr { $2 : $1 }
+          | typeExpr           { [$1] }
+          | {- empty -}        { [] }
 
 -------------------------------------------------------------------------------
 -- Def

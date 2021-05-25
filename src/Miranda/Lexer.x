@@ -39,6 +39,8 @@ $gt            = \>
 @variable      = [a-z][a-zA-Z0-9']*
 @constructor   = [A-Z][a-zA-Z0-9']*
 @typeeq        = \:\:\=
+@dblcolon      = \:\:
+@arrow         = \-\>
 @infix_var     = \$@variable
 @gentypevar    = \*\*+   -- single asterisk consumed by $mult
 
@@ -47,8 +49,10 @@ tokens :-
 
   @where              { located $ \_ -> T.Where }
 
-  \=                  { located $ \_ -> T.Equal }
-  @typeeq             { located $ \_ -> T.TypeEq }
+  \=                  { located $ \_ -> T.Equal    }
+  @typeeq             { located $ \_ -> T.TypeEq   }
+  @dblcolon           { located $ \_ -> T.DblColon }
+  @arrow              { located $ \_ -> T.Arrow    }
 
   $plus               { located $ \_ -> T.InfixOp T.IPlus }
   $minus              { located $ \_ -> T.InfixOp T.IMinus }

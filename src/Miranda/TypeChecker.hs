@@ -62,7 +62,7 @@ newSchemeInstance (TScheme svars sexpr) =
     sVarsToInstNames :: [String] 
                      -> TCState (Map.Map String String)
     sVarsToInstNames vs = 
-      Map.fromList <$> mapM (\v -> (v,) <$> newVarName) vs
+      Map.fromList <$> mapM (\v -> (v,) <$> newTVarName) vs
 
 --------------------------------------------------------------------------------
 -- Type Constructors
@@ -107,7 +107,7 @@ tupleType :: [TypeExpr] -> TypeExpr
 tupleType types = TCons ("Tuple-" ++ show (length types)) types
 
 anyType :: TCState TypeExpr
-anyType = TVar <$> newVarName
+anyType = TVar <$> newTVarName
 
 --------------------------------------------------------------------------------
 -- Parse Type Environments
@@ -148,8 +148,11 @@ funcDefEnv env fname (M.DefSpec ps _) =
 insertScheme :: String -> TypeScheme -> TypeEnv -> TypeEnv 
 insertScheme = Map.insert
 
-newVarName :: TCState String
-newVarName = undefined
+newTVar :: TCState TypeExpr
+newTVar = TVar <$> newTVarName
+
+newTVarName :: TCState String
+newTVarName = undefined
 
 --------------------------------------------------------------------------------
 -- Unification
@@ -165,6 +168,7 @@ typeCheck env (S.Term (S.Variable v)) = tcVariable env v
 typeCheck _ (S.Term (S.Constant c)) = tcConstant c
 typeCheck _ (S.Term (S.Function f)) = tcFunction f
 typeCheck env (S.Lambda v b) = tcLambda env v b
+typeCheck env (S.Apply e1 e2) = tcApply env e1 e2
 
 -- Variables
 
@@ -180,10 +184,22 @@ tcVariable env v =
 
 tcLambda :: TypeEnv -> S.Variable -> S.Exp -> TCState TypeExpr
 tcLambda env lvar lbody = 
-  do body_svar <- newVarName
+  do body_svar <- newTVarName
      let env' = insertScheme lvar (TScheme [] (TVar body_svar)) env
      lbody_type <- typeCheck env' lbody
      pure $ mkArrow (TVar body_svar) lbody_type 
+
+-- Apply
+
+tcApply :: TypeEnv -> S.Exp -> S.Exp -> TCState TypeExpr
+tcApply env e1 e2 = 
+  do e1_type <- typeCheck env e1
+     e2_type <- typeCheck env e2
+
+     e1_arrow_type <- mkArrow e2_type <$> newTVar
+     unify e1_arrow_type e1_type
+
+     pure e1_arrow_type
 
 -- Constants
 

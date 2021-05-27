@@ -26,6 +26,9 @@ mapTVars :: (String -> TypeExpr) -> TypeExpr -> TypeExpr
 mapTVars f (TVar v) = f v
 mapTVars f (TCons c es) = TCons c (map (mapTVars f) es)
 
+foldrTVars :: (String -> a -> a) -> a -> TypeExpr -> a
+foldrTVars f acc (TVar v) = f v acc
+foldrTVars f acc (TCons _ es) = foldr (flip (foldrTVars f)) acc es 
+
 tvarsIn :: TypeExpr -> [String]
-tvarsIn (TVar n) = [n]
-tvarsIn (TCons _ es) = concatMap tvarsIn es
+tvarsIn = foldrTVars (:) id

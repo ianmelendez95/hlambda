@@ -34,6 +34,12 @@ data TypeCheckError = TCError String
                     deriving Show
 
 --------------------------------------------------------------------------------
+-- Util
+
+safeLookup :: Ord a => a -> Map.Map a a -> a
+safeLookup k m = fromMaybe k (Map.lookup k m)
+
+--------------------------------------------------------------------------------
 -- Default Type Environment
 
 primTypeEnv :: TypeEnv
@@ -51,6 +57,18 @@ newSchematicVar = (++ "'") . newTypeVar
 
 --------------------------------------------------------------------------------
 -- Type Schemes
+
+schemeFromTypeExpr :: TypeExpr -> TCState TypeScheme
+schemeFromTypeExpr expr = 
+  do tv_to_sv_assoc <- 
+       mapM (\v -> (v,) <$> newTVarName) (tvarsIn expr)
+
+     let scheme_vars = map snd tv_to_sv_assoc
+         tv_to_sv    = Map.fromList tv_to_sv_assoc
+         scheme_expr =
+           mapTVars (\v -> TVar $ safeLookup v tv_to_sv) expr
+
+     pure $ TScheme scheme_vars scheme_expr
 
 newSchemeInstance :: TypeScheme -> TCState TypeExpr
 newSchemeInstance (TScheme svars sexpr) = 
@@ -169,6 +187,16 @@ typeCheck _ (S.Term (S.Constant c)) = tcConstant c
 typeCheck _ (S.Term (S.Function f)) = tcFunction f
 typeCheck env (S.Lambda v b) = tcLambda env v b
 typeCheck env (S.Apply e1 e2) = tcApply env e1 e2
+typeCheck env (S.Let (bv, be) e) = tcLet env bv be e
+
+-- Let 
+
+tcLet :: TypeEnv -> S.Variable -> S.Exp -> S.Exp -> TCState TypeExpr
+tcLet env bind_var bind_expr body_expr = 
+  do bind_scheme <- typeCheck env bind_expr >>= schemeFromTypeExpr
+
+     let env' = insertScheme bind_var bind_scheme env
+     typeCheck env' body_expr
 
 -- Variables
 

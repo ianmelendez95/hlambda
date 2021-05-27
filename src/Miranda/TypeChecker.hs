@@ -145,8 +145,17 @@ funcDefEnv env fname (M.DefSpec ps _) =
 --------------------------------------------------------------------------------
 -- Type Checker State
 
+insertScheme :: String -> TypeScheme -> TypeEnv -> TypeEnv 
+insertScheme = Map.insert
+
 newVarName :: TCState String
 newVarName = undefined
+
+--------------------------------------------------------------------------------
+-- Unification
+
+unify :: TypeExpr -> TypeExpr -> TCState ()
+unify = undefined
 
 --------------------------------------------------------------------------------
 -- TypeCheck
@@ -155,6 +164,7 @@ typeCheck :: TypeEnv -> S.Exp -> TCState TypeExpr
 typeCheck env (S.Term (S.Variable v)) = tcVariable env v
 typeCheck _ (S.Term (S.Constant c)) = tcConstant c
 typeCheck _ (S.Term (S.Function f)) = tcFunction f
+typeCheck env (S.Lambda v b) = tcLambda env v b
 
 -- Variables
 
@@ -165,6 +175,15 @@ tcVariable env v =
                  "Variable not in type environment: " ++ show v 
                    ++ "\nCurrent Environment: \n" ++ show env
     Just scheme -> newSchemeInstance scheme
+
+-- Lambdas 
+
+tcLambda :: TypeEnv -> S.Variable -> S.Exp -> TCState TypeExpr
+tcLambda env lvar lbody = 
+  do body_svar <- newVarName
+     let env' = insertScheme lvar (TScheme [] (TVar body_svar)) env
+     lbody_type <- typeCheck env' lbody
+     pure $ mkArrow (TVar body_svar) lbody_type 
 
 -- Constants
 

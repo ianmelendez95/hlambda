@@ -1,6 +1,6 @@
 module Miranda.TypeChecker 
   ( TypeEnv
-  , typeCheckLambda
+  , typeCheck
   , progTypeEnv
   ) where
 
@@ -9,11 +9,25 @@ import qualified Data.Map as Map
 import qualified Lambda.Syntax as S
 import qualified Miranda.Syntax as M
 
+import Control.Monad.State.Lazy
+
 import Miranda.TypeExpr
 
 type TypeEnv = Map.Map String TypeScheme
 
+type SubstEnv = Map.Map String TypeExpr
+
 data TypeScheme = TScheme [String] TypeExpr
+
+data TCEnv = TypeCheckerEnv {
+    tcenvCurNameIndex :: Int,
+    tcenvSubstEnv :: SubstEnv
+  }
+
+type TCState = StateT TCEnv (Either TypeCheckError)
+
+data TypeCheckError = TCError String
+                    deriving Show
 
 --------------------------------------------------------------------------------
 -- Default Type Environment
@@ -24,11 +38,17 @@ primTypeEnv = Map.empty
 --------------------------------------------------------------------------------
 -- Names
 
-newSchematicNames :: Int -> [String]
-newSchematicNames n = map (\i -> "_t" ++ show i ++ "'") [1..n]
+nNewSchematicNames :: Int -> [String]
+nNewSchematicNames n = map newSchematicVar [1..n]
+
+newTypeVar, newSchematicVar :: Int -> String
+newTypeVar      = ("_t" ++) . show
+newSchematicVar = (++ "'") . newTypeVar
 
 --------------------------------------------------------------------------------
 -- Type Constructors
+
+-- Arrow
 
 mkArrow :: TypeExpr -> TypeExpr -> TypeExpr
 mkArrow l r = TCons "Arrow" [l, r]
@@ -36,6 +56,23 @@ mkArrow l r = TCons "Arrow" [l, r]
 mkArrowFromList :: [TypeExpr] -> TypeExpr
 mkArrowFromList [] = error "mkArrowFromList: No vars provided"
 mkArrowFromList vs = foldr1 mkArrow vs
+
+-- Int
+
+int_type :: TypeExpr
+int_type = TCons "Int" []
+
+char_type :: TypeExpr
+char_type = TCons "Char" []
+
+bool_type :: TypeExpr
+bool_type = TCons "Bool" []
+
+list_type :: TypeExpr
+list_type = TCons "List" []
+
+anyType :: TCState TypeExpr
+anyType = TVar <$> newVarName
 
 --------------------------------------------------------------------------------
 -- Parse Type Environments
@@ -66,12 +103,26 @@ funcDefEnv env fname (M.DefSpec ps _) =
   where 
     func_spec_scheme :: TypeScheme
     func_spec_scheme = 
-      let scheme_vars = newSchematicNames (length ps + 1)
+      let scheme_vars = nNewSchematicNames (length ps + 1)
        in TScheme scheme_vars 
             (mkArrowFromList (map TVar scheme_vars))
 
 --------------------------------------------------------------------------------
+-- Type Checker State
+
+newVarName :: TCState String
+newVarName = undefined
+
+--------------------------------------------------------------------------------
 -- TypeCheck
 
-typeCheckLambda :: TypeEnv -> S.Exp -> S.Exp
-typeCheckLambda = undefined
+typeCheck :: TypeEnv -> S.Exp -> TCState TypeExpr
+typeCheck _ (S.Term (S.Constant c)) = tcConstant c
+
+tcConstant :: S.Constant -> TCState TypeExpr
+tcConstant (S.CNat _)  = pure int_type
+tcConstant (S.CChar _) = pure char_type
+tcConstant (S.CBool _) = pure char_type
+tcConstant S.CNil      = pure char_type
+tcConstant S.CFail  = anyType
+tcConstant S.CError = anyType

@@ -62,7 +62,6 @@ data Function = FPlus
               | FHead 
               | FTail
               | FTuple Int
-              | FY   -- The Glorious Y Combinator
               | FEq
               | FNEq
               | FLt
@@ -141,7 +140,6 @@ fromFunctionToken T.FIf    = mkFunction FIf
 fromFunctionToken T.FCons  = mkFunction FCons
 fromFunctionToken T.FHead  = mkFunction FHead
 fromFunctionToken T.FTail  = mkFunction FTail
-fromFunctionToken T.FY     = mkFunction FY
 
 ---------
 -- Ops --
@@ -191,7 +189,6 @@ instance Show Function where
   show FNEq   = "/="
   show FLt    = "<"
   show FGt    = ">"
-  show FY     = "Y"
   show (FTuple 2) = "PAIR"
   show (FTuple 3) = "TRIPLE"
   show (FTuple 4) = "QUADRUPLE"

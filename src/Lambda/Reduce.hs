@@ -88,7 +88,6 @@ reduceFunctionApplication FCons      = Left -- Cons is lazy, and mark Left so we
 reduceFunctionApplication (FTuple _) = Left
 reduceFunctionApplication FHead      = ((:[]) <$>) . reduceHeadApplication
 reduceFunctionApplication FTail      = ((:[]) <$>) . reduceTailApplication
-reduceFunctionApplication FY         = reduceYCombApplication
 reduceFunctionApplication FEq        = reduceEq 
 reduceFunctionApplication FNEq       = reduceNEq
 reduceFunctionApplication FLt        = ((:[]) <$>) . reduceBinaryNumFuncApplication (<) 

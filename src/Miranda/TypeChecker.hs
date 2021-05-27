@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 module Miranda.TypeChecker 
   ( TypeEnv
   , typeCheck
@@ -5,6 +7,7 @@ module Miranda.TypeChecker
   ) where
 
 import Data.List (foldl')
+import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
 import qualified Lambda.Syntax as S
 import qualified Miranda.Syntax as M
@@ -18,6 +21,7 @@ type TypeEnv = Map.Map String TypeScheme
 type SubstEnv = Map.Map String TypeExpr
 
 data TypeScheme = TScheme [String] TypeExpr
+                deriving Show
 
 data TCEnv = TypeCheckerEnv {
     tcenvCurNameIndex :: Int,
@@ -44,6 +48,21 @@ nNewSchematicNames n = map newSchematicVar [1..n]
 newTypeVar, newSchematicVar :: Int -> String
 newTypeVar      = ("_t" ++) . show
 newSchematicVar = (++ "'") . newTypeVar
+
+--------------------------------------------------------------------------------
+-- Type Schemes
+
+newSchemeInstance :: TypeScheme -> TCState TypeExpr
+newSchemeInstance (TScheme svars sexpr) = 
+  do svar_to_ivar <- sVarsToInstNames svars
+     pure $ mapTVars 
+              (\v -> TVar $ fromMaybe v (Map.lookup v svar_to_ivar)) 
+              sexpr
+  where 
+    sVarsToInstNames :: [String] 
+                     -> TCState (Map.Map String String)
+    sVarsToInstNames vs = 
+      Map.fromList <$> mapM (\v -> (v,) <$> newVarName) vs
 
 --------------------------------------------------------------------------------
 -- Type Constructors
@@ -133,8 +152,21 @@ newVarName = undefined
 -- TypeCheck
 
 typeCheck :: TypeEnv -> S.Exp -> TCState TypeExpr
+typeCheck env (S.Term (S.Variable v)) = tcVariable env v
 typeCheck _ (S.Term (S.Constant c)) = tcConstant c
 typeCheck _ (S.Term (S.Function f)) = tcFunction f
+
+-- Variables
+
+tcVariable :: TypeEnv -> S.Variable -> TCState TypeExpr
+tcVariable env v = 
+  case Map.lookup v env of 
+    Nothing -> error $ 
+                 "Variable not in type environment: " ++ show v 
+                   ++ "\nCurrent Environment: \n" ++ show env
+    Just scheme -> newSchemeInstance scheme
+
+-- Constants
 
 tcConstant :: S.Constant -> TCState TypeExpr
 tcConstant (S.CNat _)  = pure int_type
@@ -144,7 +176,6 @@ tcConstant S.CNil      = pure char_type
 tcConstant S.CFail     = anyType
 tcConstant S.CError    = anyType
 
-------------
 -- Functions
 
 tcFunction :: S.Function -> TCState TypeExpr

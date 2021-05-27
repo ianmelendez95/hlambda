@@ -1,5 +1,6 @@
 module Miranda.TypeExpr 
   ( TypeExpr (..)
+  , mapTVars
   , tvarsIn
   ) where
 
@@ -20,6 +21,10 @@ instance Show TypeExpr where
   showsPrec d (TCons type_str []) = showsPrec d type_str
 
   showsPrec _ (TCons type_str _) = error $ "Don't know how to show compound type: " ++ type_str
+
+mapTVars :: (String -> TypeExpr) -> TypeExpr -> TypeExpr
+mapTVars f (TVar v) = f v
+mapTVars f (TCons c es) = TCons c (map (mapTVars f) es)
 
 tvarsIn :: TypeExpr -> [String]
 tvarsIn (TVar n) = [n]

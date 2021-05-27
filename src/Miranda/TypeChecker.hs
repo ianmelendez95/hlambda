@@ -196,10 +196,11 @@ tcApply env e1 e2 =
   do e1_type <- typeCheck env e1
      e2_type <- typeCheck env e2
 
-     e1_arrow_type <- mkArrow e2_type <$> newTVar
+     res_type <- newTVar
+     let e1_arrow_type = mkArrow e2_type res_type
      unify e1_arrow_type e1_type
 
-     pure e1_arrow_type
+     pure res_type
 
 -- Constants
 

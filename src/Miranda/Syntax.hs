@@ -52,6 +52,8 @@ import qualified Lambda.Enriched as E
 import qualified Lambda.Syntax as S
 import qualified Lambda.Constructor as C
 
+import Miranda.TypeExpr
+
 ----------------------
 -- Lambda Expressions --
 ----------------------
@@ -78,9 +80,6 @@ data TypeDef = TDef String [GenTypeVar] [Constr]
 data TypeSpec = TSpec String TypeExpr
               deriving Show
 
-data TypeExpr = TypeVar String 
-              | TypeCons String [TypeExpr]
-              deriving Show
 
 -- Function Definition
 

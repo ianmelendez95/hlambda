@@ -8,6 +8,17 @@ import Lambda.ToLambda
 import Parse
 
 compileStr :: String -> S.Exp
-compileStr str = 
-  let prog = either error id (parse str)
-   in typeCheckLambda (progTypeEnv prog) (toLambda prog)
+compileStr str = compileProg (either error id (parse str))
+
+compileProg :: M.Prog -> S.Exp
+compileProg prog = 
+  case runTypeChecker (compileProg' prog) of
+    Left e -> error $ "Type Error: " ++ show e
+    Right lam -> lam
+
+compileProg' :: M.Prog -> TCState S.Exp
+compileProg' prog = 
+  do env <- progTypeEnv prog
+     let lam = toLambda prog
+     _ <- typeCheck env lam
+     pure lam

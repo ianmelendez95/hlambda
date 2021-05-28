@@ -179,10 +179,6 @@ reduceTailApplication (cons_exp : rest)
       _ -> Left (cons_exp : rest)
 reduceTailApplication exps = Left exps
 
-reduceYCombApplication :: [Exp] -> Either [Exp] [Exp]
-reduceYCombApplication [] = Left []
-reduceYCombApplication (arg : rest) = Right (arg : Apply (mkFunction FY) arg : rest)
-
 ------------
 -- Lambda --
 ------------

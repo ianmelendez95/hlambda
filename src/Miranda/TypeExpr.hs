@@ -31,4 +31,4 @@ foldrTVars f acc (TVar v) = f v acc
 foldrTVars f acc (TCons _ es) = foldr (flip (foldrTVars f)) acc es 
 
 tvarsIn :: TypeExpr -> [String]
-tvarsIn = foldrTVars (:) id
+tvarsIn = foldrTVars (:) []

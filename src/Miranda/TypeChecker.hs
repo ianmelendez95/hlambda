@@ -1,7 +1,9 @@
 {-# LANGUAGE TupleSections #-}
 
 module Miranda.TypeChecker 
-  ( TypeEnv
+  ( TCState
+  , TypeEnv
+  , runTypeChecker
   , typeCheck
   , progTypeEnv
   ) where
@@ -32,6 +34,12 @@ type TCState = StateT TCEnv (Either TypeCheckError)
 
 data TypeCheckError = TCError String
                     deriving Show
+
+runTypeChecker :: TCState a -> Either TypeCheckError a
+runTypeChecker tcs = evalStateT tcs empty_TCEnv
+
+empty_TCEnv :: TCEnv
+empty_TCEnv = TypeCheckerEnv { tcenvCurNameIndex = 0, tcenvSubstEnv = Map.empty }
 
 --------------------------------------------------------------------------------
 -- Util
@@ -133,8 +141,8 @@ anyType = TVar <$> newTVarName
 --------------------------------------------------------------------------------
 -- Parse Type Environments
 
-progTypeEnv :: M.Prog -> TypeEnv
-progTypeEnv (M.Prog decls _) = _validateTypeEnv $ foldl' declTypeEnv primTypeEnv decls
+progTypeEnv :: M.Prog -> TCState TypeEnv
+progTypeEnv (M.Prog decls _) = _validateTypeEnv <$> foldM declTypeEnv primTypeEnv decls
 
 _validateTypeEnv :: TypeEnv -> TypeEnv
 _validateTypeEnv = varsUnique
@@ -154,12 +162,12 @@ _validateTypeEnv = varsUnique
     findDupSorted [_] = Nothing
     findDupSorted (x:y:xs) = if x == y then Just x else findDupSorted (y:xs)
 
-declTypeEnv :: TypeEnv -> M.Decl -> TypeEnv
+declTypeEnv :: TypeEnv -> M.Decl -> TCState TypeEnv
 declTypeEnv _   tdef@(M.TypeDef _) = error $ "Type Definitions not supported yet " ++ show tdef
-declTypeEnv env (M.TypeSpec (M.TSpec name expr)) = typeSpecEnv env name expr
+declTypeEnv env (M.TypeSpec (M.TSpec name expr)) = pure $ typeSpecEnv env name expr
 declTypeEnv env (M.AssignDef (M.FuncDef (M.FDef fname fspec))) = 
   funcDefEnv env fname fspec
-declTypeEnv env (M.AssignDef _) = env 
+declTypeEnv env (M.AssignDef _) = pure env 
 
 typeSpecEnv :: TypeEnv -> String -> TypeExpr -> TypeEnv
 typeSpecEnv env name expr = Map.insert name (TScheme (tvarsIn expr) expr) env
@@ -169,17 +177,17 @@ typeSpecEnv env name expr = Map.insert name (TScheme (tvarsIn expr) expr) env
 -- | Adds a new type scheme for the function from the func definition
 -- | (if not already defined)
 -- |
-funcDefEnv :: TypeEnv -> String -> M.DefSpec -> TypeEnv
+funcDefEnv :: TypeEnv -> String -> M.DefSpec -> TCState TypeEnv
 funcDefEnv env fname (M.DefSpec ps _) = 
   if Map.member fname env
-    then env 
-    else Map.insert fname func_spec_scheme env
+    then pure env 
+    else do scheme <- funcSpecScheme
+            pure $ Map.insert fname scheme env
   where 
-    func_spec_scheme :: TypeScheme
-    func_spec_scheme = 
-      let scheme_vars = nNewSchematicNames (length ps + 1)
-       in TScheme scheme_vars 
-            (mkArrowFromList (map TVar scheme_vars))
+    funcSpecScheme :: TCState TypeScheme
+    funcSpecScheme = 
+      do scheme_vars <- replicateM (length ps + 1) newTVarName
+         pure $ TScheme scheme_vars (mkArrowFromList (map TVar scheme_vars))
 
 --------------------------------------------------------------------------------
 -- Type Checker State

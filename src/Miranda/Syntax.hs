@@ -94,6 +94,8 @@ data Rhs = Rhs [RhsClause] [AssignDef]
 
 type FuncDefMap = Map.Map String [DefSpec]
 
+foo = ((5 :: Int) + (6 :: Int)) :: Int
+
 -- Pattern Definition
 
 data PattDef = PDef Pattern Rhs

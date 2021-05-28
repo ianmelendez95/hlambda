@@ -188,6 +188,7 @@ typeCheck _ (S.Term (S.Function f)) = tcFunction f
 typeCheck env (S.Lambda v b) = tcLambda env v b
 typeCheck env (S.Apply e1 e2) = tcApply env e1 e2
 typeCheck env (S.Let (bv, be) e) = tcLet env bv be e
+typeCheck env (S.Letrec bs e) = tcLetrec env bs e
 
 -- Let 
 
@@ -197,6 +198,30 @@ tcLet env bind_var bind_expr body_expr =
 
      let env' = insertScheme bind_var bind_scheme env
      typeCheck env' body_expr
+
+-- Letrec
+
+tcLetrec :: TypeEnv -> [(S.Variable, S.Exp)] -> S.Exp -> TCState TypeExpr
+tcLetrec env bindings body =
+  do bname_to_temp_scheme <- 
+       mapM ((\bname -> (bname,) <$> newBoundVarScheme) . fst) bindings
+      
+     let temp_env = foldr (uncurry Map.insert) env bname_to_temp_scheme
+
+     bexpr_schemes <- mapM ((schemeFromTypeExpr <=< typeCheck temp_env) . snd) bindings
+
+     let bname_to_scheme :: [(String, TypeScheme)]
+         bname_to_scheme = zip (map fst bname_to_scheme) bexpr_schemes
+
+         env' = Map.union (Map.fromList bname_to_scheme) env
+     
+     typeCheck env' body
+  where 
+    newBoundVarScheme :: TCState TypeScheme
+    newBoundVarScheme = TScheme [] <$> newTVar
+
+_letBindingScheme :: TypeEnv -> S.Exp -> TCState TypeScheme
+_letBindingScheme env e = typeCheck env e >>= schemeFromTypeExpr
 
 -- Variables
 

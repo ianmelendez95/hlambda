@@ -6,7 +6,7 @@ module Miranda.TypeChecker
   , progTypeEnv
   ) where
 
-import Data.List (foldl')
+import Data.List (foldl', sort)
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
 import qualified Lambda.Syntax as S
@@ -82,6 +82,9 @@ newSchemeInstance (TScheme svars sexpr) =
     sVarsToInstNames vs = 
       Map.fromList <$> mapM (\v -> (v,) <$> newTVarName) vs
 
+typeSchemeVars :: TypeScheme -> [String]
+typeSchemeVars (TScheme _ expr) = tvarsIn expr
+
 --------------------------------------------------------------------------------
 -- Type Constructors
 
@@ -131,7 +134,25 @@ anyType = TVar <$> newTVarName
 -- Parse Type Environments
 
 progTypeEnv :: M.Prog -> TypeEnv
-progTypeEnv (M.Prog decls _) = foldl' declTypeEnv primTypeEnv decls
+progTypeEnv (M.Prog decls _) = _validateTypeEnv $ foldl' declTypeEnv primTypeEnv decls
+
+_validateTypeEnv :: TypeEnv -> TypeEnv
+_validateTypeEnv = varsUnique
+  where 
+    varsUnique :: TypeEnv -> TypeEnv
+    varsUnique env = 
+      let vars = Map.foldr (\scheme vs -> typeSchemeVars scheme ++ vs) [] env
+       in case findDup vars of
+            Nothing -> env
+            Just dup -> error $ "Type Environment has duplicated variable: " ++ dup
+    
+    findDup :: [String] -> Maybe String
+    findDup = findDupSorted . sort
+
+    findDupSorted :: [String] -> Maybe String
+    findDupSorted []  = Nothing
+    findDupSorted [_] = Nothing
+    findDupSorted (x:y:xs) = if x == y then Just x else findDupSorted (y:xs)
 
 declTypeEnv :: TypeEnv -> M.Decl -> TypeEnv
 declTypeEnv _   tdef@(M.TypeDef _) = error $ "Type Definitions not supported yet " ++ show tdef

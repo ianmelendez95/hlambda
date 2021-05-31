@@ -2,6 +2,7 @@
 
 module Miranda.TypeChecker 
   ( TCState
+  , TCError
   , TypeEnv
   , runTypeChecker
   , typeCheck
@@ -73,7 +74,7 @@ unify e1@(TVar _ v) e2 =
      
 unify cons1@(TCons c1 es1) cons2@(TCons c2 es2) 
   | c1 /= c2 = lift . Left $ 
-      "Constructed types don't match:\n" ++ show cons1 ++ " /= " ++ show cons2 
+      TCError $ "Constructed types don't match:\n" ++ show cons1 ++ " /= " ++ show cons2 
   | length es1 /= length es2 = error $ 
       "Constructed types have differing number of constituent expressions:\n" ++ show cons1 ++ " /= " ++ show cons2
   | otherwise = mapM_ (uncurry unify) (zip es1 es2)

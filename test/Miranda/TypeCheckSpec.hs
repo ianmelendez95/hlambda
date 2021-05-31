@@ -1,6 +1,11 @@
 module Miranda.TypeCheckSpec where
 
+import Data.Either (either)
 import Test.Hspec
+import Test.HUnit.Base (assertFailure)
+
+import qualified Lambda.Syntax as S
+import Miranda.Compiler (CompileError, compileStr)
 
 import SpecUtil
 
@@ -14,8 +19,13 @@ spec = do
       elcontent <- readEnriched test_path
       lcontent  <- readLambda test_path
 
-      el_result <- showEnrichedMiranda mcontent
-      l_result  <- showLambdadMiranda mcontent
+      l_compiled <- either assertFailure pure (eitherToString $ compileStr mcontent)
+      -- el_result <- showEnrichedMiranda mcontent
+      -- l_result  <- showLambdadMiranda mcontent
 
-      el_result `shouldBe` elcontent
-      l_result `shouldBe` lcontent
+      -- el_result `shouldBe` elcontent
+      l_compiled `shouldBe` lcontent
+
+eitherToString :: (Show a, Show b) => Either a b -> Either String String
+eitherToString (Left x)  = Left (show x)
+eitherToString (Right x) = Right (show x)

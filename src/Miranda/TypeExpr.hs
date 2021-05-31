@@ -1,5 +1,5 @@
 module Miranda.TypeExpr 
-  ( TypeExpr (TCons)
+  ( TypeExpr (..)
   , mkBoundTVar
   , mkUnboundTVar
 

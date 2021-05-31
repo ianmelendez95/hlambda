@@ -31,28 +31,65 @@ type TCState = StateT TCEnv (Either TypeCheckError)
 
 type TypeCheckError = String
 
+--------------------------------------------------------------------------------
+-- Type Checker State
+
 runTypeChecker :: TCState a -> Either TypeCheckError a
 runTypeChecker tcs = evalStateT tcs empty_TCEnv
 
 empty_TCEnv :: TCEnv
 empty_TCEnv = TypeCheckerEnv { tcenvCurNameIndex = 0, tcenvSubstEnv = Map.empty }
 
+newTVarName :: TCState String
+newTVarName = undefined
+
 --------------------------------------------------------------------------------
--- Default Type Environment
+-- Unification
+
+unify :: TypeExpr -> TypeExpr -> TCState ()
+unify = undefined
+
+--------------------------------------------------------------------------------
+-- Type Environment
 
 primTypeEnv :: TypeEnv
 primTypeEnv = Map.empty
 
+insertScheme :: String -> TypeExpr -> TypeEnv -> TypeEnv 
+insertScheme = Map.insert
+
+progTypeEnv :: M.Prog -> TCState TypeEnv
+progTypeEnv (M.Prog decls _) = foldM declTypeEnv primTypeEnv decls
+
+declTypeEnv :: TypeEnv -> M.Decl -> TCState TypeEnv
+declTypeEnv _   tdef@(M.TypeDef _) = error $ "Type Definitions not supported yet " ++ show tdef
+declTypeEnv env (M.TypeSpec (M.TSpec name expr)) = pure $ Map.insert name expr env
+declTypeEnv env (M.AssignDef (M.FuncDef (M.FDef fname fspec))) = 
+  funcDefEnv env fname fspec
+declTypeEnv env (M.AssignDef _) = pure env 
+
+-- TODO: possibly an opportunity for guessing based on the 
+--       patterns, like constructors and constants
+-- | Adds a new type scheme for the function from the func definition
+-- | (if not already defined)
+-- |
+funcDefEnv :: TypeEnv -> String -> M.DefSpec -> TCState TypeEnv
+funcDefEnv env fname (M.DefSpec ps _) = 
+  if Map.member fname env
+    then pure env 
+    else do scheme <- funcSpecScheme
+            pure $ Map.insert fname scheme env
+  where 
+    funcSpecScheme :: TCState TypeExpr
+    funcSpecScheme = 
+      do scheme_vars <- replicateM (length ps + 1) newTVarName
+         pure $ mkArrowFromList (map mkUnboundTVar scheme_vars)
+
 --------------------------------------------------------------------------------
--- Type Schemes
+-- Type Expressions
 
 newSchemeInstance :: TypeExpr -> TCState TypeExpr
 newSchemeInstance = mapUnboundTVarsM (\_ -> mkUnboundTVar <$> newTVarName)
-
---------------------------------------------------------------------------------
--- Type Constructors
-
--- Arrow
 
 mkArrow :: TypeExpr -> TypeExpr -> TypeExpr
 mkArrow l r = TCons "Arrow" [l, r]
@@ -94,53 +131,7 @@ tupleType types = TCons ("Tuple-" ++ show (length types)) types
 anyType :: TCState TypeExpr
 anyType = mkUnboundTVar <$> newTVarName
 
---------------------------------------------------------------------------------
--- Parse Type Environments
-
-progTypeEnv :: M.Prog -> TCState TypeEnv
-progTypeEnv (M.Prog decls _) = foldM declTypeEnv primTypeEnv decls
-
-declTypeEnv :: TypeEnv -> M.Decl -> TCState TypeEnv
-declTypeEnv _   tdef@(M.TypeDef _) = error $ "Type Definitions not supported yet " ++ show tdef
-declTypeEnv env (M.TypeSpec (M.TSpec name expr)) = pure $ Map.insert name expr env
-declTypeEnv env (M.AssignDef (M.FuncDef (M.FDef fname fspec))) = 
-  funcDefEnv env fname fspec
-declTypeEnv env (M.AssignDef _) = pure env 
-
--- TODO: possibly an opportunity for guessing based on the 
---       patterns, like constructors and constants
--- | Adds a new type scheme for the function from the func definition
--- | (if not already defined)
--- |
-funcDefEnv :: TypeEnv -> String -> M.DefSpec -> TCState TypeEnv
-funcDefEnv env fname (M.DefSpec ps _) = 
-  if Map.member fname env
-    then pure env 
-    else do scheme <- funcSpecScheme
-            pure $ Map.insert fname scheme env
-  where 
-    funcSpecScheme :: TCState TypeExpr
-    funcSpecScheme = 
-      do scheme_vars <- replicateM (length ps + 1) newTVarName
-         pure $ mkArrowFromList (map mkUnboundTVar scheme_vars)
-
---------------------------------------------------------------------------------
--- Type Checker State
-
-insertScheme :: String -> TypeExpr -> TypeEnv -> TypeEnv 
-insertScheme = Map.insert
-
-newTVarName :: TCState String
-newTVarName = undefined
-
---------------------------------------------------------------------------------
--- Unification
-
-unify :: TypeExpr -> TypeExpr -> TCState ()
-unify = undefined
-
---------------------------------------------------------------------------------
--- TypeCheck
+-- type checking
 
 typeCheck :: TypeEnv -> S.Exp -> TCState TypeExpr
 typeCheck env (S.Term (S.Variable v)) = tcVariable env v

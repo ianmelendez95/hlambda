@@ -164,22 +164,19 @@ tcLet env bind_var bind_expr body_expr =
 
 tcLetrec :: TypeEnv -> [(S.Variable, S.Exp)] -> S.Exp -> TCState TypeExpr
 tcLetrec env bindings body =
-  do bname_to_temp_scheme <- 
-       mapM ((\bname -> (bname,) <$> newBoundVarScheme) . fst) bindings
+  do bname_to_bound_tvar <- 
+       mapM (\(name, _) -> do new_tvar <- mkBoundTVar <$> newTVarName
+                              pure (name, new_tvar)) 
+            bindings
       
-     let temp_env = foldr (uncurry Map.insert) env bname_to_temp_scheme
+     let temp_env = foldr (uncurry Map.insert) env bname_to_bound_tvar
 
-     bexpr_schemes <- mapM (typeCheck temp_env . snd) bindings
+     bexpr_types <- 
+       Map.fromList <$> mapM (\(name, expr) -> do texpr <- typeCheck temp_env expr
+                                                  pure (name, texpr)) 
+                             bindings
 
-     let bname_to_scheme :: [(String, TypeExpr)]
-         bname_to_scheme = zip (map fst bname_to_scheme) bexpr_schemes
-
-         env' = Map.union (Map.fromList bname_to_scheme) env
-     
-     typeCheck env' body
-  where 
-    newBoundVarScheme :: TCState TypeExpr
-    newBoundVarScheme = mkBoundTVar <$> newTVarName
+     typeCheck (Map.union bexpr_types env) body
 
 -- Variables
 

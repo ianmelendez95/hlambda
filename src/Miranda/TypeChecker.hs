@@ -43,7 +43,10 @@ empty_TCEnv :: TCEnv
 empty_TCEnv = TCEnv { tcenvCurNameIndex = 0, tcenvSubstEnv = Map.empty }
 
 newTVarName :: TCState String
-newTVarName = undefined
+newTVarName = 
+  do cur_n <- gets tcenvCurNameIndex
+     modify (\tcenv -> tcenv { tcenvCurNameIndex = cur_n + 1 })
+     pure $ "_t" ++ show cur_n
 
 getTVarSubst :: String -> TCState (Maybe TypeExpr)
 getTVarSubst var = gets (\TCEnv{tcenvSubstEnv = senv} -> Map.lookup var senv)

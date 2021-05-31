@@ -13,7 +13,7 @@ compileStr str = compileProg (either error id (parse str))
 compileProg :: M.Prog -> S.Exp
 compileProg prog = 
   case runTypeChecker (compileProg' prog) of
-    Left e -> error $ "Type Error: " ++ show e
+    Left e -> error $ show e
     Right lam -> lam
 
 compileProg' :: M.Prog -> TCState S.Exp

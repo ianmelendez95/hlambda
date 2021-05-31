@@ -29,14 +29,17 @@ data TCEnv = TCEnv {
     tcenvSubstEnv :: SubstEnv
   }
 
-type TCState = StateT TCEnv (Either TypeCheckError)
+type TCState = StateT TCEnv (Either TCError)
 
-type TypeCheckError = String
+newtype TCError = TCError String
+
+instance Show TCError where
+  show (TCError msg) = "Type Check Error: " ++ msg
 
 --------------------------------------------------------------------------------
 -- Type Checker State
 
-runTypeChecker :: TCState a -> Either TypeCheckError a
+runTypeChecker :: TCState a -> Either TCError a
 runTypeChecker tcs = evalStateT tcs empty_TCEnv
 
 empty_TCEnv :: TCEnv

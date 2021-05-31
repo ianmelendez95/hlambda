@@ -15,7 +15,7 @@ import Data.Maybe (fromMaybe)
 import qualified Miranda.Syntax as S
 import qualified Miranda.Token as T
 import Miranda.Lexer (alexScanTokens, scanTokens, scanTokensEither)
-import Miranda.TypeExpr (TypeExpr (..))
+import Miranda.TypeExpr
 
 import Debug.Trace
 }
@@ -109,7 +109,7 @@ whereDefs : '{' assignDefs '}'     { reverse $2 }
 -- Type Expressions
 
 typeExpr :: { TypeExpr }
-typeExpr : var                      { TVar  $1 }
+typeExpr : var                      { mkUnboundTVar  $1 }
          | constr typeExprs         { TCons $1 (reverse $2)  }
          | typeExpr '->' typeExpr   { TCons "Arrow" [$1, $3] }
          | '(' typeExpr ')'         { $2 }

@@ -66,6 +66,7 @@ newSchematicVar = (++ "'") . newTypeVar
 --------------------------------------------------------------------------------
 -- Type Schemes
 
+-- TODO: decide whether to make them bound or not
 schemeFromTypeExpr :: TypeExpr -> TCState TypeScheme
 schemeFromTypeExpr expr = 
   do tv_to_sv_assoc <- 
@@ -74,15 +75,15 @@ schemeFromTypeExpr expr =
      let scheme_vars = map snd tv_to_sv_assoc
          tv_to_sv    = Map.fromList tv_to_sv_assoc
          scheme_expr =
-           mapTVars (\v -> TVar $ safeLookup v tv_to_sv) expr
+           mapUnboundTVars (\v -> mkUnboundTVar $ safeLookup v tv_to_sv) expr
 
      pure $ TScheme scheme_vars scheme_expr
 
 newSchemeInstance :: TypeScheme -> TCState TypeExpr
 newSchemeInstance (TScheme svars sexpr) = 
   do svar_to_ivar <- sVarsToInstNames svars
-     pure $ mapTVars 
-              (\v -> TVar $ fromMaybe v (Map.lookup v svar_to_ivar)) 
+     pure $ mapUnboundTVars 
+              (\v -> mkUnboundTVar $ fromMaybe v (Map.lookup v svar_to_ivar)) 
               sexpr
   where 
     sVarsToInstNames :: [String] 
@@ -136,7 +137,7 @@ tupleType :: [TypeExpr] -> TypeExpr
 tupleType types = TCons ("Tuple-" ++ show (length types)) types
 
 anyType :: TCState TypeExpr
-anyType = TVar <$> newTVarName
+anyType = mkUnboundTVar <$> newTVarName
 
 --------------------------------------------------------------------------------
 -- Parse Type Environments
@@ -187,7 +188,7 @@ funcDefEnv env fname (M.DefSpec ps _) =
     funcSpecScheme :: TCState TypeScheme
     funcSpecScheme = 
       do scheme_vars <- replicateM (length ps + 1) newTVarName
-         pure $ TScheme scheme_vars (mkArrowFromList (map TVar scheme_vars))
+         pure $ TScheme scheme_vars (mkArrowFromList (map mkUnboundTVar scheme_vars))
 
 --------------------------------------------------------------------------------
 -- Type Checker State
@@ -196,7 +197,7 @@ insertScheme :: String -> TypeScheme -> TypeEnv -> TypeEnv
 insertScheme = Map.insert
 
 newTVar :: TCState TypeExpr
-newTVar = TVar <$> newTVarName
+newTVar = mkUnboundTVar <$> newTVarName
 
 newTVarName :: TCState String
 newTVarName = undefined
@@ -267,9 +268,9 @@ tcVariable env v =
 tcLambda :: TypeEnv -> S.Variable -> S.Exp -> TCState TypeExpr
 tcLambda env lvar lbody = 
   do body_svar <- newTVarName
-     let env' = insertScheme lvar (TScheme [] (TVar body_svar)) env
+     let env' = insertScheme lvar (TScheme [] (mkUnboundTVar body_svar)) env
      lbody_type <- typeCheck env' lbody
-     pure $ mkArrow (TVar body_svar) lbody_type 
+     pure $ mkArrow (mkUnboundTVar body_svar) lbody_type 
 
 -- Apply
 

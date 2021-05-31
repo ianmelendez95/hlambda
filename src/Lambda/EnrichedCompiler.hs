@@ -2,8 +2,6 @@ module Lambda.EnrichedCompiler where
 
 import Data.Bifunctor (second)
 
-import Common.Name (newName)
-
 import qualified Lambda.Enriched as E
 import qualified Lambda.Syntax as S
 

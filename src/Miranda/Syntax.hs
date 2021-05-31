@@ -94,8 +94,6 @@ data Rhs = Rhs [RhsClause] [AssignDef]
 
 type FuncDefMap = Map.Map String [DefSpec]
 
-foo = ((5 :: Int) + (6 :: Int)) :: Int
-
 -- Pattern Definition
 
 data PattDef = PDef Pattern Rhs
@@ -368,6 +366,7 @@ instance PrettyLambda Exp where
 sPrettyDef :: Decl -> PrettyParenS LambdaDoc 
 sPrettyDef (AssignDef adef) = sPrettyAssignDef adef
 sPrettyDef (TypeDef tdef) = sPrettyTypeDef tdef
+sPrettyDef (TypeSpec tspec) = pure . pretty $ show tspec
 
 sPrettyAssignDef :: AssignDef -> PrettyParenS LambdaDoc
 sPrettyAssignDef (FuncDef fdef) = sPrettyFuncDef fdef

@@ -168,13 +168,6 @@ biList =
 --------------------------------------------------------------------------------
 -- lambda functions
 
-packStr :: Constructor -> String
-packStr c = packStr' (constrType c)
-
-packStr' :: ConstructorType -> String
-packStr' (Sum (CSum tag ar)) = "PACK-SUM-" ++ show tag ++ "-" ++ show ar
-packStr' (Product (CProduct ar)) = "PACK-PRODUCT-" ++ show ar
-
 unpackStr :: Constructor -> String 
 unpackStr c = unpackStr' (constrType c)
 

@@ -8,8 +8,6 @@ module Miranda.TypeChecker
   , progTypeEnv
   ) where
 
-import Data.List (foldl', sort)
-import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
 import qualified Lambda.Syntax as S
 import qualified Miranda.Syntax as M
@@ -18,12 +16,11 @@ import Control.Monad.State.Lazy
 
 import Miranda.TypeExpr
 
-type TypeEnv = Map.Map String TypeScheme
+-- | prog domain => type domain
+type TypeEnv = Map.Map String TypeExpr
 
+-- | type domain => type domain
 type SubstEnv = Map.Map String TypeExpr
-
-data TypeScheme = TScheme [String] TypeExpr
-                deriving Show
 
 data TCEnv = TypeCheckerEnv {
     tcenvCurNameIndex :: Int,
@@ -42,57 +39,16 @@ empty_TCEnv :: TCEnv
 empty_TCEnv = TypeCheckerEnv { tcenvCurNameIndex = 0, tcenvSubstEnv = Map.empty }
 
 --------------------------------------------------------------------------------
--- Util
-
-safeLookup :: Ord a => a -> Map.Map a a -> a
-safeLookup k m = fromMaybe k (Map.lookup k m)
-
---------------------------------------------------------------------------------
 -- Default Type Environment
 
 primTypeEnv :: TypeEnv
 primTypeEnv = Map.empty
 
 --------------------------------------------------------------------------------
--- Names
-
-nNewSchematicNames :: Int -> [String]
-nNewSchematicNames n = map newSchematicVar [1..n]
-
-newTypeVar, newSchematicVar :: Int -> String
-newTypeVar      = ("_t" ++) . show
-newSchematicVar = (++ "'") . newTypeVar
-
---------------------------------------------------------------------------------
 -- Type Schemes
 
--- TODO: decide whether to make them bound or not
-schemeFromTypeExpr :: TypeExpr -> TCState TypeScheme
-schemeFromTypeExpr expr = 
-  do tv_to_sv_assoc <- 
-       mapM (\v -> (v,) <$> newTVarName) (tvarsIn expr)
-
-     let scheme_vars = map snd tv_to_sv_assoc
-         tv_to_sv    = Map.fromList tv_to_sv_assoc
-         scheme_expr =
-           mapUnboundTVars (\v -> mkUnboundTVar $ safeLookup v tv_to_sv) expr
-
-     pure $ TScheme scheme_vars scheme_expr
-
-newSchemeInstance :: TypeScheme -> TCState TypeExpr
-newSchemeInstance (TScheme svars sexpr) = 
-  do svar_to_ivar <- sVarsToInstNames svars
-     pure $ mapUnboundTVars 
-              (\v -> mkUnboundTVar $ fromMaybe v (Map.lookup v svar_to_ivar)) 
-              sexpr
-  where 
-    sVarsToInstNames :: [String] 
-                     -> TCState (Map.Map String String)
-    sVarsToInstNames vs = 
-      Map.fromList <$> mapM (\v -> (v,) <$> newTVarName) vs
-
-typeSchemeVars :: TypeScheme -> [String]
-typeSchemeVars (TScheme _ expr) = tvarsIn expr
+newSchemeInstance :: TypeExpr -> TCState TypeExpr
+newSchemeInstance = mapUnboundTVarsM (\_ -> mkUnboundTVar <$> newTVarName)
 
 --------------------------------------------------------------------------------
 -- Type Constructors
@@ -143,35 +99,14 @@ anyType = mkUnboundTVar <$> newTVarName
 -- Parse Type Environments
 
 progTypeEnv :: M.Prog -> TCState TypeEnv
-progTypeEnv (M.Prog decls _) = _validateTypeEnv <$> foldM declTypeEnv primTypeEnv decls
-
-_validateTypeEnv :: TypeEnv -> TypeEnv
-_validateTypeEnv = varsUnique
-  where 
-    varsUnique :: TypeEnv -> TypeEnv
-    varsUnique env = 
-      let vars = Map.foldr (\scheme vs -> typeSchemeVars scheme ++ vs) [] env
-       in case findDup vars of
-            Nothing -> env
-            Just dup -> error $ "Type Environment has duplicated variable: " ++ dup
-    
-    findDup :: [String] -> Maybe String
-    findDup = findDupSorted . sort
-
-    findDupSorted :: [String] -> Maybe String
-    findDupSorted []  = Nothing
-    findDupSorted [_] = Nothing
-    findDupSorted (x:y:xs) = if x == y then Just x else findDupSorted (y:xs)
+progTypeEnv (M.Prog decls _) = foldM declTypeEnv primTypeEnv decls
 
 declTypeEnv :: TypeEnv -> M.Decl -> TCState TypeEnv
 declTypeEnv _   tdef@(M.TypeDef _) = error $ "Type Definitions not supported yet " ++ show tdef
-declTypeEnv env (M.TypeSpec (M.TSpec name expr)) = pure $ typeSpecEnv env name expr
+declTypeEnv env (M.TypeSpec (M.TSpec name expr)) = pure $ Map.insert name expr env
 declTypeEnv env (M.AssignDef (M.FuncDef (M.FDef fname fspec))) = 
   funcDefEnv env fname fspec
 declTypeEnv env (M.AssignDef _) = pure env 
-
-typeSpecEnv :: TypeEnv -> String -> TypeExpr -> TypeEnv
-typeSpecEnv env name expr = Map.insert name (TScheme (tvarsIn expr) expr) env
 
 -- TODO: possibly an opportunity for guessing based on the 
 --       patterns, like constructors and constants
@@ -185,19 +120,16 @@ funcDefEnv env fname (M.DefSpec ps _) =
     else do scheme <- funcSpecScheme
             pure $ Map.insert fname scheme env
   where 
-    funcSpecScheme :: TCState TypeScheme
+    funcSpecScheme :: TCState TypeExpr
     funcSpecScheme = 
       do scheme_vars <- replicateM (length ps + 1) newTVarName
-         pure $ TScheme scheme_vars (mkArrowFromList (map mkUnboundTVar scheme_vars))
+         pure $ mkArrowFromList (map mkUnboundTVar scheme_vars)
 
 --------------------------------------------------------------------------------
 -- Type Checker State
 
-insertScheme :: String -> TypeScheme -> TypeEnv -> TypeEnv 
+insertScheme :: String -> TypeExpr -> TypeEnv -> TypeEnv 
 insertScheme = Map.insert
-
-newTVar :: TCState TypeExpr
-newTVar = mkUnboundTVar <$> newTVarName
 
 newTVarName :: TCState String
 newTVarName = undefined
@@ -224,7 +156,7 @@ typeCheck env (S.Letrec bs e) = tcLetrec env bs e
 
 tcLet :: TypeEnv -> S.Variable -> S.Exp -> S.Exp -> TCState TypeExpr
 tcLet env bind_var bind_expr body_expr = 
-  do bind_scheme <- typeCheck env bind_expr >>= schemeFromTypeExpr
+  do bind_scheme <- typeCheck env bind_expr
 
      let env' = insertScheme bind_var bind_scheme env
      typeCheck env' body_expr
@@ -238,20 +170,17 @@ tcLetrec env bindings body =
       
      let temp_env = foldr (uncurry Map.insert) env bname_to_temp_scheme
 
-     bexpr_schemes <- mapM ((schemeFromTypeExpr <=< typeCheck temp_env) . snd) bindings
+     bexpr_schemes <- mapM (typeCheck temp_env . snd) bindings
 
-     let bname_to_scheme :: [(String, TypeScheme)]
+     let bname_to_scheme :: [(String, TypeExpr)]
          bname_to_scheme = zip (map fst bname_to_scheme) bexpr_schemes
 
          env' = Map.union (Map.fromList bname_to_scheme) env
      
      typeCheck env' body
   where 
-    newBoundVarScheme :: TCState TypeScheme
-    newBoundVarScheme = TScheme [] <$> newTVar
-
-_letBindingScheme :: TypeEnv -> S.Exp -> TCState TypeScheme
-_letBindingScheme env e = typeCheck env e >>= schemeFromTypeExpr
+    newBoundVarScheme :: TCState TypeExpr
+    newBoundVarScheme = mkBoundTVar <$> newTVarName
 
 -- Variables
 
@@ -267,10 +196,10 @@ tcVariable env v =
 
 tcLambda :: TypeEnv -> S.Variable -> S.Exp -> TCState TypeExpr
 tcLambda env lvar lbody = 
-  do body_svar <- newTVarName
-     let env' = insertScheme lvar (TScheme [] (mkUnboundTVar body_svar)) env
+  do body_svar <- mkBoundTVar <$> newTVarName
+     let env' = insertScheme lvar body_svar env
      lbody_type <- typeCheck env' lbody
-     pure $ mkArrow (mkUnboundTVar body_svar) lbody_type 
+     pure $ mkArrow body_svar lbody_type 
 
 -- Apply
 
@@ -279,7 +208,7 @@ tcApply env e1 e2 =
   do e1_type <- typeCheck env e1
      e2_type <- typeCheck env e2
 
-     res_type <- newTVar
+     res_type <- mkUnboundTVar <$> newTVarName
      let e1_arrow_type = mkArrow e2_type res_type
      unify e1_arrow_type e1_type
 

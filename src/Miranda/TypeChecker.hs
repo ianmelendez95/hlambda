@@ -8,6 +8,7 @@ module Miranda.TypeChecker
   , progTypeEnv
   ) where
 
+import Data.Maybe (fromMaybe)
 import qualified Data.Map as Map
 import qualified Lambda.Syntax as S
 import qualified Miranda.Syntax as M
@@ -15,6 +16,7 @@ import qualified Miranda.Syntax as M
 import Control.Monad.State.Lazy
 
 import Miranda.TypeExpr
+    ( TypeExpr(..), mkBoundTVar, mkUnboundTVar, mapUnboundTVarsM )
 
 -- | prog domain => type domain
 type TypeEnv = Map.Map String TypeExpr
@@ -22,7 +24,7 @@ type TypeEnv = Map.Map String TypeExpr
 -- | type domain => type domain
 type SubstEnv = Map.Map String TypeExpr
 
-data TCEnv = TypeCheckerEnv {
+data TCEnv = TCEnv {
     tcenvCurNameIndex :: Int,
     tcenvSubstEnv :: SubstEnv
   }
@@ -38,16 +40,37 @@ runTypeChecker :: TCState a -> Either TypeCheckError a
 runTypeChecker tcs = evalStateT tcs empty_TCEnv
 
 empty_TCEnv :: TCEnv
-empty_TCEnv = TypeCheckerEnv { tcenvCurNameIndex = 0, tcenvSubstEnv = Map.empty }
+empty_TCEnv = TCEnv { tcenvCurNameIndex = 0, tcenvSubstEnv = Map.empty }
 
 newTVarName :: TCState String
 newTVarName = undefined
 
+getTVarSubst :: String -> TCState (Maybe TypeExpr)
+getTVarSubst var = gets (\TCEnv{tcenvSubstEnv = senv} -> Map.lookup var senv)
+
+putSubst :: String -> TypeExpr -> TCState ()
+putSubst name expr = modify (\tcenv@TCEnv{tcenvSubstEnv = senv} -> 
+                               tcenv{ tcenvSubstEnv = Map.insert name expr senv })
+
 --------------------------------------------------------------------------------
 -- Unification
 
+-- | both considers substitutions, 
+-- | and checks against constructors
 unify :: TypeExpr -> TypeExpr -> TCState ()
-unify = undefined
+unify e tv@(TVar _ _) = unify tv e
+unify e1@(TVar _ v) e2 = 
+  do e1' <- fromMaybe e1 <$> getTVarSubst v
+     if e1 == e1'
+       then putSubst v e2
+       else unify e1' e2 
+     
+unify cons1@(TCons c1 es1) cons2@(TCons c2 es2) 
+  | c1 /= c2 = lift . Left $ 
+      "Constructed types don't match:\n" ++ show cons1 ++ " /= " ++ show cons2 
+  | length es1 /= length es2 = error $ 
+      "Constructed types have differing number of constituent expressions:\n" ++ show cons1 ++ " /= " ++ show cons2
+  | otherwise = mapM_ (uncurry unify) (zip es1 es2)
 
 --------------------------------------------------------------------------------
 -- Type Environment

@@ -1,5 +1,6 @@
 module Miranda.TypeExpr 
   ( TypeExpr (..)
+
   , mkBoundTVar
   , mkUnboundTVar
 
@@ -12,6 +13,7 @@ import Data.Functor.Identity
 
 data TypeExpr = TVar IsBound String 
               | TCons String [TypeExpr]
+              deriving Eq
 
 type IsBound = Bool
 

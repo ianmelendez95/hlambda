@@ -1,5 +1,3 @@
-{-# LANGUAGE TupleSections #-}
-
 module MyTypeChecker where
 
 import Control.Monad.State.Lazy

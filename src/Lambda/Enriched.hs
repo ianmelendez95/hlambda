@@ -1,4 +1,3 @@
-{-# LANGUAGE TupleSections #-}
 module Lambda.Enriched
  ( Exp (..)
  , LetBinding

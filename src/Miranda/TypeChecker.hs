@@ -29,8 +29,7 @@ data TCEnv = TypeCheckerEnv {
 
 type TCState = StateT TCEnv (Either TypeCheckError)
 
-data TypeCheckError = TCError String
-                    deriving Show
+type TypeCheckError = String
 
 runTypeChecker :: TCState a -> Either TypeCheckError a
 runTypeChecker tcs = evalStateT tcs empty_TCEnv
@@ -232,8 +231,8 @@ tcFunction S.FMinus     = pure bin_int_type
 tcFunction S.FMult      = pure bin_int_type
 tcFunction S.FDiv       = pure bin_int_type
 
-tcFunction S.FAnd       = pure $ bin_bool_type
-tcFunction S.FOr        = pure $ bin_bool_type
+tcFunction S.FAnd       = pure bin_bool_type
+tcFunction S.FOr        = pure bin_bool_type
 tcFunction S.FNot       = pure $ mkArrow bool_type bool_type
 
 tcFunction S.FEq        = _compType

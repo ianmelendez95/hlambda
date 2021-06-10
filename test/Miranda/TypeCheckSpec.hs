@@ -16,14 +16,9 @@ spec = do
     it "type checks simple polymorphic type" $ do 
       let test_path = "type-checks/simple-type"
       mcontent  <- readMiranda test_path
-      elcontent <- readEnriched test_path
       lcontent  <- readLambda test_path
 
       l_compiled <- either assertFailure pure (eitherToString $ compileStr mcontent)
-      -- el_result <- showEnrichedMiranda mcontent
-      -- l_result  <- showLambdadMiranda mcontent
-
-      -- el_result `shouldBe` elcontent
       l_compiled `shouldBe` lcontent
 
 eitherToString :: (Show a, Show b) => Either a b -> Either String String

@@ -65,12 +65,13 @@ putSubst name expr = modify (\tcenv@TCEnv{tcenvSubstEnv = senv} ->
 -- | both considers substitutions, 
 -- | and checks against constructors
 unify :: TypeExpr -> TypeExpr -> TCState ()
-unify e tv@(TVar _ _) = unify tv e
 unify e1@(TVar _ v) e2 = 
   do e1' <- fromMaybe e1 <$> getTVarSubst v
      if e1 == e1'
        then putSubst v e2
        else unify e1' e2 
+
+unify e tv@(TVar _ _) = unify tv e
      
 unify cons1@(TCons c1 es1) cons2@(TCons c2 es2) 
   | c1 /= c2 = lift . Left $ 

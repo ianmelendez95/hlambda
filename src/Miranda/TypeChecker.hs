@@ -179,7 +179,12 @@ tcLet :: TypeEnv -> S.Variable -> S.Exp -> S.Exp -> TCState TypeExpr
 tcLet env bind_var bind_expr body_expr = 
   do bind_scheme <- typeCheck env bind_expr
 
-     let env' = insertScheme bind_var bind_scheme env
+     env' <- case Map.lookup bind_var env of 
+               Nothing -> pure (Map.insert bind_var bind_scheme env)
+               Just existing_type -> 
+                 do unify bind_scheme existing_type
+                    pure env
+
      typeCheck env' body_expr
 
 -- Letrec

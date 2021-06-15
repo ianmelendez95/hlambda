@@ -21,6 +21,15 @@ spec = do
       l_compiled <- either assertFailure pure (eitherToString $ compileStr mcontent)
       l_compiled `shouldBe` lcontent
 
+    it "catches wrong simple type" $ do 
+      let test_path = "type-checks/simple-type-wrong"
+
+      mcontent  <- readMiranda test_path
+      case compileStr mcontent of 
+        Left _ -> pure ()
+        Right _ -> assertFailure "Failed to catch wrong type" 
+
+
 eitherToString :: (Show a, Show b) => Either a b -> Either String String
 eitherToString (Left x)  = Left (show x)
 eitherToString (Right x) = Right (show x)

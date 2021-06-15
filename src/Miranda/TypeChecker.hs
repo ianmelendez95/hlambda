@@ -179,13 +179,9 @@ tcLet :: TypeEnv -> S.Variable -> S.Exp -> S.Exp -> TCState TypeExpr
 tcLet env bind_var bind_expr body_expr = 
   do bind_scheme <- typeCheck env bind_expr
 
-     env' <- case Map.lookup bind_var env of 
-               Nothing -> pure (Map.insert bind_var bind_scheme env)
-               Just existing_type -> 
-                 do unify bind_scheme existing_type
-                    pure env
+     bind_type <- checkIfProvidedType env bind_var bind_scheme
 
-     typeCheck env' body_expr
+     typeCheck (Map.insert bind_var bind_type env) body_expr
 
 -- Letrec
 
@@ -200,10 +196,20 @@ tcLetrec env bindings body =
 
      bexpr_types <- 
        Map.fromList <$> mapM (\(name, expr) -> do texpr <- typeCheck temp_env expr
-                                                  pure (name, texpr)) 
+                                                  texpr' <- checkIfProvidedType env name texpr
+                                                  pure (name, texpr')) 
                              bindings
 
+     -- check bexpr_types for accuracy (by unifying against provided types, if available)
+     
+
      typeCheck (Map.union bexpr_types env) body
+
+checkIfProvidedType :: TypeEnv -> S.Variable -> TypeExpr -> TCState TypeExpr
+checkIfProvidedType env pvar texpr = 
+  case Map.lookup pvar env of 
+    Nothing -> pure texpr
+    Just existing -> unify existing texpr >> pure existing
 
 -- Variables
 
